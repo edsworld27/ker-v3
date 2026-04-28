@@ -82,8 +82,8 @@ export default function Hero() {
           {/* Right column — image */}
           <div className="relative aspect-[4/5] sm:aspect-[5/4] lg:aspect-square rounded-3xl overflow-hidden border border-white/5">
             <Image
-              src="/images/sustainability/handmade.png"
-              alt="Handmade Odo black soap bars"
+              src="/images/hero/elephants.png"
+              alt="Elephants in the African landscape"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"

@@ -38,7 +38,7 @@ export default function Problem() {
             text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl w-full">
             They called it <span className="italic gradient-text">care.</span> Take it back.
           </h2>
-          <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">
+          <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed">
             Mass-market brands have spent decades loading our skin with sulphates, phthalates, and synthetic
             chemicals hidden behind the word &ldquo;fragrance.&rdquo; Raw, clean power for men. Divine, untouched
             skin for women. Odo strips it back to what our bodies actually deserve — and nothing they don&apos;t.
