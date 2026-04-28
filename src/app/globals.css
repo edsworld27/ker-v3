@@ -74,3 +74,11 @@ body {
 .card-glow:hover {
   box-shadow: 0 0 40px rgba(232, 98, 26, 0.15), 0 0 80px rgba(107, 45, 139, 0.08);
 }
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
