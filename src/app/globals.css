@@ -82,3 +82,28 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Marquee — seamless infinite scroll for testimonial rows */
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+.marquee-left  { animation: marquee-left  60s linear infinite; }
+.marquee-right { animation: marquee-right 60s linear infinite; }
+.marquee-pause:hover .marquee-left,
+.marquee-pause:hover .marquee-right {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-left, .marquee-right { animation: none; }
+}

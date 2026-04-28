@@ -296,47 +296,73 @@ export default function Testimonials() {
           </p>
         </div>
 
-        {/* Verified review cards — horizontal scroll on all sizes */}
+        {/* Verified review cards — two auto-scrolling rows in opposite directions */}
         <div className="flex flex-col items-center text-center mb-8 sm:mb-10">
           <span className="text-xs tracking-[0.28em] uppercase text-brand-amber mb-3">Verified reviews</span>
           <h3 className="font-display font-bold text-brand-cream text-2xl sm:text-3xl xl:text-4xl">
             Felt by those who know
           </h3>
+          <p className="text-[11px] tracking-widest uppercase text-brand-cream/30 mt-3">Hover any card to pause</p>
         </div>
-        <div className="-mx-6 sm:-mx-10 lg:-mx-12 xl:-mx-16 px-6 sm:px-10 lg:px-12 xl:px-16">
-          <div className="flex gap-5 xl:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 scroll-smooth no-scrollbar">
-            {REVIEWS.map(({ quote, name, location, stars }) => (
-              <div
-                key={name}
-                className="snap-start shrink-0 w-[85%] sm:w-[55%] lg:w-[32%] xl:w-[30%] flex flex-col p-7 xl:p-8 rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-purple/20 transition-all duration-300"
-              >
-                <div className="flex gap-1 mb-5">
-                  {Array.from({ length: stars }).map((_, i) => (
-                    <span key={i} className="text-brand-amber text-lg">★</span>
-                  ))}
-                </div>
-                <p className="text-brand-cream/70 text-sm xl:text-base leading-relaxed flex-1 mb-6">
-                  &ldquo;{quote}&rdquo;
-                </p>
-                <div className="flex items-center gap-3 pt-5 border-t border-white/8">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-purple flex items-center justify-center text-sm font-bold text-white shrink-0">
-                    {name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm xl:text-base font-medium text-brand-cream truncate">{name}</p>
-                    <p className="text-xs xl:text-sm text-brand-cream/30 truncate">{location}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[11px] tracking-widest uppercase text-brand-cream/30 mt-3">
-            ← Scroll for more reviews →
-          </p>
+
+        <div className="-mx-6 sm:-mx-10 lg:-mx-12 xl:-mx-16 space-y-5 xl:space-y-6">
+          <ReviewMarquee
+            reviews={[...REVIEWS.slice(0, 5), ...REVIEWS.slice(5)]}
+            direction="left"
+          />
+          <ReviewMarquee
+            reviews={[...REVIEWS.slice(4), ...REVIEWS.slice(0, 4)]}
+            direction="right"
+          />
         </div>
 
       </div>
     </section>
+  );
+}
+
+function ReviewMarquee({
+  reviews,
+  direction,
+}: {
+  reviews: typeof REVIEWS;
+  direction: "left" | "right";
+}) {
+  // Duplicate the list so the animation loops seamlessly
+  const loop = [...reviews, ...reviews];
+  return (
+    <div className="marquee-pause overflow-hidden">
+      <div className={`marquee gap-5 xl:gap-6 ${direction === "left" ? "marquee-left" : "marquee-right"}`}>
+        {loop.map((r, i) => (
+          <ReviewCard key={`${r.name}-${i}`} review={r} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
+  const { quote, name, location, stars } = review;
+  return (
+    <div className="shrink-0 w-[85vw] sm:w-[26rem] xl:w-[28rem] flex flex-col p-7 xl:p-8 rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-purple/30 transition-colors">
+      <div className="flex gap-1 mb-5">
+        {Array.from({ length: stars }).map((_, i) => (
+          <span key={i} className="text-brand-amber text-lg">★</span>
+        ))}
+      </div>
+      <p className="text-brand-cream/70 text-sm xl:text-base leading-relaxed flex-1 mb-6">
+        &ldquo;{quote}&rdquo;
+      </p>
+      <div className="flex items-center gap-3 pt-5 border-t border-white/8">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-purple flex items-center justify-center text-sm font-bold text-white shrink-0">
+          {name[0]}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm xl:text-base font-medium text-brand-cream truncate">{name}</p>
+          <p className="text-xs xl:text-sm text-brand-cream/30 truncate">{location}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
