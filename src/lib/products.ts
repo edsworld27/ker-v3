@@ -3,7 +3,7 @@ export interface ProductSize {
   price: number;
 }
 
-export type ProductFormat = "bar" | "jar" | "dispenser" | "sachet" | "stone";
+export type ProductFormat = "bar" | "jar" | "dispenser" | "sachet" | "stone" | "card";
 
 export interface ProductReview {
   name: string;
@@ -408,6 +408,54 @@ export const PRODUCTS: Product[] = [
     ],
     reviews: [
       { name: "Kofi B.", location: "London, UK", stars: 5, title: "The best gift I've ever given", body: "Bought this for my mum. She called me crying. The pouch alone is a work of art." }
+    ],
+  },
+  {
+    slug: "odo-gift-card",
+    id: "odo-gift-card",
+    name: "Odo Gift Card",
+    tagline: "The Gift of Choice · Digital Delivery",
+    price: 25.0,
+    badge: "Gift",
+    badgeColor: "bg-brand-purple",
+    rating: 5.0,
+    reviewCount: 18,
+    origin: "Delivered by email · use anytime",
+    shortBullets: [
+      "Choose from £15, £25, £50 or £100 denominations",
+      "Delivered instantly to your inbox — print or forward",
+      "Recipient picks any Odo bar, jar, dispenser or set",
+      "Never expires — give the gift of ritual on their schedule",
+    ],
+    description: [
+      "An Odo Gift Card is the gift of choice. The recipient picks the format, the fragrance and the moment. Whether they want to start with a hand soap bar or go straight for the Ritual Set, you've handed them the door — they choose how to walk through it.",
+      "Cards are sent by email within minutes of purchase, beautifully designed and ready to forward or print. They never expire, and any unused balance stays on the card for next time.",
+    ],
+    note: "Digital · email delivery within minutes",
+    formats: ["card"],
+    sizes: [
+      { label: "£15", price: 15.0 },
+      { label: "£25", price: 25.0 },
+      { label: "£50", price: 50.0 },
+      { label: "£100", price: 100.0 },
+    ],
+    fragrances: ["Standard design"],
+    ingredients: [
+      { name: "Digital gift card" },
+      { name: "Personalised message" },
+      { name: "Beautiful PDF design" },
+    ],
+    directions:
+      "At checkout, enter the recipient's email and an optional personalised message. The card arrives in their inbox within minutes. They can redeem it on any Odo product at checkout.",
+    benefits: [
+      { icon: "🎁", title: "Effortless gift", body: "No wrapping. No shipping. Beautifully designed digital delivery." },
+      { icon: "💌", title: "Personalised", body: "Add your own message and a delivery date — schedule it for their birthday." },
+      { icon: "♾", title: "Never expires", body: "Unused balance stays on the card forever." },
+      { icon: "🌍", title: "Zero waste", body: "Fully digital — no plastic, no card, no carbon footprint." },
+    ],
+    reviews: [
+      { name: "Jess W.", location: "Edinburgh, UK", stars: 5, title: "Saved my Mother's Day", body: "Last-minute panic — bought this at 9pm and it was in mum's inbox before bedtime. She loved being able to pick her own bars." },
+      { name: "Tomi A.", location: "London, UK", stars: 5, title: "Beautiful design", body: "The card itself is gorgeous. Felt like a proper gift, not just a code in an email." },
     ],
   },
 ];
