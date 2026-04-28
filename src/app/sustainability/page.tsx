@@ -18,7 +18,7 @@ const PILLARS = [
   },
   {
     title: "Made by hand",
-    body: "Every Odo bar is hand-cut and cold-processed in Accra. We never outsource production. The women who make Odo are paid a living wage and own equity in the company.",
+    body: "Every Odo bar is hand-cut and cold-processed in Accra. We never outsource production. Our suppliers are paid above-market rates and we maintain direct, long-term relationships with every maker in the chain.",
     img: "/images/sustainability/handmade.png",
     alt: "Handmade soap bars cooling on a wooden tray",
   },
