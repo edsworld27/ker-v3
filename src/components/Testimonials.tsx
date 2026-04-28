@@ -305,7 +305,8 @@ export default function Testimonials() {
           <p className="text-[11px] tracking-widest uppercase text-brand-cream/30 mt-3">Hover any card to pause</p>
         </div>
 
-        <div className="-mx-6 sm:-mx-10 lg:-mx-12 xl:-mx-16 space-y-5 xl:space-y-6">
+        {/* Break out of the max-width container so the marquee runs the full viewport width */}
+        <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] space-y-5 xl:space-y-6">
           <ReviewMarquee
             reviews={[...REVIEWS.slice(0, 5), ...REVIEWS.slice(5)]}
             direction="left"
@@ -382,15 +383,19 @@ function SkylineRow({
   tiles: typeof SKYLINE;
   shift: string;
   opacity: string;
-  zBase: number;
+  zBase: 1 | 10 | 20;
   mt?: string;
 }) {
+  // Map base z to a Tailwind class so hover:z-50 on the row reliably wins
+  const baseZ = zBase === 20 ? "z-20" : zBase === 10 ? "z-10" : "z-0";
   return (
-    <div className={`flex items-end justify-center gap-0 px-4 ${shift} ${opacity} ${mt}`}>
+    <div
+      className={`relative ${baseZ} hover:z-50 flex items-end justify-center gap-0 px-4 transition-[z-index] ${shift} ${opacity} ${mt}`}
+    >
       {tiles.map((s, i) => (
         <div
           key={i}
-          style={{ zIndex: zBase + (tiles.length - Math.abs(i - tiles.length / 2)) }}
+          style={{ zIndex: tiles.length - Math.abs(i - tiles.length / 2) }}
           className={`relative ${s.width} ${s.height} ${s.rotate} ${s.offsetY}
             ${i === 0 ? "" : "-ml-6 xl:-ml-8"}
             transition-all duration-500 hover:rotate-0 hover:-translate-y-2 hover:!z-50`}
