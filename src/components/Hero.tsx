@@ -20,7 +20,7 @@ export default function Hero() {
             {/* Eyebrow */}
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">From Ghana, with love</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Pure Ghanaian black soap · Handcrafted in Accra</span>
             </div>
 
             {/* Headline */}
@@ -28,10 +28,12 @@ export default function Hero() {
               ODO <span className="gradient-text">by Felicia</span>
             </h1>
 
-            {/* Tagline */}
-            <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
-              A ritual born from the soil of Ghana. Pure, sacred, and alive with
-              ancestral wisdom — crafted to restore what modern life has taken.
+            {/* Descriptor */}
+            <p className="text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-relaxed mb-3">
+              Hand-cut in Accra using raw shea butter and palm kernel oil sourced direct from Ghanaian co-operatives.
+            </p>
+            <p className="text-brand-cream/50 text-sm sm:text-base leading-relaxed mb-5">
+              No sulphates, no synthetic fragrance, no shortcuts — honest soap you can trace from soil to shelf.
             </p>
 
             {/* CTAs */}
@@ -62,9 +64,9 @@ export default function Hero() {
             {/* Stats */}
             <div className="flex flex-wrap justify-center lg:justify-start gap-10 xl:gap-14 pt-8 border-t border-white/10">
               {[
-                { value: "100%", label: "Natural Ingredients" },
-                { value: "0",    label: "Harsh Chemicals" },
-                { value: "∞",    label: "Generations of Heritage" },
+                { value: "100%", label: "Natural ingredients" },
+                { value: "0",    label: "Sulphates or synthetics" },
+                { value: "3",    label: "Independent lab partners" },
               ].map(({ value, label }) => (
                 <div key={label} className="flex flex-col">
                   <span className="font-display text-2xl sm:text-3xl xl:text-4xl font-bold text-brand-amber">
