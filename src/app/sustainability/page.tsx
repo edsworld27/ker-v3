@@ -61,7 +61,6 @@ const STATS = [
   { number: "100%", label: "Compostable packaging" },
   { number: "0", label: "Single-use plastic" },
   { number: "73%", label: "Sea-freighted volume in 2025" },
-  { number: "84", label: "Trees planted per 100 orders" },
 ];
 
 export default function Page() {
@@ -111,7 +110,7 @@ export default function Page() {
         {/* Stats strip */}
         <section className="w-full bg-brand-black-soft border-y border-white/5">
           <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-10 sm:py-12">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               {STATS.map((s) => (
                 <div key={s.label} className="text-center">
                   <p className="font-display text-3xl sm:text-4xl xl:text-5xl font-bold text-brand-amber mb-1">{s.number}</p>
