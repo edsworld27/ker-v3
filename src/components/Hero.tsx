@@ -6,15 +6,16 @@ export default function Hero() {
   return (
     <section
       id="story"
-      className="relative w-full bg-brand-black overflow-hidden"
+      className="relative w-full min-h-screen flex items-center bg-brand-black overflow-hidden"
+      style={{ paddingTop: "var(--navbar-h, 5rem)" }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-brand-purple-muted/25 via-transparent to-transparent pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-14 sm:py-20 lg:py-24">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-16 sm:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-center">
 
           {/* Left column — text */}
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
 
             {/* Eyebrow */}
             <div className="flex items-center gap-3 mb-5">
@@ -34,7 +35,7 @@ export default function Hero() {
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-wrap gap-4 mt-3 mb-10">
+            <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-3 mb-10">
               <a
                 href="#shop"
                 className="inline-flex items-center justify-center gap-2.5
@@ -59,7 +60,7 @@ export default function Hero() {
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap gap-10 xl:gap-14 pt-8 border-t border-white/10">
+            <div className="flex flex-wrap justify-center lg:justify-start gap-10 xl:gap-14 pt-8 border-t border-white/10">
               {[
                 { value: "100%", label: "Natural Ingredients" },
                 { value: "0",    label: "Harsh Chemicals" },
