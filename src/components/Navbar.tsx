@@ -6,9 +6,9 @@ import { useCart } from "@/context/CartContext";
 import CartDrawer from "./CartDrawer";
 
 const NAV_LINKS = [
+  { label: "Shop", href: "/#shop" },
   { label: "Story", href: "/our-story" },
   { label: "Why Odo", href: "/the-problem" },
-  { label: "Shop", href: "/#shop" },
   { label: "Heritage", href: "/#heritage" },
   { label: "FAQ", href: "/faq" },
 ];

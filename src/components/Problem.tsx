@@ -15,7 +15,7 @@ export default function Problem() {
     {
       icon: "🏭",
       title: "Engineered for margin",
-      body: "Mass-market soaps are formulated for shelf life and profit. Every ingredient is chosen for cost — not for what it does to your body.",
+      body: "Mass-market soaps are formulated for shelf life and profit. Every ingredient is chosen for cost — not for what it does to our bodies.",
     },
     {
       icon: "🚫",
@@ -39,9 +39,9 @@ export default function Problem() {
             They called it <span className="italic gradient-text">care.</span> Take it back.
           </h2>
           <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">
-            Mass-market brands have spent decades loading your skin with sulphates, phthalates, and synthetic
+            Mass-market brands have spent decades loading our skin with sulphates, phthalates, and synthetic
             chemicals hidden behind the word &ldquo;fragrance.&rdquo; Raw, clean power for men. Divine, untouched
-            skin for women. Odo strips it back to what your body actually deserves — and nothing it doesn&apos;t.
+            skin for women. Odo strips it back to what our bodies actually deserve — and nothing they don&apos;t.
           </p>
         </div>
 
