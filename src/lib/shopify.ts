@@ -68,8 +68,20 @@ export async function createCart() {
   return response.body.data.cartCreate.cart;
 }
 
+export interface ShopifyCartLine {
+  id: string;
+  quantity: number;
+  merchandise: { id: string };
+}
+
+export interface ShopifyCart {
+  id: string;
+  checkoutUrl: string;
+  lines?: { edges: { node: ShopifyCartLine }[] };
+}
+
 // Add an item to the Cart
-export async function addToCart(cartId: string, lines: { merchandiseId: string; quantity: number }[]) {
+export async function addToCart(cartId: string, lines: { merchandiseId: string; quantity: number }[]): Promise<ShopifyCart> {
   const query = `
     mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
       cartLinesAdd(cartId: $cartId, lines: $lines) {
@@ -94,7 +106,7 @@ export async function addToCart(cartId: string, lines: { merchandiseId: string; 
     }
   `;
 
-  const response = await shopifyFetch<{ data: { cartLinesAdd: { cart: unknown } } }>({
+  const response = await shopifyFetch<{ data: { cartLinesAdd: { cart: ShopifyCart } } }>({
     query,
     variables: {
       cartId,
@@ -106,7 +118,7 @@ export async function addToCart(cartId: string, lines: { merchandiseId: string; 
 }
 
 // Update item quantity in Cart
-export async function updateCart(cartId: string, lines: { id: string; quantity: number }[]) {
+export async function updateCart(cartId: string, lines: { id: string; quantity: number }[]): Promise<ShopifyCart> {
   const query = `
     mutation cartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
       cartLinesUpdate(cartId: $cartId, lines: $lines) {
@@ -118,7 +130,7 @@ export async function updateCart(cartId: string, lines: { id: string; quantity: 
     }
   `;
 
-  const response = await shopifyFetch<{ data: { cartLinesUpdate: { cart: unknown } } }>({
+  const response = await shopifyFetch<{ data: { cartLinesUpdate: { cart: ShopifyCart } } }>({
     query,
     variables: {
       cartId,
@@ -130,7 +142,7 @@ export async function updateCart(cartId: string, lines: { id: string; quantity: 
 }
 
 // Remove item from Cart
-export async function removeFromCart(cartId: string, lineIds: string[]) {
+export async function removeFromCart(cartId: string, lineIds: string[]): Promise<ShopifyCart> {
   const query = `
     mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
       cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
@@ -142,7 +154,7 @@ export async function removeFromCart(cartId: string, lineIds: string[]) {
     }
   `;
 
-  const response = await shopifyFetch<{ data: { cartLinesRemove: { cart: unknown } } }>({
+  const response = await shopifyFetch<{ data: { cartLinesRemove: { cart: ShopifyCart } } }>({
     query,
     variables: {
       cartId,
@@ -154,7 +166,7 @@ export async function removeFromCart(cartId: string, lineIds: string[]) {
 }
 
 // Get Cart details
-export async function getCart(cartId: string) {
+export async function getCart(cartId: string): Promise<ShopifyCart> {
   const query = `
     query getCart($cartId: ID!) {
       cart(id: $cartId) {
@@ -177,7 +189,7 @@ export async function getCart(cartId: string) {
     }
   `;
 
-  const response = await shopifyFetch<{ data: { cart: unknown } }>({
+  const response = await shopifyFetch<{ data: { cart: ShopifyCart } }>({
     query,
     variables: {
       cartId,
