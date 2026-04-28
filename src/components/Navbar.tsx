@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import CartDrawer from "./CartDrawer";
 
+const NAV_LINKS = [
+  { label: "Story", href: "/our-story" },
+  { label: "Why Odo", href: "/the-problem" },
+  { label: "Shop", href: "/#shop" },
+  { label: "Heritage", href: "/#heritage" },
+  { label: "FAQ", href: "/faq" },
+];
+
 export default function Navbar() {
   const { count, openCart } = useCart();
   const [scrolled, setScrolled] = useState(false);
@@ -41,13 +49,13 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-5 lg:gap-7 xl:gap-9 2xl:gap-11">
-            {["Story", "Why Odo", "Shop", "Heritage"].map((link) => (
+            {NAV_LINKS.map((link) => (
               <a
-                key={link}
-                href={`#${link.toLowerCase().replace(" ", "-")}`}
+                key={link.label}
+                href={link.href}
                 className="text-sm 2xl:text-base tracking-wide text-brand-cream/60 hover:text-brand-cream transition-colors duration-200 whitespace-nowrap"
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>
@@ -86,14 +94,14 @@ export default function Navbar() {
         {/* Mobile dropdown — scrollable so landscape mode doesn't clip it */}
         {menuOpen && (
           <div className="md:hidden bg-brand-black-soft border-t border-white/5 px-4 sm:px-6 py-5 flex flex-col gap-4 sm:gap-5 max-h-[60vh] overflow-y-auto">
-            {["Story", "Why Odo", "Shop", "Heritage"].map((link) => (
+            {NAV_LINKS.map((link) => (
               <a
-                key={link}
-                href={`#${link.toLowerCase().replace(" ", "-")}`}
+                key={link.label}
+                href={link.href}
                 onClick={() => setMenuOpen(false)}
                 className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-1"
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import ChatBot from "@/components/ChatBot";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -49,7 +50,10 @@ export default function RootLayout({
       className={`${playfair.variable} ${dmSans.variable} h-full`}
     >
       <body className="min-h-full bg-brand-black text-brand-cream font-body antialiased">
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          {children}
+          <ChatBot />
+        </CartProvider>
       </body>
     </html>
   );
