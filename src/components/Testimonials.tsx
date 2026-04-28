@@ -249,50 +249,6 @@ export default function Testimonials() {
           ))}
         </div>
 
-        {/* Skyline collage — desktop only (3 overlapping rows for density) */}
-        <div className="hidden lg:block relative mb-20">
-          {/* Top row */}
-          <SkylineRow
-            tiles={SKYLINE}
-            shift="translate-x-0"
-            opacity="opacity-100"
-            zBase={20}
-          />
-          {/* Second row — overlaps the first, shifted right, mirrored rotations */}
-          <SkylineRow
-            tiles={SKYLINE.slice(3).concat(SKYLINE.slice(0, 3)).map((s) => ({ ...s, rotate: flipRotate(s.rotate) }))}
-            shift="translate-x-6 xl:translate-x-10"
-            opacity="opacity-100"
-            zBase={10}
-            mt="-mt-44 xl:-mt-52"
-          />
-          {/* Third row — overlaps the second, shifted left, different shuffle */}
-          <SkylineRow
-            tiles={SKYLINE.slice(5).concat(SKYLINE.slice(0, 5))}
-            shift="-translate-x-6 xl:-translate-x-10"
-            opacity="opacity-100"
-            zBase={1}
-            mt="-mt-44 xl:-mt-52"
-          />
-        </div>
-
-        {/* Mobile/tablet — horizontal scroll collage */}
-        <div className="lg:hidden -mx-6 sm:-mx-10 px-6 sm:px-10 mb-14 sm:mb-16">
-          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-6 scroll-smooth no-scrollbar">
-            {SKYLINE.map((s, i) => (
-              <div
-                key={i}
-                className={`shrink-0 snap-center ${s.width} ${s.height} ${s.rotate}`}
-              >
-                <Tile tile={s.tile} />
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[11px] tracking-widest uppercase text-brand-cream/30 mt-2">
-            ← Swipe →
-          </p>
-        </div>
-
         {/* Verified review cards — two auto-scrolling rows in opposite directions */}
         <div className="flex flex-col items-center text-center mb-8 sm:mb-10">
           <span className="text-xs tracking-[0.28em] uppercase text-brand-amber mb-3">Verified reviews</span>
