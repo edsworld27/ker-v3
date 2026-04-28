@@ -26,7 +26,7 @@ export default function ProductsPage() {
         <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 relative z-10">
           
           <div className="flex flex-col items-center text-center mb-16">
-            <h1 className="font-display font-bold text-brand-cream text-4xl sm:text-5xl lg:text-6xl mb-4">
+            <h1 className="font-display font-bold text-brand-cream text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl mb-4">
               All Products
             </h1>
             <p className="text-brand-cream/50 text-base sm:text-lg max-w-md mx-auto">

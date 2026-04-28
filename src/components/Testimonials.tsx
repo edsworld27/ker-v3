@@ -223,7 +223,7 @@ export default function Testimonials() {
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-tight mb-5
-            text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl">
+            text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
             What people are <span className="gradient-text">actually saying</span>
           </h2>
           <p className="text-brand-cream/60 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">

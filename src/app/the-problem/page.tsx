@@ -124,7 +124,7 @@ export default function Page() {
               <div className="adinkra-line w-10" />
               <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
             </div>
-            <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
+            <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
               They told us beauty was <span className="italic gradient-text">pain.</span>
               <br />
               <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">They lied.</span>

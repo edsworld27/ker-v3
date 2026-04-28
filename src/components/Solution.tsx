@@ -24,7 +24,7 @@ export default function Solution() {
               <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">The Answer</span>
             </div>
             <h2 className="font-display font-bold text-brand-cream leading-tight mb-5
-              text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl
+              text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl
               max-w-xl">
               A gift carried across <span className="gradient-text">generations</span>
             </h2>

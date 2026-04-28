@@ -35,7 +35,7 @@ export default function Problem() {
             <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-[1.05] mb-7
-            text-4xl sm:text-5xl md:text-6xl xl:text-7xl 2xl:text-8xl w-full">
+            text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl w-full">
             They called it <span className="italic gradient-text">care.</span> Take it back.
           </h2>
           <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">

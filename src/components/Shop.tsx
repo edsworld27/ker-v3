@@ -30,7 +30,7 @@ export default function Shop() {
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream mb-4
-            text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl">
+            text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
             Begin your ritual
           </h2>
           <p className="text-brand-cream/50 text-base sm:text-lg xl:text-xl leading-relaxed max-w-sm sm:max-w-md xl:max-w-lg mx-auto">

@@ -104,7 +104,7 @@ export default function Page() {
               <div className="adinkra-line w-10" />
               <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Lab Testing</span>
             </div>
-            <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
+            <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
               Lab tested, <span className="gradient-text">independently verified</span>
             </h1>
             <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
