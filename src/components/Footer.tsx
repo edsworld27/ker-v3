@@ -18,6 +18,7 @@ const COMPANY_LINKS = [
 const SUPPORT_LINKS = [
   { label: "Shipping & Returns", href: "/shipping-returns" },
   { label: "FAQ", href: "/faq" },
+  { label: "Redeem Gift Card", href: "/redeem" },
   { label: "Contact Us", href: "/contact" },
   { label: "Privacy Policy", href: "/privacy" },
 ];

@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import type { Product, ProductFormat } from "@/lib/products";
 import { PRODUCTS } from "@/lib/products";
 import DiscountPopup from "@/components/DiscountPopup";
+import GiftCardPurchaseForm from "@/components/GiftCardPurchaseForm";
 
 export default function ProductDetail({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -188,6 +189,9 @@ export default function ProductDetail({ product }: { product: Product }) {
             </div>
 
             {/* Info */}
+            {format === "card" ? (
+              <GiftCardPurchaseForm product={product} />
+            ) : (
             <div className="flex flex-col">
               <p className="text-[11px] tracking-[0.3em] uppercase text-brand-amber mb-3">{product.origin}</p>
               <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl leading-tight mb-4">
@@ -406,6 +410,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
       </section>
