@@ -124,13 +124,39 @@ export default function Page() {
               <div className="adinkra-line w-10" />
               <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
             </div>
-            <h1 className="font-display font-bold text-brand-cream leading-tight mb-6 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">
-              The chemicals in your soap, <span className="gradient-text">and what they actually do</span>
+            <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
+              They told us beauty was <span className="italic gradient-text">pain.</span>
+              <br />
+              <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">They lied.</span>
             </h1>
-            <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-8">
-              An honest, source-cited look at the ingredients we built Odo without — phthalates, parabens, sulphates, triclosan, and the
-              ‘fragrance’ loophole. Every claim on this page is footnoted to the original research, so you can read it yourself.
-            </p>
+            <div className="space-y-5 text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-[1.8] mb-8">
+              <p>
+                For centuries women have been sold the same story — that to be radiant, you must suffer.
+                That to be soft, you must burn. That to glow, you must absorb a hundred chemicals you cannot pronounce.
+              </p>
+              <p>
+                But our grandmothers&apos; grandmothers had skin like the morning sun. They walked through the heat of Ghana
+                with shea butter on their hands and black soap by the river. No parabens. No phthalates. No promises in plastic bottles.
+              </p>
+              <p className="text-brand-cream/85">
+                What follows is an honest, source-cited look at the ingredients we built Odo without — and the research that explains why.
+              </p>
+            </div>
+
+            {/* EWG stat callout */}
+            <div className="relative rounded-2xl overflow-hidden mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-purple-muted/60 to-brand-black-card" />
+              <div className="relative z-10 px-6 sm:px-8 py-7 sm:py-8">
+                <p className="font-display text-base sm:text-lg lg:text-xl text-brand-cream/90 leading-relaxed">
+                  Studies estimate the average person absorbs over{" "}
+                  <span className="text-brand-orange font-bold">130 synthetic chemicals</span>{" "}
+                  through personal care products each day. Most have never been tested for long-term safety.
+                </p>
+                <p className="text-[10px] sm:text-xs text-brand-cream/35 mt-3 tracking-widest uppercase">
+                  Environmental Working Group (EWG)
+                </p>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-3">
               <a
                 href="#sections"
@@ -219,6 +245,12 @@ export default function Page() {
         {/* CTA */}
         <section className="w-full bg-brand-black-soft border-t border-white/5">
           <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-14 sm:py-20 text-center">
+            <p className="font-display italic text-brand-cream text-xl sm:text-2xl xl:text-3xl leading-relaxed max-w-2xl mx-auto mb-3">
+              Beauty was never the wound.
+            </p>
+            <p className="font-display text-2xl sm:text-3xl xl:text-4xl font-bold mb-10">
+              <span className="gradient-text">It was always the inheritance.</span>
+            </p>
             <h2 className="font-display font-bold text-brand-cream text-2xl sm:text-3xl xl:text-4xl mb-4">
               Built without any of it
             </h2>
