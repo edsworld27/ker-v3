@@ -28,12 +28,10 @@ export default function Hero() {
               All natural <span className="gradient-text">African soap</span>
             </h1>
 
-            {/* Descriptor */}
-            <p className="text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-relaxed mb-3">
-              Hand-cut in Accra using raw shea butter and palm kernel oil sourced direct from Ghanaian co-operatives.
-            </p>
-            <p className="text-brand-cream/50 text-sm sm:text-base leading-relaxed mb-5">
-              No sulphates, no synthetic fragrance, no shortcuts — honest soap you can trace from soil to shelf.
+            {/* Tagline */}
+            <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
+              A ritual born from the soil of Ghana. Pure, sacred, and alive with
+              ancestral wisdom — crafted to restore what modern life has taken.
             </p>
 
             {/* CTAs */}
