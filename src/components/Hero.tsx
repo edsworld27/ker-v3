@@ -25,7 +25,7 @@ export default function Hero() {
 
             {/* Headline */}
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl mb-6">
-              ODO <span className="gradient-text">by Felicia</span>
+              All natural <span className="gradient-text">African soap</span>
             </h1>
 
             {/* Descriptor */}
@@ -45,7 +45,7 @@ export default function Hero() {
                   transition-all duration-200 text-white font-semibold tracking-wide
                   text-sm shadow-xl shadow-brand-orange/25 hover:-translate-y-0.5"
               >
-                Shop Odo
+                Explore the Odo range
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
