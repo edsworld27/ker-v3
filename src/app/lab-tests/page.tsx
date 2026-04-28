@@ -4,9 +4,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Lab Testing — Every batch, independently verified | Luv & Ker",
+  title: "Lab Testing — Independently verified | Luv & Ker",
   description:
-    "Every Odo batch is tested by independent UK and EU laboratories for heavy metals, microbial activity, pH, allergens, and ingredient identity. See the latest results.",
+    "Our Odo formulations have been tested by independent UK and EU laboratories for heavy metals, microbial activity, pH, allergens, and ingredient identity. See the results.",
 };
 
 const PANELS = [
@@ -14,7 +14,7 @@ const PANELS = [
     eyebrow: "Panel 01",
     title: "Heavy metals",
     body:
-      "Every batch is screened by ICP-MS for lead, mercury, cadmium and arsenic. Limits are set 10× stricter than EU cosmetic regulation.",
+      "Our products have been screened by ICP-MS for lead, mercury, cadmium and arsenic. Limits are set 10× stricter than EU cosmetic regulation.",
     metric: "<0.05 ppm",
     metricLabel: "Lead — 100× below EU limit",
   },
@@ -24,13 +24,13 @@ const PANELS = [
     body:
       "Total aerobic count, yeast, mould, E. coli, P. aeruginosa, S. aureus and C. albicans — tested per ISO 17516 cosmetic guidelines.",
     metric: "0 CFU/g",
-    metricLabel: "Pathogens detected, all batches 2025",
+    metricLabel: "Pathogens detected across all tested batches",
   },
   {
     eyebrow: "Panel 03",
     title: "pH balance",
     body:
-      "Every bar and dispenser is pH-tested in triplicate. Skin's natural pH is 4.7–5.7. Most commercial soaps run pH 9–10. Odo runs warm.",
+      "Our bars and dispensers have been pH-tested in triplicate. Skin's natural pH is 4.7–5.7. Most commercial soaps run pH 9–10. Odo runs warm.",
     metric: "5.4 pH",
     metricLabel: "Average across 2025 batches",
   },
@@ -48,7 +48,7 @@ const PANELS = [
     body:
       "Phthalates (DEP, DEHP, DBP, DIBP, BBP), parabens (methyl, ethyl, propyl, butyl), triclosan and BPA — all below the limit of detection.",
     metric: "<LOD",
-    metricLabel: "All endocrine disruptors, every batch",
+    metricLabel: "All endocrine disruptors — none detected",
   },
   {
     eyebrow: "Panel 06",
@@ -105,15 +105,14 @@ export default function Page() {
               <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Lab Testing</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
-              Every batch, <span className="gradient-text">independently verified</span>
+              Lab tested, <span className="gradient-text">independently verified</span>
             </h1>
             <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
-              We don&apos;t ask you to trust us. We pay UKAS-accredited laboratories to test every Odo batch for heavy metals,
-              microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.
+              We don&apos;t ask you to trust us. We&apos;ve paid UKAS-accredited laboratories to independently test our Odo formulations
+              for heavy metals, microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.
             </p>
             <p className="text-brand-cream/55 text-base leading-relaxed">
-              This page is updated within 7 days of each batch's release. The most recent six batches are listed below, with full
-              certificate downloads. Older reports are archived in our public Drive.
+              The tested batches listed below each come with a full certificate download. Older reports are archived in our public Drive.
             </p>
             <div className="flex flex-wrap gap-3 mt-8">
               <a
@@ -144,10 +143,10 @@ export default function Page() {
           <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-10 sm:py-12">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
               {[
-                { big: "100%", small: "Batches independently tested" },
-                { big: "6", small: "Test panels per batch" },
+                { big: "100%", small: "Pass rate across all tested batches" },
+                { big: "6", small: "Test panels per submission" },
                 { big: "3", small: "ISO 17025 lab partners" },
-                { big: "0", small: "Failed batches since launch" },
+                { big: "0", small: "Failed tests since we started" },
               ].map((s) => (
                 <div key={s.small} className="text-center">
                   <p className="font-display text-3xl sm:text-4xl xl:text-5xl font-bold text-brand-amber mb-1">{s.big}</p>
@@ -163,7 +162,7 @@ export default function Page() {
           <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-16 sm:py-20 lg:py-24">
             <div className="flex flex-col items-center text-center mb-14">
               <span className="text-xs tracking-[0.28em] uppercase text-brand-orange mb-3">What we test for</span>
-              <h2 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl">Six panels, every batch</h2>
+              <h2 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl">Six panels per test</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
               {PANELS.map((p) => (
@@ -201,8 +200,8 @@ export default function Page() {
                     From Ghana to the lab — and only then to you
                   </h3>
                   <p className="text-sm sm:text-base text-brand-cream/60 leading-relaxed">
-                    Every batch of Odo is hand-crafted in Accra, then split-sampled and sent to our three independent lab partners.
-                    Only when every panel returns a full pass does the batch ship. No exceptions, no shortcuts.
+                    Odo is hand-crafted in Accra. When we submit for testing, we split-sample and send to three independent lab partners simultaneously.
+                    Every panel has returned a full pass. No exceptions, no shortcuts.
                   </p>
                 </div>
               </div>
@@ -264,8 +263,8 @@ export default function Page() {
             </div>
 
             <p className="text-xs text-brand-cream/40 mt-5">
-              All reports are PDFs of the original lab certificate, unedited. If a batch ever fails any panel, it is not shipped — the
-              report is still published here, marked as withheld, with an explanation of what was found and corrected.
+              All reports are PDFs of the original lab certificate, unedited. If a tested batch ever fails any panel, the report is still
+              published here, marked as withheld, with an explanation of what was found and corrected.
             </p>
           </div>
         </section>
