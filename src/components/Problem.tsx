@@ -4,23 +4,23 @@ export default function Problem() {
   const issues = [
     {
       icon: "⚗️",
-      title: "Endocrine Disruptors",
-      body: "Parabens, phthalates, and synthetic fragrances mimic oestrogen in the body — quietly disrupting hormonal balance with every wash.",
+      title: "Hormone disruptors",
+      body: "Parabens, phthalates, and synthetic fragrances mimic hormones in the body — quietly undermining the balance that keeps you sharp, strong, and clear-skinned.",
     },
     {
       icon: "🧪",
-      title: "Fertility Under Threat",
-      body: "Triclosan, SLS, and artificial preservatives have been linked to reduced fertility and reproductive harm in ongoing research.",
+      title: "Stripping your strength",
+      body: "SLS, triclosan, and artificial preservatives don't just clean — they strip the skin barrier that protects you, leaving you more exposed with every wash.",
     },
     {
       icon: "🏭",
-      title: "Manufactured for Profit",
-      body: "Mass-market soaps prioritise shelf life and margin over your wellbeing. Ingredients are chosen for cost, not care.",
+      title: "Engineered for margin",
+      body: "Mass-market soaps are formulated for shelf life and profit. Every ingredient is chosen for cost — not for what it does to your body.",
     },
     {
       icon: "🚫",
-      title: "Hidden on the Label",
-      body: "\"Fragrance\" alone can legally conceal hundreds of undisclosed chemicals — a loophole brands exploit daily.",
+      title: "Hidden by design",
+      body: "\"Fragrance\" can legally conceal hundreds of undisclosed chemicals. It's not an oversight — it's a deliberate loophole that keeps you in the dark.",
     },
   ];
 
@@ -38,13 +38,14 @@ export default function Problem() {
           <h2 className="font-display font-bold text-brand-cream leading-[1.05] mb-7
             text-4xl sm:text-5xl md:text-6xl xl:text-7xl 2xl:text-8xl
             max-w-3xl mx-auto">
-            They told us beauty was <span className="italic gradient-text">pain.</span>
+            They called it <span className="italic gradient-text">care.</span>
             <br />
-            <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl">They lied.</span>
+            <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl">Take it back.</span>
           </h2>
           <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl mx-auto">
-            For centuries women have been sold the same story — that to glow, you must absorb a hundred chemicals
-            you can&apos;t pronounce. The soap you&apos;ve been using your whole life may be working against you.
+            Mass-market brands have spent decades loading your skin with sulphates, phthalates, and synthetic
+            chemicals hidden behind the word &ldquo;fragrance.&rdquo; Raw, clean power for men. Divine, untouched
+            skin for women. Odo strips it back to what your body actually deserves — and nothing it doesn&apos;t.
           </p>
         </div>
 
