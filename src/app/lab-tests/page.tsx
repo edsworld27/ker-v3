@@ -136,23 +136,6 @@ export default function Page() {
               </a>
             </div>
 
-            {/* Hero image */}
-            <div className="relative mt-12 rounded-2xl overflow-hidden aspect-[16/7] border border-white/5">
-              <Image
-                src="/images/lab/hero.png"
-                alt="Laboratory technician testing cosmetic products for safety compliance"
-                fill
-                sizes="(max-width: 768px) 100vw, 800px"
-                className="object-cover"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-brand-black/60 via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-5 right-5">
-                <p className="text-[11px] tracking-widest uppercase text-brand-cream/50">
-                  Independent lab analysis — every Odo batch
-                </p>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -205,10 +188,11 @@ export default function Page() {
                 <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[320px]">
                   <Image
                     src="/images/lab/process.png"
-                    alt="Close-up of laboratory equipment used for cosmetic safety testing"
+                    alt="Laboratory scientist using a microscope for cosmetic safety testing"
                     fill
                     sizes="(max-width: 768px) 100vw, 450px"
-                    className="object-cover"
+                    className="object-cover object-center"
+                    priority
                   />
                 </div>
                 <div className="flex flex-col justify-center p-8 sm:p-10 xl:p-12 bg-brand-black-card">
