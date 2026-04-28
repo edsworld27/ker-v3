@@ -19,7 +19,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Shea Butter",
     origin: "Northern Ghana",
     oneLiner: "Deep moisture and skin barrier repair.",
-    image: "https://images.unsplash.com/photo-1611242320536-f12d3541249b?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/shea-butter.png",
     imageAlt: "Raw shea butter being hand-pressed in a wooden bowl",
     partner: "Bolgatanga Women's Shea Co-operative",
     sourcing:
@@ -39,7 +39,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Black Soap Base",
     origin: "Kumasi, Ashanti",
     oneLiner: "Gentle cleansing with antimicrobial properties.",
-    image: "https://images.unsplash.com/photo-1623488055232-4d80a7c50e30?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/black-soap-base.png",
     imageAlt: "Traditional Ghanaian black soap blocks stacked together",
     partner: "Ashanti Soapmakers' Collective",
     sourcing:
@@ -59,7 +59,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Cocoa Pod Ash",
     origin: "Eastern Region",
     oneLiner: "Natural exfoliant; balances skin pH.",
-    image: "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/cocoa-pod-ash.png",
     imageAlt: "Cocoa pods cracked open showing beans",
     partner: "Suhum Cocoa Pod Collective",
     sourcing:
@@ -79,7 +79,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Palm Kernel Oil",
     origin: "Western Ghana",
     oneLiner: "Rich in antioxidants; protects the skin barrier.",
-    image: "https://images.unsplash.com/photo-1574484184081-afea8a62f9c8?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/palm-kernel-oil.png",
     imageAlt: "Palm kernel nuts in a wooden bowl",
     partner: "Tarkwa Smallholder Federation",
     sourcing:
@@ -99,7 +99,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Plantain Skin",
     origin: "Brong-Ahafo",
     oneLiner: "Vitamins A, E and K for radiant skin.",
-    image: "https://images.unsplash.com/photo-1621955964441-c173e01c6a74?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/plantain-skin.png",
     imageAlt: "Ripe plantains on a market stall",
     partner: "Sunyani Women's Plantain Co-op",
     sourcing:
@@ -119,7 +119,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Coconut Oil",
     origin: "Volta Region",
     oneLiner: "Anti-inflammatory and supports healing.",
-    image: "https://images.unsplash.com/photo-1580984969071-a8da5656c2fb?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/coconut-oil.png",
     imageAlt: "Cracked coconut beside a glass jar of coconut oil",
     partner: "Keta Coast Coconut Farmers",
     sourcing:
@@ -139,7 +139,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Wild Orange Oil (doTERRA)",
     origin: "Brazil → distilled in Ghana",
     oneLiner: "Mood-lifting citrus, no synthetic fragrance.",
-    image: "https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/wild-orange.png",
     imageAlt: "Sliced oranges and a small bottle of essential oil",
     partner: "doTERRA Co-Impact Sourcing",
     sourcing:
@@ -159,7 +159,7 @@ export const INGREDIENTS: IngredientDetail[] = [
     name: "Lavender Oil",
     origin: "Provence, France",
     oneLiner: "Calms skin and quiets the mind.",
-    image: "https://images.unsplash.com/photo-1611909023032-2d6b3134ecba?auto=format&fit=crop&w=1200&q=70",
+    image: "/images/ingredients/lavender.png",
     imageAlt: "Field of lavender in bloom",
     partner: "Provence Co-operative L'Occitane",
     sourcing:

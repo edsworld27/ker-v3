@@ -28,7 +28,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
   {
     tile: {
       type: "photo",
-      image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=70",
+      image: "/images/testimonials/photo-1.png",
       alt: "Hand holding skincare",
     },
     width: "w-44",
@@ -41,7 +41,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
     tile: {
       type: "story",
       handle: "@nana.glow",
-      image: "https://images.unsplash.com/photo-1605763240000-7e93b172d754?auto=format&fit=crop&w=800&q=70",
+      image: "/images/testimonials/story-1.png",
       caption: "Glow is BACK ✨",
       alt: "Smiling woman",
     },
@@ -67,7 +67,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
     tile: {
       type: "story",
       handle: "@abenak.london",
-      image: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=800&q=70",
+      image: "/images/testimonials/story-2.png",
       caption: "Three weeks in. My skin has never been calmer 🧡",
       alt: "Selfie",
     },
@@ -82,7 +82,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
     tile: {
       type: "story",
       handle: "@feliciasodo",
-      image: "https://images.unsplash.com/photo-1535450059599-94d49bbab07d?auto=format&fit=crop&w=800&q=70",
+      image: "/images/testimonials/story-3.png",
       caption: "From Accra with love. Made by hand, every batch.",
       alt: "Felicia at work",
     },
@@ -108,7 +108,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
     tile: {
       type: "story",
       handle: "@drsarah_skin",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=70",
+      image: "/images/testimonials/story-4.png",
       caption: "An ingredient list I can stand behind.",
       alt: "Dermatologist",
     },
@@ -133,7 +133,7 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
   {
     tile: {
       type: "photo",
-      image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=70",
+      image: "/images/testimonials/photo-2.png",
       alt: "Handmade soap bars",
     },
     width: "w-44",
@@ -274,9 +274,6 @@ export default function Testimonials() {
             zBase={1}
             mt="-mt-44 xl:-mt-52"
           />
-          <p className="text-center text-[11px] tracking-widest uppercase text-brand-cream/35 mt-3">
-            …and 60+ more rolling in this week
-          </p>
         </div>
 
         {/* Mobile/tablet — horizontal scroll collage */}

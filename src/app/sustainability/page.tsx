@@ -13,25 +13,25 @@ const PILLARS = [
   {
     title: "Sourced direct",
     body: "Every ingredient is bought direct from the women and farmers who grow it. Named co-operatives. Above-market rates. No middlemen taking a cut.",
-    img: "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&w=1200&q=70",
+    img: "/images/sustainability/sourced-direct.png",
     alt: "Bowls of raw shea butter being hand-pressed",
   },
   {
     title: "Made by hand",
     body: "Every Odo bar is hand-cut and cold-processed in Accra. We never outsource production. The women who make Odo are paid a living wage and own equity in the company.",
-    img: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=70",
+    img: "/images/sustainability/handmade.png",
     alt: "Handmade soap bars cooling on a wooden tray",
   },
   {
     title: "Compostable packaging",
     body: "Bars ship in 100% compostable paper. Glass dispensers refill with sachets. No single-use plastic. No microplastics. Nothing in our supply chain ends up in the ocean.",
-    img: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=1200&q=70",
+    img: "/images/sustainability/packaging.png",
     alt: "Brown kraft paper packaging tied with twine",
   },
   {
     title: "Carbon-aware shipping",
     body: "We consolidate shipments from Accra to the UK by sea where possible, and offset every air-freighted order through verified reforestation projects in northern Ghana.",
-    img: "https://images.unsplash.com/photo-1494412651409-8963ce7935a7?auto=format&fit=crop&w=1200&q=70",
+    img: "/images/sustainability/shipping.png",
     alt: "Cargo ship at sunset on calm water",
   },
 ];
@@ -41,19 +41,19 @@ const CO_OPS = [
     region: "Northern Ghana",
     name: "Bolgatanga Women's Shea Co-operative",
     detail: "47 women press raw shea butter from karité nuts hand-collected during the rainy season. We are their largest UK buyer.",
-    img: "https://images.unsplash.com/photo-1574484184081-afea8a62f9c8?auto=format&fit=crop&w=900&q=70",
+    img: "/images/sustainability/coop-shea.png",
   },
   {
     region: "Eastern Region",
     name: "Suhum Cocoa Pod Collective",
     detail: "A men-and-women collective of 23 farmers using cocoa pods that were previously discarded as waste — turning them into the ash that powers Odo Radiance.",
-    img: "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?auto=format&fit=crop&w=900&q=70",
+    img: "/images/sustainability/coop-cocoa.png",
   },
   {
     region: "Volta Region",
     name: "Keta Coast Coconut Farmers",
     detail: "Smallholder farmers along the Volta coastline pressing virgin coconut oil traditionally — using the wet-mill method that retains more antioxidants.",
-    img: "https://images.unsplash.com/photo-1580984969071-a8da5656c2fb?auto=format&fit=crop&w=900&q=70",
+    img: "/images/sustainability/coop-coconut.png",
   },
 ];
 
@@ -95,7 +95,7 @@ export default function Page() {
               </div>
               <div className="relative aspect-[4/5] sm:aspect-[5/4] lg:aspect-square rounded-3xl overflow-hidden border border-white/5">
                 <Image
-                  src="https://images.unsplash.com/photo-1535450059599-94d49bbab07d?auto=format&fit=crop&w=1400&q=70"
+                  src="/images/sustainability/hero.png"
                   alt="A Ghanaian woman in traditional dress at sunset"
                   fill
                   sizes="(min-width: 1024px) 50vw, 100vw"

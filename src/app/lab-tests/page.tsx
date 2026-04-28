@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -134,6 +135,24 @@ export default function Page() {
                 Our labs
               </a>
             </div>
+
+            {/* Hero image */}
+            <div className="relative mt-12 rounded-2xl overflow-hidden aspect-[16/7] border border-white/5">
+              <Image
+                src="/images/lab/hero.png"
+                alt="Laboratory technician testing cosmetic products for safety compliance"
+                fill
+                sizes="(max-width: 768px) 100vw, 800px"
+                className="object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-brand-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-5 right-5">
+                <p className="text-[11px] tracking-widest uppercase text-brand-cream/50">
+                  Independent lab analysis — every Odo batch
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -179,6 +198,32 @@ export default function Page() {
                 </div>
               ))}
             </div>
+
+            {/* Lab process photo */}
+            <div className="relative mt-14 rounded-2xl overflow-hidden border border-white/5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[320px]">
+                  <Image
+                    src="/images/lab/process.png"
+                    alt="Close-up of laboratory equipment used for cosmetic safety testing"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 450px"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex flex-col justify-center p-8 sm:p-10 xl:p-12 bg-brand-black-card">
+                  <span className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-3">Our Process</span>
+                  <h3 className="font-display text-xl sm:text-2xl xl:text-3xl font-bold text-brand-cream mb-4 leading-tight">
+                    From Ghana to the lab — and only then to you
+                  </h3>
+                  <p className="text-sm sm:text-base text-brand-cream/60 leading-relaxed">
+                    Every batch of Odo is hand-crafted in Accra, then split-sampled and sent to our three independent lab partners.
+                    Only when every panel returns a full pass does the batch ship. No exceptions, no shortcuts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
