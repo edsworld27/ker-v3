@@ -35,11 +35,8 @@ export default function Problem() {
             <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-[1.05] mb-7
-            text-4xl sm:text-5xl md:text-6xl xl:text-7xl 2xl:text-8xl
-            max-w-3xl">
-            They called it <span className="italic gradient-text">care.</span>
-            <br />
-            <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl">Take it back.</span>
+            text-4xl sm:text-5xl md:text-6xl xl:text-7xl 2xl:text-8xl w-full">
+            They called it <span className="italic gradient-text">care.</span> Take it back.
           </h2>
           <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">
             Mass-market brands have spent decades loading your skin with sulphates, phthalates, and synthetic
