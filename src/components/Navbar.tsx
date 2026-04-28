@@ -14,8 +14,13 @@ const ABOUT_LINKS = [
   { label: "FAQ", href: "/faq", desc: "Your questions answered" },
 ];
 
+const SHOP_LINKS = [
+  { label: "All Products", href: "/products", desc: "Browse the full collection" },
+  { label: "Odo · For Her", href: "/products?range=odo", desc: "Heritage skincare for women" },
+  { label: "Nkrabea · For Him", href: "/products?range=nkrabea", desc: "Strength rituals for men" },
+];
+
 const TOP_LINKS = [
-  { label: "Shop", href: "/products" },
   { label: "Reviews", href: "/reviews" },
   { label: "Refer a Friend", href: "/refer" },
 ];
@@ -25,8 +30,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
+  const [mobileShopOpen, setMobileShopOpen] = useState(false);
   const aboutRef = useRef<HTMLDivElement>(null);
+  const shopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -34,11 +42,13 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) {
         setAboutOpen(false);
+      }
+      if (shopRef.current && !shopRef.current.contains(e.target as Node)) {
+        setShopOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -69,6 +79,39 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-5 lg:gap-7 xl:gap-9 2xl:gap-11">
+            {/* Shop dropdown */}
+            <div ref={shopRef} className="relative">
+              <button
+                onClick={() => setShopOpen((v) => !v)}
+                className="flex items-center gap-1.5 text-sm 2xl:text-base tracking-wide text-brand-cream/60 hover:text-brand-cream transition-colors duration-200 whitespace-nowrap"
+              >
+                Shop
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-transform duration-200 ${shopOpen ? "rotate-180" : ""}`}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {shopOpen && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-64 bg-brand-black-card border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50">
+                  <div className="p-2">
+                    {SHOP_LINKS.map((link) => (
+                      <Link
+                        key={link.label}
+                        href={link.href}
+                        onClick={() => setShopOpen(false)}
+                        className="flex flex-col px-4 py-3 rounded-xl hover:bg-white/5 transition-colors group"
+                      >
+                        <span className={`text-sm font-medium transition-colors ${link.label.includes("Nkrabea") ? "text-brand-amber group-hover:text-brand-amber" : link.label.includes("Odo") ? "text-brand-orange group-hover:text-brand-orange" : "text-brand-cream group-hover:text-brand-cream"}`}>
+                          {link.label}
+                        </span>
+                        <span className="text-[11px] text-brand-cream/40 mt-0.5">{link.desc}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* About dropdown */}
             <div ref={aboutRef} className="relative">
               <button
@@ -167,6 +210,31 @@ export default function Navbar() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-brand-black-soft border-t border-white/5 px-4 sm:px-6 py-5 flex flex-col gap-1 max-h-[70vh] overflow-y-auto">
+            {/* Shop accordion */}
+            <button
+              onClick={() => setMobileShopOpen((v) => !v)}
+              className="flex items-center justify-between w-full text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1"
+            >
+              Shop
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-transform duration-200 ${mobileShopOpen ? "rotate-180" : ""}`}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {mobileShopOpen && (
+              <div className="flex flex-col gap-0 ml-3 border-l border-white/10 pl-4 mb-2">
+                {SHOP_LINKS.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`text-sm tracking-wide py-2.5 ${link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo") ? "text-brand-orange" : "text-brand-cream/60 hover:text-brand-cream"}`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+
             {/* About accordion */}
             <button
               onClick={() => setMobileAboutOpen((v) => !v)}
