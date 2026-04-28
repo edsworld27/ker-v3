@@ -86,7 +86,7 @@ export default function Hero() {
               alt="Elephants in the African landscape"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
+              className="object-cover scale-125 object-center"
               priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-black/40 via-transparent to-transparent" />

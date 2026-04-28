@@ -75,7 +75,7 @@ export default function Footer() {
 
           {/* Shop */}
           <div>
-            <h4 className="text-xs tracking-[0.25em] uppercase text-brand-cream/40 mb-5">Shop</h4>
+            <h4 className="text-xs tracking-[0.25em] uppercase text-brand-cream/40 mb-5">Shop — Odo Range</h4>
             <ul className="space-y-3">
               {SHOP_LINKS.map(({ label, href }) => (
                 <li key={label}>
