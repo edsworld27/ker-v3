@@ -2,8 +2,8 @@ export default function Problem() {
   const issues = [
     {
       icon: "⚗️",
-      title: "Endocrine Disruptors",
-      body: "Parabens, phthalates, and synthetic fragrances mimic oestrogen in the body — quietly disrupting hormonal balance with every wash.",
+      title: "Phthalates in Fragrance",
+      body: "Phthalates are added to fragrances as fixatives — they stop scent compounds breaking down in light, so the smell lasts longer on the shelf and on your skin. They also mimic oestrogen, disrupting hormonal balance with every wash.",
     },
     {
       icon: "🧪",

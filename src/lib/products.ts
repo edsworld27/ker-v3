@@ -180,7 +180,7 @@ export const PRODUCTS: Product[] = [
           "doTERRA Wild Orange — cold-pressed, pesticide-free",
           "Mood-lifting citrus scent without synthetic fragrance",
           "Rich shea butter lather keeps hands soft and nourished",
-          "Zero parabens, SLS, or hormone-disrupting additives",
+          "Zero parabens, phthalates, SLS, or hormone-disrupting additives",
         ],
       },
       "Lavender": {
@@ -321,7 +321,7 @@ export const PRODUCTS: Product[] = [
     directions: "In the shower, massage into damp skin. For best results, use with the Odo Pumice Stone for gentle body exfoliation. Rinse thoroughly.",
     benefits: [
       { icon: "💧", title: "Deeply hydrating", body: "Raw shea butter restores the skin barrier." },
-      { icon: "🕊", title: "Hormone-safe", body: "Free from parabens, SLS, and synthetic fragrance." },
+      { icon: "🕊", title: "Hormone-safe", body: "Free from parabens, phthalates, SLS, and synthetic fragrance." },
       { icon: "🤲", title: "Small-batch", body: "Cold-processed and hand-cut." },
       { icon: "🚿", title: "Rich lather", body: "Creates a luxurious, creamy foam." },
     ],

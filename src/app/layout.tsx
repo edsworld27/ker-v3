@@ -20,7 +20,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Odo by Felicia | Luv & Ker — Ghanaian Heritage Soap",
   description:
-    "Pure, natural, hormone-safe soap crafted from Ghanaian ancestral wisdom. No parabens, no sulphates, no synthetic fragrance. Just the earth in its purest form.",
+    "Pure, natural, hormone-safe soap crafted from Ghanaian ancestral wisdom. No parabens, no phthalates, no sulphates, no synthetic fragrance. Just the earth in its purest form.",
   keywords: [
     "natural soap",
     "Ghanaian soap",
