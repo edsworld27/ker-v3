@@ -262,19 +262,18 @@ export default function Testimonials() {
           <SkylineRow
             tiles={SKYLINE.slice(3).concat(SKYLINE.slice(0, 3)).map((s) => ({ ...s, rotate: flipRotate(s.rotate) }))}
             shift="translate-x-6 xl:translate-x-10"
-            opacity="opacity-95"
+            opacity="opacity-100"
             zBase={10}
             mt="-mt-44 xl:-mt-52"
           />
-          {/* Third row — fades to suggest endless social proof */}
-          <div className="relative -mt-44 xl:-mt-52" style={{ maskImage: "linear-gradient(to bottom, black 0%, black 60%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 60%, transparent 100%)" }}>
-            <SkylineRow
-              tiles={SKYLINE.slice(5).concat(SKYLINE.slice(0, 5))}
-              shift="-translate-x-6 xl:-translate-x-10"
-              opacity="opacity-70"
-              zBase={1}
-            />
-          </div>
+          {/* Third row — overlaps the second, shifted left, different shuffle */}
+          <SkylineRow
+            tiles={SKYLINE.slice(5).concat(SKYLINE.slice(0, 5))}
+            shift="-translate-x-6 xl:-translate-x-10"
+            opacity="opacity-100"
+            zBase={1}
+            mt="-mt-44 xl:-mt-52"
+          />
           <p className="text-center text-[11px] tracking-widest uppercase text-brand-cream/35 mt-3">
             …and 60+ more rolling in this week
           </p>
