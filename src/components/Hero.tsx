@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 
 export default function Hero() {
   const taglineRef = useRef<HTMLParagraphElement>(null);
@@ -104,9 +105,20 @@ export default function Hero() {
 
           </div>
 
-          {/* Right column — visual */}
-          <div className="flex items-center justify-center order-first lg:order-last animate-[float_6s_ease-in-out_infinite]">
-            <SoapVisual />
+          {/* Right column — hero photo */}
+          <div className="flex items-center justify-center order-first lg:order-last">
+            <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl shadow-black/60 border border-white/8">
+              <Image
+                src="/hero-elephants.png"
+                alt="Elephants — spirit of Odo by Felicia"
+                fill
+                priority
+                sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 560px"
+                className="object-cover"
+              />
+              {/* Subtle gradient overlay to blend with the dark layout */}
+              <div className="absolute inset-0 bg-gradient-to-t from-brand-black/40 via-transparent to-transparent pointer-events-none" />
+            </div>
           </div>
 
         </div>
@@ -123,34 +135,3 @@ export default function Hero() {
   );
 }
 
-function SoapVisual() {
-  return (
-    <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-[22rem] lg:h-[22rem] xl:w-[26rem] xl:h-[26rem] 2xl:w-[30rem] 2xl:h-[30rem]">
-      <div className="absolute inset-0 rounded-full border-2 border-brand-purple/20 animate-spin"
-        style={{ animationDuration: "20s" }} />
-      <div className="absolute inset-8 rounded-[2rem] bg-gradient-to-br from-brand-purple-muted via-brand-black-card to-brand-purple-dark border border-brand-purple/30 flex flex-col items-center justify-center shadow-2xl">
-        <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-brand-orange/5 to-transparent" />
-        <div className="relative z-10 flex flex-col items-center gap-3 text-center">
-          <div className="w-10 h-10 rounded-full border-2 border-brand-amber/60 flex items-center justify-center">
-            <div className="w-4 h-4 rounded-full bg-brand-amber/40" />
-          </div>
-          <div>
-            <p className="font-display text-brand-cream text-lg font-bold tracking-wider">ODO</p>
-            <p className="text-brand-cream/40 text-[10px] tracking-[0.3em] uppercase">by Felicia</p>
-          </div>
-          <div className="w-12 h-px bg-gradient-to-r from-transparent via-brand-amber/60 to-transparent" />
-          <p className="text-brand-cream/30 text-[9px] tracking-widest uppercase">Ghana · Pure · Sacred</p>
-        </div>
-      </div>
-      {[
-        { size: "w-2 h-2",     pos: "top-4 left-12",    delay: "0s",   color: "bg-brand-orange/60" },
-        { size: "w-1.5 h-1.5", pos: "top-8 right-8",    delay: "1s",   color: "bg-brand-purple-light/60" },
-        { size: "w-1 h-1",     pos: "bottom-10 left-6", delay: "2s",   color: "bg-brand-amber/60" },
-        { size: "w-2 h-2",     pos: "bottom-6 right-14",delay: "0.5s", color: "bg-brand-orange/40" },
-      ].map(({ size, pos, delay, color }, i) => (
-        <div key={i} className={`absolute ${size} ${pos} rounded-full ${color} animate-[float_4s_ease-in-out_infinite]`}
-          style={{ animationDelay: delay }} />
-      ))}
-    </div>
-  );
-}
