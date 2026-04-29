@@ -9,14 +9,15 @@ import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
 
-type Tab = "all" | "odo" | "nkrabea" | "unisex";
-type AllSelector = "all" | "gift-cards" | "accessories" | "clothing";
+type Tab = "all" | "odo" | "nkrabea" | "unisex" | "accessories";
+type AllSelector = "all" | "odo" | "nkrabea" | "unisex" | "gift-cards" | "accessories" | "clothing";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",     label: "All Products",         sub: "Browse the full collection" },
-  { id: "odo",     label: "Odo · For Her",        sub: "Heritage skincare for women" },
-  { id: "nkrabea", label: "Nkrabea · For Him",    sub: "Strength rituals for men" },
-  { id: "unisex",  label: "Felicia's Black Soap",  sub: "World renowned formula" },
+  { id: "all",         label: "All Products",         sub: "Browse the full collection" },
+  { id: "odo",         label: "Odo · For Her",        sub: "Heritage skincare for women" },
+  { id: "nkrabea",     label: "Nkrabea · For Him",    sub: "Strength rituals for men" },
+  { id: "unisex",      label: "Felicia's Black Soap",  sub: "World renowned formula" },
+  { id: "accessories", label: "Accessories",           sub: "Tools that complete the ritual" },
 ];
 
 export default function ShopPage() {
@@ -37,10 +38,12 @@ function ShopContent() {
   const initial: Tab =
     rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
       ? rangeParam
-      : "all";
+      : tabParam === "accessories"
+        ? "accessories"
+        : "all";
 
   const initialSelector: AllSelector =
-    tabParam === "gift-cards" || tabParam === "accessories" || tabParam === "clothing"
+    tabParam === "gift-cards" || tabParam === "clothing"
       ? tabParam
       : "all";
 
@@ -54,8 +57,13 @@ function ShopContent() {
   }
 
   const visible = (() => {
-    if (activeTab === "odo")     return PRODUCTS.filter((p) => p.range === "odo");
-    if (activeTab === "nkrabea") return PRODUCTS.filter((p) => p.range === "nkrabea");
+    if (activeTab === "odo")         return PRODUCTS.filter((p) => p.range === "odo");
+    if (activeTab === "nkrabea")     return PRODUCTS.filter((p) => p.range === "nkrabea");
+    if (activeTab === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+    // "all" tab — apply sub-selector
+    if (allSelector === "odo")         return PRODUCTS.filter((p) => p.range === "odo");
+    if (allSelector === "nkrabea")     return PRODUCTS.filter((p) => p.range === "nkrabea");
+    if (allSelector === "unisex")      return PRODUCTS.filter((p) => p.slug === "black-soap");
     if (allSelector === "gift-cards")  return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
     if (allSelector === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
     if (allSelector === "clothing")    return [];
@@ -134,21 +142,21 @@ function ShopContent() {
 
             {/* Tab bar */}
             <div className="overflow-x-auto pb-1 mb-12 sm:mb-14">
-              <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-max min-w-full">
+              <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-full">
                 {TABS.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-start px-5 py-3 rounded-xl transition-all duration-200 text-left whitespace-nowrap ${
+                    className={`flex flex-col flex-1 items-start px-4 py-3 rounded-xl transition-all duration-200 text-left min-w-0 ${
                       activeTab === tab.id
                         ? "bg-brand-black-soft border border-white/10"
                         : "hover:bg-white/5"
                     }`}
                   >
-                    <span className={`text-sm font-medium transition-colors ${activeTab === tab.id ? "text-brand-cream" : "text-brand-cream/50"}`}>
+                    <span className={`text-sm font-medium transition-colors truncate w-full ${activeTab === tab.id ? "text-brand-cream" : "text-brand-cream/50"}`}>
                       {tab.label}
                     </span>
-                    <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5">
+                    <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5 truncate w-full">
                       {tab.sub}
                     </span>
                   </button>
@@ -162,6 +170,9 @@ function ShopContent() {
                 <span className="text-xs tracking-[0.2em] uppercase text-brand-cream/40 mr-1">Filter</span>
                 {([
                   { id: "all",         label: "All" },
+                  { id: "odo",         label: "Odo · For Her" },
+                  { id: "nkrabea",     label: "Nkrabea · For Him" },
+                  { id: "unisex",      label: "Felicia's Black Soap" },
                   { id: "gift-cards",  label: "Buying for a Friend (Gift Cards)" },
                   { id: "accessories", label: "Accessories" },
                   { id: "clothing",    label: "Clothing" },
@@ -197,6 +208,15 @@ function ShopContent() {
               />
             )}
 
+            {/* Accessories range header */}
+            {activeTab === "accessories" && (
+              <RangeHeader
+                name="Accessories" tagline="Complete the ritual" colour="text-brand-cream"
+                description="The tools that make your ritual complete. Sourced to complement every Odo and Nkrabea formula."
+                count={PRODUCTS.filter(p => p.formats.includes("stone")).length}
+              />
+            )}
+
             {/* Clothing — coming soon banner */}
             {activeTab === "all" && allSelector === "clothing" && (
               <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10 mb-8">
@@ -210,7 +230,7 @@ function ShopContent() {
             )}
 
             {/* Product grid / Black Soap detail */}
-            {activeTab === "unisex" ? (
+            {activeTab === "unisex" || (activeTab === "all" && allSelector === "unisex") ? (
               <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
             ) : activeTab !== "all" || allSelector !== "clothing" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
