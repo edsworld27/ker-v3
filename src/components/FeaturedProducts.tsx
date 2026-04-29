@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { PRODUCTS } from "@/lib/products";
 
-const FEATURED_SLUGS = ["odo-hands", "odo-face", "nkrabea-shave"];
+const FEATURED_SLUGS = ["black-soap", "odo-face", "nkrabea-shave"];
 
 const PRODUCT_VISUALS: Record<string, { gradient: string; accent: string; symbol: string }> = {
-  "odo-hands": {
-    gradient: "from-brand-orange/20 via-amber-900/10 to-brand-black-card",
-    accent: "text-brand-orange",
-    symbol: "✦",
+  "black-soap": {
+    gradient: "from-stone-800/40 via-brand-black-card to-brand-black-card",
+    accent: "text-brand-cream",
+    symbol: "◆",
   },
   "odo-face": {
     gradient: "from-brand-purple/20 via-rose-900/10 to-brand-black-card",
@@ -85,7 +85,7 @@ export default function FeaturedProducts() {
                   </span>
                   {/* Range label */}
                   <span className={`absolute bottom-4 right-5 text-[10px] tracking-[0.24em] uppercase ${visual.accent} opacity-60`}>
-                    {isOdo ? "Odo · For Her" : "Nkrabea · For Him"}
+                    {product.range === "odo" ? "Odo · For Her" : product.range === "nkrabea" ? "Nkrabea · For Him" : "For Everyone"}
                   </span>
                 </div>
 
@@ -134,9 +134,11 @@ export default function FeaturedProducts() {
                           })
                         }
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          isOdo
+                          product.range === "odo"
                             ? "bg-brand-orange hover:bg-brand-orange/90 text-white"
-                            : "bg-brand-amber hover:bg-brand-amber/90 text-brand-black"
+                            : product.range === "nkrabea"
+                            ? "bg-brand-amber hover:bg-brand-amber/90 text-brand-black"
+                            : "bg-brand-cream hover:bg-white text-brand-black"
                         }`}
                       >
                         Add
