@@ -5,24 +5,24 @@ import { useEffect, useState } from "react";
 import { createCart, addToCart } from "@/lib/shopify";
 
 export default function CartDrawer() {
-  const { items, count, subtotal, total, giftCard, applyGiftCard, removeGiftCard, isOpen, closeCart, updateQty, removeItem } = useCart();
+  const { items, count, subtotal, total, discounts, applyDiscount, removeDiscount, isOpen, closeCart, updateQty, removeItem } = useCart();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [giftCode, setGiftCode] = useState("");
-  const [giftError, setGiftError] = useState<string | null>(null);
-  const [giftBusy, setGiftBusy] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountBusy, setDiscountBusy] = useState(false);
 
-  async function handleApplyGiftCard(e: React.FormEvent) {
+  async function handleApplyDiscount(e: React.FormEvent) {
     e.preventDefault();
-    if (!giftCode.trim()) return;
-    setGiftBusy(true);
-    setGiftError(null);
-    const res = await applyGiftCard(giftCode);
+    if (!discountCode.trim()) return;
+    setDiscountBusy(true);
+    setDiscountError(null);
+    const res = await applyDiscount(discountCode);
     if (!res.ok) {
-      setGiftError(res.reason);
+      setDiscountError(res.reason);
     } else {
-      setGiftCode("");
+      setDiscountCode("");
     }
-    setGiftBusy(false);
+    setDiscountBusy(false);
   }
 
   useEffect(() => {
@@ -168,51 +168,55 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="px-5 sm:px-7 py-5 sm:py-6 border-t border-white/10 space-y-4">
 
-            {/* Gift card redemption */}
-            {giftCard ? (
-              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-brand-amber/10 border border-brand-amber/25">
+            {/* Applied discounts */}
+            {discounts.map((d) => (
+              <div key={d.code} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-brand-amber/10 border border-brand-amber/25">
                 <div className="min-w-0">
-                  <p className="text-[10px] tracking-widest uppercase text-brand-amber/80 mb-0.5">Gift card applied</p>
-                  <p className="text-sm text-brand-cream truncate">{giftCard.code}</p>
+                  <p className="text-[10px] tracking-widest uppercase text-brand-amber/80 mb-0.5">{d.label}</p>
+                  <p className="text-sm text-brand-cream truncate">{d.code}</p>
                 </div>
-                <button
-                  onClick={() => removeGiftCard()}
-                  className="shrink-0 text-xs text-brand-cream/55 hover:text-brand-cream underline"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleApplyGiftCard} className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    value={giftCode}
-                    onChange={(e) => { setGiftCode(e.target.value); setGiftError(null); }}
-                    placeholder="Gift card code (ODO-XXXX-XXXX-XXXX)"
-                    className="flex-1 min-w-0 bg-brand-black-card border border-white/10 rounded-lg px-3 py-2.5 text-xs text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-amber/40 transition-colors"
-                  />
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm font-semibold text-brand-amber">−£{d.amountOff.toFixed(2)}</span>
                   <button
-                    type="submit"
-                    disabled={giftBusy || !giftCode.trim()}
-                    className="shrink-0 px-4 py-2.5 rounded-lg bg-brand-amber/15 hover:bg-brand-amber/25 border border-brand-amber/30 text-brand-amber text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={() => removeDiscount(d.code)}
+                    className="text-xs text-brand-cream/55 hover:text-brand-cream underline"
                   >
-                    {giftBusy ? "…" : "Apply"}
+                    Remove
                   </button>
                 </div>
-                {giftError && <p className="text-[11px] text-brand-orange">{giftError}</p>}
-              </form>
-            )}
+              </div>
+            ))}
+
+            {/* Discount code input */}
+            <form onSubmit={handleApplyDiscount} className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={discountCode}
+                  onChange={(e) => { setDiscountCode(e.target.value); setDiscountError(null); }}
+                  placeholder="Discount / gift card code"
+                  className="flex-1 min-w-0 bg-brand-black-card border border-white/10 rounded-lg px-3 py-2.5 text-xs text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-amber/40 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={discountBusy || !discountCode.trim()}
+                  className="shrink-0 px-4 py-2.5 rounded-lg bg-brand-amber/15 hover:bg-brand-amber/25 border border-brand-amber/30 text-brand-amber text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {discountBusy ? "…" : "Apply"}
+                </button>
+              </div>
+              {discountError && <p className="text-[11px] text-brand-orange">{discountError}</p>}
+            </form>
 
             <div className="flex items-center justify-between text-sm text-brand-cream/55">
               <span>Subtotal</span>
               <span>£{subtotal.toFixed(2)}</span>
             </div>
-            {giftCard && (
-              <div className="flex items-center justify-between text-sm text-brand-amber">
-                <span>Gift card</span>
-                <span>−£{giftCard.amount.toFixed(2)}</span>
+            {discounts.map((d) => (
+              <div key={d.code} className="flex items-center justify-between text-sm text-brand-amber">
+                <span className="truncate mr-2">{d.label}</span>
+                <span className="shrink-0">−£{d.amountOff.toFixed(2)}</span>
               </div>
-            )}
+            ))}
             <div className="flex items-center justify-between">
               <span className="text-brand-cream/60 text-sm 2xl:text-base">Total</span>
               <span className="font-display text-xl 2xl:text-2xl text-brand-cream">£{total.toFixed(2)}</span>
