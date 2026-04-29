@@ -19,7 +19,7 @@ export default function Shop() {
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream mb-4 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            Three ways to ritual.
+            Shop the full ritual.
           </h2>
           <p className="text-brand-cream/50 text-base sm:text-lg leading-relaxed max-w-md mx-auto">
             Handcrafted in Accra — built on centuries of Ghanaian skincare wisdom.
@@ -27,7 +27,7 @@ export default function Shop() {
         </div>
 
         {/* Range cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 xl:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 xl:gap-6">
 
           {/* Odo — For Her */}
           <Link
@@ -104,6 +104,32 @@ export default function Shop() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </span>
+            </div>
+          </Link>
+
+          <Link
+            href="/products?tab=gift-cards"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-purple/20 bg-gradient-to-br from-brand-purple/10 via-brand-black-card to-brand-purple-dark/30 hover:border-brand-purple/50 transition-all duration-300"
+          >
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-purple-light mb-3 block">Gift Cards</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Gift Cards</h3>
+              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
+                Send ritual by email in minutes. Never expires.
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/products?tab=accessories"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-amber/20 bg-gradient-to-br from-brand-amber/10 via-brand-black-card to-brand-black-card hover:border-brand-amber/40 transition-all duration-300"
+          >
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-amber mb-3 block">Accessories</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Accessories</h3>
+              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
+                Ritual tools that complete the routine.
+              </p>
             </div>
           </Link>
 

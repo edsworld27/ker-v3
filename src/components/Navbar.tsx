@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import CartDrawer from "./CartDrawer";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -19,17 +18,20 @@ const SHOP_LINKS = [
   { label: "All Products",           href: "/products",                  desc: "Browse the full collection" },
   { label: "Odo · For Her",          href: "/products?range=odo",        desc: "Heritage skincare for women" },
   { label: "Nkrabea · For Him",      href: "/products?range=nkrabea",    desc: "Strength rituals for men" },
-  { label: "African Black Soap",      href: "/products/black-soap",        desc: "World renowned. One formula." },
+  { label: "Felicia's Black Soap",    href: "/products/black-soap",       desc: "World renowned. One formula." },
+  { label: "Gift Cards",              href: "/products?tab=gift-cards",   desc: "Digital gift cards" },
+  { label: "Accessories",             href: "/products?tab=accessories",  desc: "Ritual tools and add-ons" },
+  { label: "Clothing",                href: "/products?tab=clothing",     desc: "Support tees and merch" },
 ];
 
 const TOP_LINKS = [
   { label: "Reviews",        href: "/reviews" },
   { label: "Blog",           href: "/blog" },
-  { label: "Refer a Friend", href: "/refer" },
+  { label: "Support Us", href: "/support-us" },
 ];
 
 export default function Navbar() {
-  const { count, openCart } = useCart();
+  const { count } = useCart();
   const [scrolled,        setScrolled]        = useState(false);
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [aboutOpen,       setAboutOpen]       = useState(false);
@@ -56,7 +58,6 @@ export default function Navbar() {
 
   return (
     <>
-      <CartDrawer />
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
@@ -96,7 +97,7 @@ export default function Navbar() {
                       href={link.href}
                       label={link.label}
                       desc={link.desc}
-                      colour={link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("African Black Soap") ? "text-brand-cream/80" : "text-brand-cream"}
+                      colour={link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("Black Soap") ? "text-brand-cream/80" : "text-brand-cream"}
                       onClose={() => setShopOpen(false)}
                     />
                   ))}
@@ -135,7 +136,7 @@ export default function Navbar() {
                 key={link.label}
                 href={link.href}
                 className={`text-sm 2xl:text-base tracking-wide transition-colors duration-200 whitespace-nowrap ${
-                  link.label === "Refer a Friend"
+                  link.label === "Support Us"
                     ? "text-brand-amber hover:text-brand-orange"
                     : "text-brand-cream/60 hover:text-brand-cream"
                 }`}
@@ -156,8 +157,8 @@ export default function Navbar() {
               <span className="hidden lg:inline">Log in</span>
             </Link>
 
-            <button
-              onClick={openCart}
+            <Link
+              href="/cart"
               className="relative p-2 text-brand-cream/70 hover:text-brand-cream transition-colors"
               aria-label="Open cart"
             >
@@ -167,7 +168,7 @@ export default function Navbar() {
                   {count}
                 </span>
               )}
-            </button>
+            </Link>
 
             <button
               className="md:hidden p-2 text-brand-cream/70"
@@ -195,7 +196,7 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   className={`text-sm tracking-wide py-2.5 ${
-                    link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : "text-brand-cream/60 hover:text-brand-cream"
+                    link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("Gift Cards") ? "text-brand-purple-light" : link.label.includes("Accessories") || link.label.includes("Clothing") ? "text-brand-amber/90" : "text-brand-cream/60 hover:text-brand-cream"
                   }`}
                 >
                   {link.label}
@@ -223,7 +224,7 @@ export default function Navbar() {
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`text-sm tracking-wide py-3 px-1 ${
-                  link.label === "Refer a Friend" ? "text-brand-amber" : "text-brand-cream/70 hover:text-brand-cream"
+                  link.label === "Support Us" ? "text-brand-amber" : "text-brand-cream/70 hover:text-brand-cream"
                 }`}
               >
                 {link.label}
