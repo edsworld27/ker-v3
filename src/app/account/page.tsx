@@ -254,13 +254,13 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
   return (
     <>
       <Navbar />
-      <main className="w-full min-h-screen bg-brand-black">
+      <main className="w-full min-h-screen bg-brand-black pt-16 sm:pt-[4.5rem] lg:pt-20 2xl:pt-24">
 
-        {/* Email-not-verified banner */}
+        {/* Email-not-verified banner — sits just below the fixed navbar */}
         {!user.emailVerified && <VerifyBanner email={user.email} onRefresh={onRefresh} />}
 
-        {/* Header bar */}
-        <section className="w-full pt-24 pb-10 sm:pt-28 sm:pb-12 bg-brand-black-soft border-b border-white/5">
+        {/* Header bar — no longer needs to clear the navbar itself */}
+        <section className="w-full pt-8 pb-10 sm:pt-10 sm:pb-12 bg-brand-black-soft border-b border-white/5">
           <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
