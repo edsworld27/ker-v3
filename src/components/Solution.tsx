@@ -1,12 +1,6 @@
+import IngredientGrid from "@/components/IngredientGrid";
+
 export default function Solution() {
-  const ingredients = [
-    { name: "Shea Butter",     origin: "Northern Ghana",  benefit: "Deep moisture & skin barrier repair" },
-    { name: "Black Soap Base", origin: "Kumasi, Ashanti", benefit: "Gentle cleanse, antimicrobial properties" },
-    { name: "Cocoa Pod Ash",   origin: "Eastern Region",  benefit: "Natural exfoliant, balances skin pH" },
-    { name: "Palm Kernel Oil", origin: "Western Ghana",   benefit: "Rich in antioxidants, protects skin" },
-    { name: "Plantain Skin",   origin: "Brong-Ahafo",     benefit: "Vitamins A, E & K for skin health" },
-    { name: "Coconut Oil",     origin: "Volta Region",    benefit: "Anti-inflammatory, promotes healing" },
-  ];
 
   return (
     <section id="heritage" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft relative overflow-hidden">
@@ -62,21 +56,7 @@ export default function Solution() {
             We don&apos;t hide behind &ldquo;fragrance&rdquo;. We celebrate every element.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
-          {ingredients.map(({ name, origin, benefit }) => (
-            <div key={name} className="flex flex-col items-center text-center p-6 sm:p-7 xl:p-8 rounded-xl bg-brand-black-card border border-white/5 hover:border-brand-amber/25 transition-all duration-300 group">
-              <div className="flex items-center justify-between w-full gap-3 mb-3">
-                <h4 className="font-display text-base sm:text-lg font-semibold text-brand-cream group-hover:text-brand-amber transition-colors">
-                  {name}
-                </h4>
-                <span className="shrink-0 text-[10px] tracking-wide text-brand-cream/30 bg-white/5 px-2.5 py-1 rounded-full whitespace-nowrap">
-                  {origin}
-                </span>
-              </div>
-              <p className="text-sm xl:text-base text-brand-cream/50 leading-relaxed w-full">{benefit}</p>
-            </div>
-          ))}
-        </div>
+        <IngredientGrid limit={6} showViewAll />
 
       </div>
     </section>
