@@ -19,7 +19,7 @@ export default function Shop() {
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream mb-4 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            Two ranges. One ritual.
+            Three ways to ritual.
           </h2>
           <p className="text-brand-cream/50 text-base sm:text-lg leading-relaxed max-w-md mx-auto">
             Handcrafted in Accra — built on centuries of Ghanaian skincare wisdom.
@@ -77,19 +77,29 @@ export default function Shop() {
             </div>
           </Link>
 
-          {/* All products */}
+          {/* Black Soap — Unisex */}
           <Link
-            href="/products"
-            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-white/8 bg-brand-black-card hover:border-white/20 transition-all duration-300"
+            href="/products/black-soap"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-cream/10 bg-gradient-to-br from-stone-900/60 via-brand-black-card to-brand-black-card hover:border-brand-cream/30 transition-all duration-300"
           >
+            {/* Decorative rings */}
+            <div className="absolute top-6 right-6 w-32 h-32 rounded-full border border-brand-cream/8 pointer-events-none" />
+            <div className="absolute top-10 right-10 w-20 h-20 rounded-full border border-brand-cream/8 pointer-events-none" />
+            {/* Badge */}
+            <div className="absolute top-6 left-6">
+              <span className="text-[10px] tracking-[0.2em] uppercase px-3 py-1 rounded-full font-medium bg-brand-purple text-white">
+                Felicia&apos;s Original
+              </span>
+            </div>
+
             <div className="relative z-10">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/40 mb-3 block">Full collection</span>
-              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">All Products</h3>
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/50 mb-3 block">For Everyone</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Black Soap</h3>
               <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
-                Browse every product across both ranges — from gift sets to refills.
+                The original formula. One soap for face, body, and hands — bar, jar, or sachet.
               </p>
-              <span className="inline-flex items-center gap-2 text-brand-cream/60 text-sm font-medium group-hover:text-brand-cream group-hover:gap-3 transition-all">
-                Browse all
+              <span className="inline-flex items-center gap-2 text-brand-cream/70 text-sm font-medium group-hover:text-brand-cream group-hover:gap-3 transition-all">
+                Shop Black Soap
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>

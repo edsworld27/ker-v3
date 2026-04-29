@@ -9,12 +9,13 @@ import { PRODUCTS } from "@/lib/products";
 import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 
-type Tab = "all" | "odo" | "nkrabea";
+type Tab = "all" | "odo" | "nkrabea" | "unisex";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",      label: "All Products",      sub: "The full collection" },
-  { id: "odo",      label: "Odo · For Her",     sub: "Heritage skincare for women" },
-  { id: "nkrabea",  label: "Nkrabea · For Him", sub: "Strength rituals for men" },
+  { id: "all",     label: "All Products",          sub: "The full collection" },
+  { id: "odo",     label: "Odo · For Her",         sub: "Heritage skincare for women" },
+  { id: "nkrabea", label: "Nkrabea · For Him",     sub: "Strength rituals for men" },
+  { id: "unisex",  label: "Black Soap · Everyone", sub: "Felicia's original formula" },
 ];
 
 export default function ShopPage() {
@@ -30,11 +31,11 @@ function ShopContent() {
   const [added, setAdded] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const rangeParam = searchParams.get("range");
-  const initial: Tab = rangeParam === "odo" || rangeParam === "nkrabea" ? rangeParam : "all";
+  const initial: Tab = rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex" ? rangeParam : "all";
   const [activeTab, setActiveTab] = useState<Tab>(initial);
 
   useEffect(() => {
-    if (rangeParam === "odo" || rangeParam === "nkrabea") setActiveTab(rangeParam);
+    if (rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex") setActiveTab(rangeParam);
   }, [rangeParam]);
 
   function handleAdd(product: (typeof PRODUCTS)[0]) {
@@ -44,8 +45,9 @@ function ShopContent() {
   }
 
   const visible = activeTab === "all" ? PRODUCTS : PRODUCTS.filter(p => p.range === activeTab);
-  const odoCount     = PRODUCTS.filter(p => p.range === "odo").length;
-  const nkrabeaCount = PRODUCTS.filter(p => p.range === "nkrabea").length;
+  const odoCount      = PRODUCTS.filter(p => p.range === "odo").length;
+  const nkrabeaCount  = PRODUCTS.filter(p => p.range === "nkrabea").length;
+  const unisexCount   = PRODUCTS.filter(p => p.range === "unisex").length;
 
   return (
     <>
@@ -71,7 +73,7 @@ function ShopContent() {
               </p>
 
               {/* Range cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
                 <button
                   onClick={() => setActiveTab("odo")}
                   className="group flex flex-col p-6 rounded-2xl border border-brand-orange/20 bg-gradient-to-br from-brand-orange/5 to-brand-purple/5 hover:border-brand-orange/50 transition-all text-left"
@@ -92,6 +94,17 @@ function ShopContent() {
                   <span className="text-sm text-brand-cream/50">Power rituals built for men</span>
                   <span className="mt-4 text-brand-amber text-sm group-hover:translate-x-1 transition-transform inline-block">
                     Shop Nkrabea →
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("unisex")}
+                  className="group flex flex-col p-6 rounded-2xl border border-brand-cream/10 bg-gradient-to-br from-stone-900/40 to-brand-black-card hover:border-brand-cream/30 transition-all text-left"
+                >
+                  <span className="text-xs tracking-[0.2em] uppercase text-brand-cream/50 mb-2">For Everyone</span>
+                  <span className="font-display text-xl font-bold text-brand-cream mb-1">Original Black Soap</span>
+                  <span className="text-sm text-brand-cream/50">Felicia&apos;s signature formula</span>
+                  <span className="mt-4 text-brand-cream/60 text-sm group-hover:translate-x-1 group-hover:text-brand-cream transition-all inline-block">
+                    Shop Black Soap →
                   </span>
                 </button>
               </div>
@@ -138,6 +151,13 @@ function ShopContent() {
                 name="Nkrabea" tagline="For Him" colour="text-brand-amber"
                 description="Nkrabea — meaning 'destiny' in Twi — is our men's range. Built on the same heritage black soap base, engineered for stronger skin, closer shaves, and a daily ritual that actually works. No fuss. No synthetic fragrance. Just results."
                 count={nkrabeaCount}
+              />
+            )}
+            {activeTab === "unisex" && (
+              <RangeHeader
+                name="Original Black Soap" tagline="For Everyone" colour="text-brand-cream"
+                description="Before Odo. Before Nkrabea. There was this. Felicia's original formula — the soap she's been known for since the beginning. Works on face, body, and hands. Available as a solid bar, liquid jar, or travel sachet. Nothing synthetic. Ever."
+                count={unisexCount}
               />
             )}
 

@@ -16,13 +16,15 @@ const ABOUT_LINKS = [
 ];
 
 const SHOP_LINKS = [
-  { label: "All Products",      href: "/products",              desc: "Browse the full collection" },
-  { label: "Odo · For Her",     href: "/products?range=odo",    desc: "Heritage skincare for women" },
-  { label: "Nkrabea · For Him", href: "/products?range=nkrabea", desc: "Strength rituals for men" },
+  { label: "All Products",           href: "/products",                  desc: "Browse the full collection" },
+  { label: "Odo · For Her",          href: "/products?range=odo",        desc: "Heritage skincare for women" },
+  { label: "Nkrabea · For Him",      href: "/products?range=nkrabea",    desc: "Strength rituals for men" },
+  { label: "Black Soap · Everyone",  href: "/products?range=unisex",     desc: "Felicia's original formula" },
 ];
 
 const TOP_LINKS = [
-  { label: "Reviews",       href: "/reviews" },
+  { label: "Reviews",        href: "/reviews" },
+  { label: "Blog",           href: "/blog" },
   { label: "Refer a Friend", href: "/refer" },
 ];
 
@@ -94,7 +96,7 @@ export default function Navbar() {
                       href={link.href}
                       label={link.label}
                       desc={link.desc}
-                      colour={link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : "text-brand-cream"}
+                      colour={link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("Black Soap") ? "text-brand-cream/80" : "text-brand-cream"}
                       onClose={() => setShopOpen(false)}
                     />
                   ))}

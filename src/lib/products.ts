@@ -16,7 +16,7 @@ export interface ProductReview {
 export interface Product {
   slug: string;
   id: string;
-  range: "odo" | "nkrabea";
+  range: "odo" | "nkrabea" | "unisex";
   name: string;
   tagline: string;
   price: number;
@@ -642,6 +642,82 @@ export const PRODUCTS: Product[] = [
       { icon: "🌍", title: "Zero-waste", body: "Fully compostable packaging." },
     ],
     reviews: [],
+  },
+  {
+    slug: "black-soap",
+    id: "black-soap",
+    range: "unisex",
+    name: "Original Black Soap",
+    tagline: "The Signature · Unisex Formula",
+    price: 12.0,
+    badge: "Felicia's Original",
+    badgeColor: "bg-brand-purple",
+    rating: 5.0,
+    reviewCount: 214,
+    origin: "Handcrafted in Accra, Ghana",
+    shortBullets: [
+      "Felicia's original formula — the soap that started it all",
+      "Works on face, body, and hands — one bar does everything",
+      "100% raw African black soap: no sulphates, no synthetics, ever",
+      "Suitable for all skin types including sensitive and acne-prone",
+    ],
+    description: [
+      "Before Odo. Before Nkrabea. There was this. Felicia's original black soap — the formula she gave to neighbours, sold at markets, and perfected over years of listening to what skin actually needs.",
+      "Made from plantain ash, raw shea butter, palm kernel oil, and cocoa pod ash, sourced from farms across Ghana. It lathers gently, cleanses deeply, and leaves skin soft without stripping it. Use it everywhere. Face, body, hands — it does it all.",
+      "This is the soap Felicia is known for. Simple. Honest. Unbeatable.",
+    ],
+    note: "The one that started it all",
+    formats: ["bar", "jar", "sachet"],
+    sizes: [{ label: "100g", price: 12.0 }],
+    formatSizes: {
+      bar: [
+        { label: "100g", price: 12.0 },
+        { label: "200g", price: 22.0 },
+      ],
+      jar: [
+        { label: "250ml", price: 24.0 },
+        { label: "500ml", price: 42.0 },
+      ],
+      sachet: [
+        { label: "Single Sachet", price: 5.0 },
+        { label: "3 Sachets", price: 13.0 },
+        { label: "6 Sachets", price: 24.0 },
+      ],
+    },
+    formatContent: {
+      bar: {
+        tagline: "Black Soap · Solid Bar",
+        description: ["The classic. Cut from a hand-poured batch, wrapped in kraft paper. Works on face, body, and hands."],
+      },
+      jar: {
+        tagline: "Black Soap · Liquid Jar",
+        description: ["The original formula in a pourable liquid form. Same ingredients, same effect — perfect for the shower or bathroom sink."],
+      },
+      sachet: {
+        tagline: "Black Soap · Travel Sachet",
+        description: ["Single-use sachets of the liquid formula. Take the ritual anywhere."],
+      },
+    },
+    fragrances: ["Unscented", "Wild Orange", "Lavender", "Frankincense"],
+    ingredients: [
+      { name: "Plantain Skin Ash", note: "Volta Region, Ghana" },
+      { name: "Raw Shea Butter", note: "Northern Ghana" },
+      { name: "Palm Kernel Oil", note: "Western Ghana" },
+      { name: "Cocoa Pod Ash", note: "Eastern Region, Ghana" },
+      { name: "Water" },
+    ],
+    directions: "Wet skin, lather the bar between your hands or directly on skin. Rinse well. Use on face, body, or hands. No limit — this soap does it all.",
+    benefits: [
+      { icon: "✦", title: "One bar, everywhere", body: "Face, body, hands — formulated to work on all of them." },
+      { icon: "🌿", title: "Five ingredients", body: "Nothing hidden. Everything sourced from named Ghanaian farms." },
+      { icon: "💧", title: "Doesn't dry you out", body: "Raw shea keeps moisture locked in after every wash." },
+      { icon: "🌍", title: "The original", body: "This is the formula Felicia built her name on." },
+    ],
+    reviews: [
+      { name: "Priya T.", location: "Birmingham, UK", stars: 5, title: "Never buying another soap", body: "I've tried everything. This is the only soap that doesn't make my skin feel tight after washing. And it works on my face too — I've thrown out my face wash." },
+      { name: "Marcus O.", location: "London, UK", stars: 5, title: "Simple and brilliant", body: "My partner got this and now we share it. One bar on the bathroom shelf, does everything. Skin feels genuinely different after two weeks." },
+      { name: "Yaa B.", location: "Manchester, UK", stars: 5, title: "Grew up with black soap, this is the real thing", body: "My mum used to make something similar. This tastes me back home. The quality is exactly right — not the stuff you get in generic shops." },
+    ],
   },
 ];
 
