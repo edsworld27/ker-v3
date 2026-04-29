@@ -168,8 +168,25 @@ function ShopContent() {
             )}
 
             {/* Black Soap — inline product configurator */}
+            {activeTab === "all" && (
+              <div className="mb-6">
+                <label className="text-xs tracking-[0.2em] uppercase text-brand-cream/40 mr-3">All products selector</label>
+                <select
+                  value={allSelector}
+                  onChange={(e) => setAllSelector(e.target.value as AllSelector)}
+                  className="bg-brand-black-card border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
+                >
+                  <option value="all">All Products</option>
+                  <option value="gift-cards">Buying for a friend (Gift Cards)</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="clothing">Clothing (Coming Soon)</option>
+                </select>
+              </div>
+            )}
+
             {activeTab === "unisex" ? (
               <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
+            ) : activeTab === "all" && allSelector === "clothing" ? (
             ) : activeTab === "clothing" ? (
               <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10">
                 <p className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-3">Coming soon</p>
