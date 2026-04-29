@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 const COLLECTION_LINKS = [
-  { label: "Shop For Her · Odo",   href: "/products?range=odo",       colour: "text-brand-orange" },
-  { label: "For Him · Nkrabea",    href: "/products?range=nkrabea",   colour: "text-brand-amber" },
-  { label: "Black Soap",           href: "/products/black-soap",      colour: "text-brand-cream/80" },
-  { label: "Gift Cards",           href: "/products?tab=gift-cards",  colour: "text-brand-purple-light" },
-  { label: "Shop All",             href: "/products",                 colour: "text-brand-cream/60" },
+  { label: "Shop For Her · Odo",     href: "/products?range=odo",       colour: "text-brand-orange" },
+  { label: "For Him · Nkrabea",      href: "/products?range=nkrabea",   colour: "text-brand-amber" },
+  { label: "Black Soap",             href: "/products/black-soap",      colour: "text-brand-cream/80" },
+  { label: "Buying for a Friend",    href: "/products?tab=gift-cards",  colour: "text-brand-purple-light" },
+  { label: "Shop All",               href: "/products",                 colour: "text-brand-cream/60" },
 ];
 
 const COMPANY_LINKS = [

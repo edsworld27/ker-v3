@@ -1,45 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import {
+  AUTH_EVENT,
+  getSession, signOut, signInWithEmail, signInWithGoogle, signUp,
+  resendVerificationEmail,
+  type Session, type User,
+} from "@/lib/auth";
+import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Mock orders + referrals ─────────────────────────────────────────────────
+//
+// In production these come from Shopify:
+//   orders     → fetchCustomerOrders(session.accessToken)  (src/lib/shopifyCustomer.ts)
+//   referrals  → Shopify Admin API discountCode usage report, filtered by the
+//                user's referral code.
 
 const MOCK_ORDERS = [
-  {
-    id: "ORD-4821",
-    date: "18 Apr 2026",
-    status: "Delivered",
+  { id: "ORD-4821", date: "18 Apr 2026", status: "Delivered",
     items: [
       { name: "Odo Body · Wild Orange · 200g", qty: 1, price: 22.0 },
       { name: "Odo Face · Lavender · 100ml",   qty: 1, price: 24.0 },
-    ],
-    total: 46.0,
-    tracking: "GB123456789",
-  },
-  {
-    id: "ORD-3910",
-    date: "2 Mar 2026",
-    status: "Delivered",
-    items: [
-      { name: "The Ritual Set · Signature",     qty: 1, price: 55.0 },
-    ],
-    total: 55.0,
-    tracking: "GB987654321",
-  },
-  {
-    id: "ORD-3104",
-    date: "14 Jan 2026",
-    status: "Delivered",
+    ], total: 46.0, tracking: "GB123456789" },
+  { id: "ORD-3910", date: "2 Mar 2026",  status: "Delivered",
+    items: [{ name: "The Ritual Set · Signature", qty: 1, price: 55.0 }],
+    total: 55.0, tracking: "GB987654321" },
+  { id: "ORD-3104", date: "14 Jan 2026", status: "Delivered",
     items: [
       { name: "Odo Hands · Frankincense · 100g", qty: 2, price: 36.0 },
       { name: "Odo Pumice · Standard",            qty: 1, price: 12.0 },
-    ],
-    total: 48.0,
-    tracking: "GB456123789",
-  },
+    ], total: 48.0, tracking: "GB456123789" },
 ];
 
 const MOCK_REFERRALS = [
@@ -50,38 +44,93 @@ const MOCK_REFERRALS = [
   { name: "Tom B.",    date: "7 Mar 2026",  status: "Converted", earned: 10 },
 ];
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type Mode      = "signin" | "signup";
-type DashTab   = "orders" | "affiliate";
-
-// ── Main component ────────────────────────────────────────────────────────────
+type DashTab = "orders" | "affiliate";
 
 export default function AccountPage() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-
-  if (loggedIn) {
-    return <Dashboard email={userEmail} onLogout={() => setLoggedIn(false)} />;
-  }
-  return <AuthForm onLogin={(email) => { setUserEmail(email); setLoggedIn(true); }} />;
+  return (
+    <Suspense>
+      <AccountContent />
+    </Suspense>
+  );
 }
 
-// ── Auth form ─────────────────────────────────────────────────────────────────
+function AccountContent() {
+  const searchParams = useSearchParams();
+  const initialTab: DashTab = searchParams.get("tab") === "affiliate" ? "affiliate" : "orders";
 
-function AuthForm({ onLogin }: { onLogin: (email: string) => void }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setSession(getSession());
+    setHydrated(true);
+    // Keep this page in sync if the user signs out from the navbar dropdown
+    // (or signs in from another tab).
+    const refresh = () => setSession(getSession());
+    window.addEventListener(AUTH_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <>
+        <Navbar />
+        <main className="w-full pt-32 min-h-screen bg-brand-black" />
+        <Footer />
+      </>
+    );
+  }
+
+  if (session) {
+    return (
+      <Dashboard
+        key={initialTab}
+        user={session.user}
+        initialTab={initialTab}
+        onLogout={() => { signOut(); setSession(null); }}
+        onRefresh={() => setSession(getSession())}
+      />
+    );
+  }
+
+  return <AuthForm onLogin={(s) => setSession(s)} />;
+}
+
+// ── Auth form ────────────────────────────────────────────────────────────────
+
+type Mode = "signin" | "signup";
+
+function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
   const [mode,     setMode]     = useState<Mode>("signin");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [name,     setName]     = useState("");
-  const [busy,     setBusy]     = useState(false);
+  const [busy,     setBusy]     = useState<"google" | "email" | null>(null);
+  const [error,    setError]    = useState<string | null>(null);
 
   const isSignIn = mode === "signin";
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleGoogle() {
+    setError(null); setBusy("google");
+    const r = await signInWithGoogle();
+    setBusy(null);
+    if (!r.ok) { setError(r.error); return; }
+    onLogin(r.session);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setTimeout(() => { setBusy(false); onLogin(email); }, 700);
+    setError(null); setBusy("email");
+    const r = isSignIn
+      ? await signInWithEmail(email, password)
+      : await signUp({ email, password, name });
+    setBusy(null);
+    if (!r.ok) { setError(r.error); return; }
+    onLogin(r.session);
   }
 
   return (
@@ -99,15 +148,15 @@ function AuthForm({ onLogin }: { onLogin: (email: string) => void }) {
           <p className="text-brand-cream/65 leading-relaxed mb-8">
             {isSignIn
               ? "Sign in to view your orders and your affiliate dashboard."
-              : "Create an account to track orders, earn referral credit, and join the Odo community."}
+              : "Create an account to track orders, share your referral discount code, and join the Odo community."}
           </p>
 
           {/* Mode tabs */}
-          <div className="grid grid-cols-2 mb-8 rounded-xl bg-brand-black-card p-1 border border-white/5">
+          <div className="grid grid-cols-2 mb-6 rounded-xl bg-brand-black-card p-1 border border-white/5">
             {(["signin", "signup"] as Mode[]).map(m => (
               <button
                 key={m}
-                onClick={() => setMode(m)}
+                onClick={() => { setMode(m); setError(null); }}
                 className={`py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   mode === m ? "bg-brand-orange text-white" : "text-brand-cream/55 hover:text-brand-cream"
                 }`}
@@ -115,6 +164,37 @@ function AuthForm({ onLogin }: { onLogin: (email: string) => void }) {
                 {m === "signin" ? "Log in" : "Sign up"}
               </button>
             ))}
+          </div>
+
+          {/* Google button */}
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={busy !== null}
+            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border border-white/15 bg-brand-black-card hover:bg-white/[0.04] disabled:opacity-50 text-sm font-medium text-brand-cream transition-colors"
+          >
+            <GoogleIcon />
+            {busy === "google" ? "Connecting…" : isSignIn ? "Continue with Google" : "Sign up with Google"}
+          </button>
+
+          {/* Continue with Shop — explained but disabled in this scaffold */}
+          <details className="mt-3 text-xs text-brand-cream/40">
+            <summary className="cursor-pointer hover:text-brand-cream/70 transition-colors">
+              Why no &quot;Continue with Shop&quot;?
+            </summary>
+            <p className="mt-2 leading-relaxed">
+              Shop&apos;s native login takes shoppers straight to Shopify&apos;s hosted account
+              page — which means we lose this custom dashboard, the affiliate code, and the
+              referral history. Continue with Google keeps you signed into our dashboard
+              while still pulling your real orders from Shopify.
+            </p>
+          </details>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-white/8" />
+            <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/30">or use email</span>
+            <div className="flex-1 h-px bg-white/8" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,21 +208,32 @@ function AuthForm({ onLogin }: { onLogin: (email: string) => void }) {
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 required placeholder="you@example.com" className={inputCls} />
             </Field>
-            <Field label="Password" right={isSignIn ? <a href="#" className="text-[11px] text-brand-orange hover:underline">Forgot?</a> : undefined}>
+            <Field
+              label="Password"
+              right={isSignIn
+                ? <Link href="/account/forgot-password" className="text-[11px] text-brand-orange hover:underline">Forgot?</Link>
+                : undefined}
+            >
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 required minLength={8} placeholder={isSignIn ? "Your password" : "At least 8 characters"}
                 className={inputCls} />
             </Field>
 
-            <button type="submit" disabled={busy}
+            {error && (
+              <div className="text-xs text-red-300/90 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={busy !== null}
               className="w-full py-4 rounded-xl bg-brand-orange hover:bg-brand-orange-light disabled:opacity-50 text-white text-sm font-semibold tracking-wide shadow-lg shadow-brand-orange/15 transition-all hover:-translate-y-0.5 disabled:hover:translate-y-0">
-              {busy ? "Working…" : isSignIn ? "Log in" : "Create account"}
+              {busy === "email" ? "Working…" : isSignIn ? "Log in" : "Create account"}
             </button>
           </form>
 
           <p className="text-xs text-brand-cream/40 mt-6 text-center">
             By continuing you agree to our{" "}
-            <a href="/privacy" className="text-brand-cream/60 hover:underline">Privacy Policy</a>.
+            <Link href="/privacy" className="text-brand-cream/60 hover:underline">Privacy Policy</Link>.
           </p>
         </div>
       </main>
@@ -151,18 +242,22 @@ function AuthForm({ onLogin }: { onLogin: (email: string) => void }) {
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+// ── Dashboard ────────────────────────────────────────────────────────────────
 
-function Dashboard({ email, onLogout }: { email: string; onLogout: () => void }) {
-  const [tab, setTab] = useState<DashTab>("orders");
-
-  const firstName  = email.split("@")[0].split(".")[0];
+function Dashboard({ user, initialTab, onLogout, onRefresh }: {
+  user: User; initialTab: DashTab; onLogout: () => void; onRefresh: () => void;
+}) {
+  const [tab, setTab] = useState<DashTab>(initialTab);
+  const firstName  = user.name.split(" ")[0];
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
   return (
     <>
       <Navbar />
       <main className="w-full min-h-screen bg-brand-black">
+
+        {/* Email-not-verified banner */}
+        {!user.emailVerified && <VerifyBanner email={user.email} onRefresh={onRefresh} />}
 
         {/* Header bar */}
         <section className="w-full pt-24 pb-10 sm:pt-28 sm:pb-12 bg-brand-black-soft border-b border-white/5">
@@ -176,7 +271,10 @@ function Dashboard({ email, onLogout }: { email: string; onLogout: () => void })
                 <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl">
                   Welcome back, {displayName}
                 </h1>
-                <p className="text-brand-cream/40 text-sm mt-1">{email}</p>
+                <p className="text-brand-cream/40 text-sm mt-1">
+                  {user.email}
+                  {user.provider === "google" && <span className="ml-2 text-brand-cream/30">· via Google</span>}
+                </p>
               </div>
               <button
                 onClick={onLogout}
@@ -212,7 +310,7 @@ function Dashboard({ email, onLogout }: { email: string; onLogout: () => void })
         <section className="w-full py-10 sm:py-14">
           <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">
             {tab === "orders"    && <OrdersTab />}
-            {tab === "affiliate" && <AffiliateTab email={email} />}
+            {tab === "affiliate" && <AffiliateTab user={user} />}
           </div>
         </section>
       </main>
@@ -221,10 +319,42 @@ function Dashboard({ email, onLogout }: { email: string; onLogout: () => void })
   );
 }
 
-// ── Orders tab ────────────────────────────────────────────────────────────────
+// ── Verify banner ────────────────────────────────────────────────────────────
+
+function VerifyBanner({ email, onRefresh }: { email: string; onRefresh: () => void }) {
+  const [status, setStatus] = useState<"idle" | "sent">("idle");
+  function resend() {
+    resendVerificationEmail(email);
+    setStatus("sent");
+    setTimeout(() => { setStatus("idle"); onRefresh(); }, 2500);
+  }
+  return (
+    <div className="w-full bg-brand-amber/15 border-b border-brand-amber/25">
+      <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+        <p className="text-brand-amber">
+          ⚠ Verify your email to unlock checkout perks and referral payouts.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={resend}
+            className="text-xs px-3 py-1.5 rounded-md border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/10 transition-colors"
+          >
+            {status === "sent" ? "Sent — check console" : "Resend email"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Orders tab ───────────────────────────────────────────────────────────────
 
 function OrdersTab() {
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // TODO Shopify: replace MOCK_ORDERS with:
+  //   const orders = await fetchCustomerOrders(session.accessToken);
+  //   useEffect runs once on mount; cache result in state.
 
   return (
     <div className="flex flex-col gap-4">
@@ -233,11 +363,14 @@ function OrdersTab() {
         <span className="text-brand-cream/40 text-sm">{MOCK_ORDERS.length} orders</span>
       </div>
 
+      <p className="text-[11px] text-brand-cream/30 -mt-1 mb-2">
+        Showing demo orders. Once Shopify is wired, this list comes straight from <code className="text-brand-cream/50">customer.orders</code>.
+      </p>
+
       {MOCK_ORDERS.map(order => {
         const open = expanded === order.id;
         return (
           <div key={order.id} className="rounded-2xl bg-brand-black-card border border-white/5 overflow-hidden">
-            {/* Row summary */}
             <button
               onClick={() => setExpanded(open ? null : order.id)}
               className="w-full flex items-center justify-between gap-4 p-5 sm:p-6 text-left hover:bg-white/[0.02] transition-colors"
@@ -258,7 +391,6 @@ function OrdersTab() {
               </div>
             </button>
 
-            {/* Expanded detail */}
             {open && (
               <div className="border-t border-white/5 px-5 sm:px-6 py-5 space-y-4">
                 <div className="flex flex-col gap-2">
@@ -294,31 +426,25 @@ function OrdersTab() {
           </div>
         );
       })}
-
-      {MOCK_ORDERS.length === 0 && (
-        <div className="flex flex-col items-center py-20 text-center">
-          <p className="text-brand-cream/40 text-lg mb-2">No orders yet.</p>
-          <Link href="/products" className="text-brand-orange text-sm underline underline-offset-4 mt-2">
-            Start shopping
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Affiliate tab ─────────────────────────────────────────────────────────────
+// ── Affiliate tab ────────────────────────────────────────────────────────────
 
 const TIERS = [
-  { label: "Glow Getter",   min: 1,  max: 4,  reward: "£10 / referral" },
-  { label: "Skin Advocate", min: 5,  max: 9,  reward: "£15 / referral" },
-  { label: "Odo Ambassador",min: 10, max: Infinity, reward: "£20 + free product" },
+  { label: "Glow Getter",   min: 1,  max: 4,           reward: "£10 / referral" },
+  { label: "Skin Advocate", min: 5,  max: 9,           reward: "£15 / referral" },
+  { label: "Odo Ambassador",min: 10, max: Infinity,    reward: "£20 + free product" },
 ];
 
-function AffiliateTab({ email }: { email: string }) {
+function AffiliateTab({ user }: { user: User }) {
+  const [code, setCode] = useState<ReferralCode | null>(null);
   const [copied, setCopied] = useState(false);
-  const slug = email.split("@")[0].replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const referralLink = `https://luv-and-ker.com/ref/${slug}`;
+
+  useEffect(() => { setCode(getOrCreateCodeForUser(user.email)); }, [user.email]);
+
+  if (!code) return null;
 
   const totalReferrals = MOCK_REFERRALS.length;
   const converted      = MOCK_REFERRALS.filter(r => r.status === "Converted").length;
@@ -332,11 +458,13 @@ function AffiliateTab({ email }: { email: string }) {
     : 100;
 
   function copy() {
-    navigator.clipboard.writeText(referralLink).then(() => {
+    navigator.clipboard.writeText(code!.code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }
+
+  const shareText = `I've been using Odo by Felicia and it's genuinely changed my skin. Use my code ${code.code} for £10 off your first order: https://luv-and-ker.com/products`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -356,7 +484,7 @@ function AffiliateTab({ email }: { email: string }) {
         ))}
       </div>
 
-      {/* Tier + progress */}
+      {/* Tier */}
       <div className="p-6 rounded-2xl bg-brand-black-card border border-white/5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
@@ -383,12 +511,15 @@ function AffiliateTab({ email }: { email: string }) {
         )}
       </div>
 
-      {/* Referral link */}
+      {/* Referral discount code */}
       <div className="p-6 rounded-2xl bg-brand-black-card border border-white/5">
-        <p className="text-[11px] tracking-[0.2em] uppercase text-brand-cream/40 mb-3">Your referral link</p>
+        <p className="text-[11px] tracking-[0.2em] uppercase text-brand-cream/40 mb-2">Your referral discount code</p>
+        <p className="text-sm text-brand-cream/55 mb-4">
+          Share this code with a friend. When they enter it at checkout they get £10 off — and you earn credit on every successful order.
+        </p>
         <div className="flex gap-2 mb-4">
-          <div className="flex-1 bg-brand-black border border-white/10 rounded-xl px-4 py-3 text-brand-amber text-sm truncate">
-            {referralLink}
+          <div className="flex-1 bg-brand-black border border-white/10 rounded-xl px-5 py-4 text-brand-amber text-2xl font-display font-bold tracking-[0.18em] text-center">
+            {code.code}
           </div>
           <button
             onClick={copy}
@@ -399,26 +530,29 @@ function AffiliateTab({ email }: { email: string }) {
         </div>
         <div className="flex gap-3 flex-wrap">
           <a
-            href={`https://wa.me/?text=I've been using Odo by Felicia and it's genuinely changed my skin. Try it with £10 off: ${referralLink}`}
+            href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30 text-xs transition-colors"
           >
             Share on WhatsApp
           </a>
           <a
-            href={`https://twitter.com/intent/tweet?text=My skin has never felt this good. Try Odo by Felicia with £10 off: ${referralLink}`}
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30 text-xs transition-colors"
           >
             Share on X
           </a>
           <a
-            href={`mailto:?subject=You need to try this&body=I've been using Odo by Felicia — it's genuinely the best soap I've ever used. Get £10 off your first order: ${referralLink}`}
+            href={`mailto:?subject=You need to try this&body=${encodeURIComponent(shareText)}`}
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30 text-xs transition-colors"
           >
             Share by Email
           </a>
         </div>
+        <p className="text-[11px] text-brand-cream/30 mt-4">
+          Tracked on Shopify — once a friend uses your code, the matching order is attributed to you automatically.
+        </p>
       </div>
 
       {/* Referral history */}
@@ -462,7 +596,7 @@ function AffiliateTab({ email }: { email: string }) {
   );
 }
 
-// ── Shared helpers ────────────────────────────────────────────────────────────
+// ── Shared helpers ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const colours: Record<string, string> = {
@@ -492,3 +626,14 @@ function Field({ label, right, children }: { label: string; right?: React.ReactN
 }
 
 const inputCls = "w-full bg-brand-black-card border border-white/10 rounded-xl px-4 py-3.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/40 transition-colors";
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h5.92a5.07 5.07 0 0 1-2.2 3.32v2.76h3.55c2.08-1.92 3.28-4.74 3.28-8.11z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.27-2.62l-3.55-2.76c-.98.66-2.24 1.05-3.72 1.05-2.86 0-5.28-1.93-6.15-4.53H2.18v2.85A11 11 0 0 0 12 23z"/>
+      <path fill="#FBBC04" d="M5.85 14.14a6.6 6.6 0 0 1 0-4.28V7H2.18a11 11 0 0 0 0 10l3.67-2.86z"/>
+      <path fill="#EA4335" d="M12 5.4c1.61 0 3.06.56 4.2 1.64l3.15-3.15C17.45 2.1 14.97 1 12 1A11 11 0 0 0 2.18 7l3.67 2.85C6.72 7.32 9.14 5.4 12 5.4z"/>
+    </svg>
+  );
+}

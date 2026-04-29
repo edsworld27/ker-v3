@@ -27,7 +27,7 @@ export default function Shop() {
         </div>
 
         {/* Range cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 xl:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
 
           {/* Odo — For Her */}
           <Link
@@ -107,32 +107,22 @@ export default function Shop() {
             </div>
           </Link>
 
+        </div>
+
+        {/* Browse all + buying for a friend */}
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <Link
+            href="/products"
+            className="flex-1 px-6 py-4 rounded-2xl border border-white/10 bg-brand-black-card hover:border-white/25 hover:bg-white/[0.02] text-center text-sm text-brand-cream/70 hover:text-brand-cream transition-all"
+          >
+            Browse all products — pick by range, gift card, accessory or clothing →
+          </Link>
           <Link
             href="/products?tab=gift-cards"
-            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-purple/20 bg-gradient-to-br from-brand-purple/10 via-brand-black-card to-brand-purple-dark/30 hover:border-brand-purple/50 transition-all duration-300"
+            className="px-6 py-4 rounded-2xl border border-brand-purple/30 bg-brand-purple-muted/20 hover:bg-brand-purple/20 text-center text-sm text-brand-purple-light font-medium transition-all whitespace-nowrap"
           >
-            <div className="relative z-10">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-purple-light mb-3 block">Gift Cards</span>
-              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Gift Cards</h3>
-              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
-                Send ritual by email in minutes. Never expires.
-              </p>
-            </div>
+            🎁 Buying for a Friend →
           </Link>
-
-          <Link
-            href="/products?tab=accessories"
-            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-amber/20 bg-gradient-to-br from-brand-amber/10 via-brand-black-card to-brand-black-card hover:border-brand-amber/40 transition-all duration-300"
-          >
-            <div className="relative z-10">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-amber mb-3 block">Accessories</span>
-              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Accessories</h3>
-              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
-                Ritual tools that complete the routine.
-              </p>
-            </div>
-          </Link>
-
         </div>
 
         {/* Trust strip */}

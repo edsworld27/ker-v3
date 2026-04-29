@@ -9,15 +9,14 @@ import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
 
-type Tab = "all" | "odo" | "nkrabea" | "unisex" | "accessories";
+type Tab = "all" | "odo" | "nkrabea" | "unisex";
 type AllSelector = "all" | "odo" | "nkrabea" | "unisex" | "gift-cards" | "accessories" | "clothing";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",         label: "All Products",         sub: "Browse the full collection" },
-  { id: "odo",         label: "Odo · For Her",        sub: "Heritage skincare for women" },
-  { id: "nkrabea",     label: "Nkrabea · For Him",    sub: "Strength rituals for men" },
-  { id: "unisex",      label: "Felicia's Black Soap",  sub: "World renowned formula" },
-  { id: "accessories", label: "Accessories",           sub: "Tools that complete the ritual" },
+  { id: "all",     label: "All Products",          sub: "Browse the full collection" },
+  { id: "odo",     label: "Odo · For Her",         sub: "Heritage skincare for women" },
+  { id: "nkrabea", label: "Nkrabea · For Him",     sub: "Strength rituals for men" },
+  { id: "unisex",  label: "Felicia's Black Soap",  sub: "World renowned formula" },
 ];
 
 export default function ShopPage() {
@@ -38,12 +37,10 @@ function ShopContent() {
   const initial: Tab =
     rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
       ? rangeParam
-      : tabParam === "accessories"
-        ? "accessories"
-        : "all";
+      : "all";
 
   const initialSelector: AllSelector =
-    tabParam === "gift-cards" || tabParam === "clothing"
+    tabParam === "gift-cards" || tabParam === "clothing" || tabParam === "accessories"
       ? tabParam
       : "all";
 
@@ -57,9 +54,8 @@ function ShopContent() {
   }
 
   const visible = (() => {
-    if (activeTab === "odo")         return PRODUCTS.filter((p) => p.range === "odo");
-    if (activeTab === "nkrabea")     return PRODUCTS.filter((p) => p.range === "nkrabea");
-    if (activeTab === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+    if (activeTab === "odo")     return PRODUCTS.filter((p) => p.range === "odo");
+    if (activeTab === "nkrabea") return PRODUCTS.filter((p) => p.range === "nkrabea");
     // "all" tab — apply sub-selector
     if (allSelector === "odo")         return PRODUCTS.filter((p) => p.range === "odo");
     if (allSelector === "nkrabea")     return PRODUCTS.filter((p) => p.range === "nkrabea");
@@ -173,7 +169,7 @@ function ShopContent() {
                   { id: "odo",         label: "Odo · For Her" },
                   { id: "nkrabea",     label: "Nkrabea · For Him" },
                   { id: "unisex",      label: "Felicia's Black Soap" },
-                  { id: "gift-cards",  label: "Buying for a Friend (Gift Cards)" },
+                  { id: "gift-cards",  label: "Buying for a Friend" },
                   { id: "accessories", label: "Accessories" },
                   { id: "clothing",    label: "Clothing" },
                 ] as { id: AllSelector; label: string }[]).map(opt => (
@@ -208,12 +204,21 @@ function ShopContent() {
               />
             )}
 
-            {/* Accessories range header */}
-            {activeTab === "accessories" && (
+            {/* Accessories sub-selector header */}
+            {activeTab === "all" && allSelector === "accessories" && (
               <RangeHeader
                 name="Accessories" tagline="Complete the ritual" colour="text-brand-cream"
                 description="The tools that make your ritual complete. Sourced to complement every Odo and Nkrabea formula."
                 count={PRODUCTS.filter(p => p.formats.includes("stone")).length}
+              />
+            )}
+
+            {/* Gift card sub-selector header */}
+            {activeTab === "all" && allSelector === "gift-cards" && (
+              <RangeHeader
+                name="Buying for a Friend" tagline="Gift Cards" colour="text-brand-purple-light"
+                description="Send the gift of choice. Digital gift cards arrive by email within minutes — your friend picks any product across Odo, Nkrabea, or Black Soap. Never expires."
+                count={PRODUCTS.filter(p => p.slug.includes("gift-card")).length}
               />
             )}
 
