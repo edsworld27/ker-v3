@@ -19,9 +19,8 @@ const SHOP_LINKS = [
   { label: "Odo · For Her",          href: "/products?range=odo",        desc: "Heritage skincare for women" },
   { label: "Nkrabea · For Him",      href: "/products?range=nkrabea",    desc: "Strength rituals for men" },
   { label: "Felicia's Black Soap",    href: "/products/black-soap",       desc: "World renowned. One formula." },
-  { label: "Gift Cards",              href: "/products?tab=gift-cards",   desc: "Digital gift cards" },
-  { label: "Accessories",             href: "/products?tab=accessories",  desc: "Ritual tools and add-ons" },
-  { label: "Clothing",                href: "/products?tab=clothing",     desc: "Support tees and merch" },
+  { label: "Buying for a Friend",    href: "/products?tab=gift-cards",   desc: "Gift cards for any range" },
+  { label: "Accessories",            href: "/products?tab=accessories",  desc: "Ritual tools and add-ons" },
 ];
 
 const TOP_LINKS = [

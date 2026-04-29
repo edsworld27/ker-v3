@@ -2,7 +2,6 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { PRODUCTS } from "@/lib/products";
@@ -10,16 +9,14 @@ import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
 
-type Tab = "all" | "odo" | "nkrabea" | "unisex" | "gift-cards" | "accessories" | "clothing";
+type Tab = "all" | "odo" | "nkrabea" | "unisex";
+type AllSelector = "all" | "gift-cards" | "accessories" | "clothing";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",     label: "All Products",      sub: "Odo + Nkrabea + everything else" },
-  { id: "odo",     label: "Odo · For Her",     sub: "Heritage skincare for women" },
-  { id: "nkrabea", label: "Nkrabea · For Him", sub: "Strength rituals for men" },
-  { id: "unisex",  label: "Felicia's Black Soap", sub: "World renowned formula" },
-  { id: "gift-cards", label: "Gift Cards", sub: "Give the gift of ritual" },
-  { id: "accessories", label: "Accessories", sub: "Tools that complete the ritual" },
-  { id: "clothing", label: "Clothing", sub: "Support tees and merch" },
+  { id: "all",     label: "All Products",         sub: "Browse the full collection" },
+  { id: "odo",     label: "Odo · For Her",        sub: "Heritage skincare for women" },
+  { id: "nkrabea", label: "Nkrabea · For Him",    sub: "Strength rituals for men" },
+  { id: "unisex",  label: "Felicia's Black Soap",  sub: "World renowned formula" },
 ];
 
 export default function ShopPage() {
@@ -35,14 +32,20 @@ function ShopContent() {
   const [added, setAdded] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const rangeParam = searchParams.get("range");
-  const tabParam = searchParams.get("tab");
+  const tabParam   = searchParams.get("tab");
+
   const initial: Tab =
+    rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
+      ? rangeParam
+      : "all";
+
+  const initialSelector: AllSelector =
     tabParam === "gift-cards" || tabParam === "accessories" || tabParam === "clothing"
       ? tabParam
-      : rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
-        ? rangeParam
-        : "all";
-  const [activeTab, setActiveTab] = useState<Tab>(initial);
+      : "all";
+
+  const [activeTab,   setActiveTab]   = useState<Tab>(initial);
+  const [allSelector, setAllSelector] = useState<AllSelector>(initialSelector);
 
   function handleAdd(product: (typeof PRODUCTS)[0]) {
     addItem({ id: product.id, name: product.name, price: product.price });
@@ -51,12 +54,14 @@ function ShopContent() {
   }
 
   const visible = (() => {
-    if (activeTab === "all") return PRODUCTS;
-    if (activeTab === "gift-cards") return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
-    if (activeTab === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
-    if (activeTab === "clothing") return [];
-    return PRODUCTS.filter((p) => p.range === activeTab);
+    if (activeTab === "odo")     return PRODUCTS.filter((p) => p.range === "odo");
+    if (activeTab === "nkrabea") return PRODUCTS.filter((p) => p.range === "nkrabea");
+    if (allSelector === "gift-cards")  return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
+    if (allSelector === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+    if (allSelector === "clothing")    return [];
+    return PRODUCTS;
   })();
+
   const odoCount     = PRODUCTS.filter(p => p.range === "odo").length;
   const nkrabeaCount = PRODUCTS.filter(p => p.range === "nkrabea").length;
 
@@ -151,7 +156,32 @@ function ShopContent() {
               </div>
             </div>
 
-            {/* Range header */}
+            {/* All Products — sub-selector */}
+            {activeTab === "all" && (
+              <div className="flex flex-wrap items-center gap-2 mb-10">
+                <span className="text-xs tracking-[0.2em] uppercase text-brand-cream/40 mr-1">Filter</span>
+                {([
+                  { id: "all",         label: "All" },
+                  { id: "gift-cards",  label: "Buying for a Friend (Gift Cards)" },
+                  { id: "accessories", label: "Accessories" },
+                  { id: "clothing",    label: "Clothing" },
+                ] as { id: AllSelector; label: string }[]).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setAllSelector(opt.id)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                      allSelector === opt.id
+                        ? "border-brand-purple/60 bg-brand-purple/20 text-brand-purple-light"
+                        : "border-white/10 text-brand-cream/40 hover:border-white/20 hover:text-brand-cream/70"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Range headers */}
             {activeTab === "odo" && (
               <RangeHeader
                 name="Odo" tagline="For Her" colour="text-brand-orange"
@@ -167,28 +197,9 @@ function ShopContent() {
               />
             )}
 
-            {/* Black Soap — inline product configurator */}
-            {activeTab === "all" && (
-              <div className="mb-6">
-                <label className="text-xs tracking-[0.2em] uppercase text-brand-cream/40 mr-3">All products selector</label>
-                <select
-                  value={allSelector}
-                  onChange={(e) => setAllSelector(e.target.value as AllSelector)}
-                  className="bg-brand-black-card border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
-                >
-                  <option value="all">All Products</option>
-                  <option value="gift-cards">Buying for a friend (Gift Cards)</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="clothing">Clothing (Coming Soon)</option>
-                </select>
-              </div>
-            )}
-
-            {activeTab === "unisex" ? (
-              <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
-            ) : activeTab === "all" && allSelector === "clothing" ? (
-            ) : activeTab === "clothing" ? (
-              <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10">
+            {/* Clothing — coming soon banner */}
+            {activeTab === "all" && allSelector === "clothing" && (
+              <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10 mb-8">
                 <p className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-3">Coming soon</p>
                 <h3 className="font-display font-bold text-brand-cream text-3xl mb-3">Support Tees</h3>
                 <p className="text-brand-cream/60 max-w-2xl">
@@ -196,7 +207,12 @@ function ShopContent() {
                   Proceeds help us invest in farmer partnerships across Africa and clean, health-first formulations.
                 </p>
               </div>
-            ) : (
+            )}
+
+            {/* Product grid / Black Soap detail */}
+            {activeTab === "unisex" ? (
+              <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
+            ) : activeTab !== "all" || allSelector !== "clothing" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
                 {visible.map(product => (
                   <ProductCard
@@ -206,8 +222,11 @@ function ShopContent() {
                     onAdd={() => handleAdd(product)}
                   />
                 ))}
+                {visible.length === 0 && (
+                  <p className="text-brand-cream/40 col-span-3 text-sm py-8 text-center">No products found.</p>
+                )}
               </div>
-            )}
+            ) : null}
 
             {/* Trust strip */}
             <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -230,12 +249,12 @@ function ShopContent() {
                 <p className="font-display font-bold text-brand-cream text-lg">Not sure which range?</p>
                 <p className="text-brand-cream/50 text-sm mt-1">Give the gift of choice — Luv &amp; Ker Gift Cards work across both Odo and Nkrabea.</p>
               </div>
-              <Link
-                href="/products/odo-gift-card"
+              <button
+                onClick={() => { setActiveTab("all"); setAllSelector("gift-cards"); window.scrollTo({ top: 400, behavior: "smooth" }); }}
                 className="shrink-0 px-6 py-3 rounded-xl border border-brand-purple/50 text-brand-purple-light text-sm font-medium hover:bg-brand-purple/10 transition-colors whitespace-nowrap"
               >
                 Luv &amp; Ker Gift Card →
-              </Link>
+              </button>
             </div>
           </div>
         </section>
