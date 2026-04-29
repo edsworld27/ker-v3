@@ -1,20 +1,22 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { PRODUCTS } from "@/lib/products";
 import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
+import ProductDetail from "@/components/ProductDetail";
 
-type Tab = "all" | "odo" | "nkrabea";
+type Tab = "all" | "odo" | "nkrabea" | "unisex";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
   { id: "all",     label: "All Products",      sub: "The full collection" },
   { id: "odo",     label: "Odo · For Her",     sub: "Heritage skincare for women" },
   { id: "nkrabea", label: "Nkrabea · For Him", sub: "Strength rituals for men" },
+  { id: "unisex",  label: "African Black Soap", sub: "World renowned formula" },
 ];
 
 export default function ShopPage() {
@@ -29,15 +31,13 @@ function ShopContent() {
   const { addItem } = useCart();
   const [added, setAdded] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const router = useRouter();
   const rangeParam = searchParams.get("range");
-  const initial: Tab = rangeParam === "odo" || rangeParam === "nkrabea" ? rangeParam : "all";
+  const initial: Tab = rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex" ? rangeParam : "all";
   const [activeTab, setActiveTab] = useState<Tab>(initial);
 
   useEffect(() => {
-    if (rangeParam === "odo" || rangeParam === "nkrabea") setActiveTab(rangeParam);
-    if (rangeParam === "unisex") router.replace("/products/black-soap");
-  }, [rangeParam, router]);
+    if (rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex") setActiveTab(rangeParam);
+  }, [rangeParam]);
 
   function handleAdd(product: (typeof PRODUCTS)[0]) {
     addItem({ id: product.id, name: product.name, price: product.price });
@@ -96,8 +96,8 @@ function ShopContent() {
                     Shop Nkrabea →
                   </span>
                 </button>
-                <Link
-                  href="/products/black-soap"
+                <button
+                  onClick={() => setActiveTab("unisex")}
                   className="group flex flex-col p-6 rounded-2xl border border-brand-cream/10 bg-gradient-to-br from-stone-900/40 to-brand-black-card hover:border-brand-cream/30 transition-all text-left"
                 >
                   <span className="text-xs tracking-[0.2em] uppercase text-brand-cream/50 mb-2">For Everyone</span>
@@ -106,7 +106,7 @@ function ShopContent() {
                   <span className="mt-4 text-brand-cream/60 text-sm group-hover:translate-x-1 group-hover:text-brand-cream transition-all inline-block">
                     Shop Black Soap →
                   </span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -154,17 +154,21 @@ function ShopContent() {
               />
             )}
 
-            {/* Product grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
-              {visible.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isAdded={added === product.id}
-                  onAdd={() => handleAdd(product)}
-                />
-              ))}
-            </div>
+            {/* Black Soap — inline product configurator */}
+            {activeTab === "unisex" ? (
+              <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
+                {visible.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isAdded={added === product.id}
+                    onAdd={() => handleAdd(product)}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Trust strip */}
             <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
