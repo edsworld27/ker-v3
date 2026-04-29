@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -36,18 +37,18 @@ export default function Hero() {
 
             {/* CTAs */}
             <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-3 mb-10">
-              <a
-                href="#shop"
+              <Link
+                href="/products"
                 className="inline-flex items-center justify-center gap-2.5
                   px-8 py-4 rounded-full bg-brand-orange hover:bg-brand-orange-light
                   transition-all duration-200 text-white font-semibold tracking-wide
                   text-sm shadow-xl shadow-brand-orange/25 hover:-translate-y-0.5"
               >
-                Explore the Odo range
+                Explore our ranges
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
-              </a>
+              </Link>
               <a
                 href="#why-odo"
                 className="inline-flex items-center justify-center

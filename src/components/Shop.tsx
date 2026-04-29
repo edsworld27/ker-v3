@@ -1,58 +1,106 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-
 import { PRODUCTS } from "@/lib/products";
 
 export default function Shop() {
-  const { addItem } = useCart();
-  const [added, setAdded] = useState<string | null>(null);
-
-  function handleAdd(product: (typeof PRODUCTS)[0]) {
-    addItem({ id: product.id, name: product.name, price: product.price });
-    setAdded(product.id);
-    setTimeout(() => setAdded(null), 1500);
-  }
-
   return (
-    <section id="shop" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black relative overflow-hidden">
+    <section id="shop" className="w-full py-20 sm:py-24 lg:py-32 bg-brand-black relative overflow-hidden">
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-purple/20 to-transparent" />
 
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
-        {/* Header — always centered */}
-        <div className="flex flex-col items-center text-center mb-14 sm:mb-18 lg:mb-20">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center mb-14 sm:mb-16">
           <div className="flex items-center gap-3 mb-5">
             <div className="adinkra-line w-8 sm:w-10" />
             <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Shop</span>
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
-          <h2 className="font-display font-bold text-brand-cream mb-4
-            text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            Begin your ritual
+          <h2 className="font-display font-bold text-brand-cream mb-4 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
+            Two ranges. One ritual.
           </h2>
-          <p className="text-brand-cream/50 text-base sm:text-lg xl:text-xl leading-relaxed max-w-sm sm:max-w-md xl:max-w-lg mx-auto">
-            Handcrafted in small batches. Every bar made with intention.
+          <p className="text-brand-cream/50 text-base sm:text-lg leading-relaxed max-w-md mx-auto">
+            Handcrafted in Accra — built on centuries of Ghanaian skincare wisdom.
           </p>
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
-          {PRODUCTS.slice(0, 3).map((product) => (
-            <ProductCard key={product.id} product={product} isAdded={added === product.id} onAdd={() => handleAdd(product)} />
-          ))}
-        </div>
+        {/* Range cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 xl:gap-6">
 
-        <div className="mt-12 flex justify-center">
-          <Link href="/products" className="px-8 py-4 rounded-xl font-bold tracking-widest uppercase text-xs border border-brand-orange/50 text-brand-orange hover:bg-brand-orange hover:text-white transition-all">
-            Shop All Products
+          {/* Odo — For Her */}
+          <Link
+            href="/products?range=odo"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-brand-orange/20 bg-gradient-to-br from-brand-orange/10 via-brand-black-card to-brand-purple/10 hover:border-brand-orange/50 transition-all duration-300"
+          >
+            {/* Decorative rings */}
+            <div className="absolute top-6 right-6 w-32 h-32 rounded-full border border-brand-orange/10 pointer-events-none" />
+            <div className="absolute top-10 right-10 w-20 h-20 rounded-full border border-brand-orange/10 pointer-events-none" />
+
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-3 block">For Her</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Odo</h3>
+              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
+                Rooted in love. Heritage black soap formulas for women — face, hands, and body.
+              </p>
+              <span className="inline-flex items-center gap-2 text-brand-orange text-sm font-medium group-hover:gap-3 transition-all">
+                Shop Odo
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
           </Link>
+
+          {/* Nkrabea — For Him */}
+          <Link
+            href="/products?range=nkrabea"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-white/8 bg-gradient-to-br from-brand-black-card via-brand-black-card to-brand-purple-muted/40 hover:border-brand-amber/30 transition-all duration-300"
+          >
+            {/* Decorative rings */}
+            <div className="absolute top-6 right-6 w-32 h-32 rounded-full border border-brand-amber/10 pointer-events-none" />
+            <div className="absolute top-10 right-10 w-20 h-20 rounded-full border border-brand-amber/10 pointer-events-none" />
+
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-amber mb-3 block">For Him</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">Nkrabea</h3>
+              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
+                Rooted in destiny. Strength rituals for men — face, body, and shave.
+              </p>
+              <span className="inline-flex items-center gap-2 text-brand-amber text-sm font-medium group-hover:gap-3 transition-all">
+                Shop Nkrabea
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
+          {/* All products */}
+          <Link
+            href="/products"
+            className="group relative flex flex-col justify-end p-8 rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] border border-white/8 bg-brand-black-card hover:border-white/20 transition-all duration-300"
+          >
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/40 mb-3 block">Full collection</span>
+              <h3 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl mb-2">All Products</h3>
+              <p className="text-brand-cream/50 text-sm leading-relaxed mb-6">
+                Browse every product across both ranges — from gift sets to refills.
+              </p>
+              <span className="inline-flex items-center gap-2 text-brand-cream/60 text-sm font-medium group-hover:text-brand-cream group-hover:gap-3 transition-all">
+                Browse all
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
         </div>
 
         {/* Trust strip */}
-        <div className="mt-14 sm:mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 xl:gap-6">
+        <div className="mt-14 sm:mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
           {[
             { icon: "🌍", label: "Shipped from Ghana" },
             { icon: "♻️", label: "Zero-waste packaging" },
@@ -71,13 +119,18 @@ export default function Shop() {
   );
 }
 
+// ProductCard is still exported for use on the /products page
 export function ProductCard({ product, isAdded, onAdd }: { product: (typeof PRODUCTS)[0]; isAdded: boolean; onAdd: () => void }) {
+  const { addItem } = useCart();
+  void addItem;
   return (
     <div className="group relative flex flex-col rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-orange/20 transition-all duration-300 overflow-hidden card-glow">
       <div className="absolute top-4 left-4 z-10">
-        <span className={`text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white ${product.badgeColor}`}>
-          {product.badge}
-        </span>
+        {product.badge && (
+          <span className={`text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white ${product.badgeColor}`}>
+            {product.badge}
+          </span>
+        )}
       </div>
 
       {/* Image area */}
