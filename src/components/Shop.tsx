@@ -19,7 +19,7 @@ export default function Shop() {
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream mb-4 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            Three ways to ritual.
+            Shop the full ritual.
           </h2>
           <p className="text-brand-cream/50 text-base sm:text-lg leading-relaxed max-w-md mx-auto">
             Handcrafted in Accra — built on centuries of Ghanaian skincare wisdom.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -11,12 +11,13 @@ import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
 
 type Tab = "all" | "odo" | "nkrabea" | "unisex";
+type AllSelector = "all" | "gift-cards" | "accessories" | "clothing";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",     label: "All Products",      sub: "The full collection" },
+  { id: "all",     label: "All Products",      sub: "Odo + Nkrabea + everything else" },
   { id: "odo",     label: "Odo · For Her",     sub: "Heritage skincare for women" },
   { id: "nkrabea", label: "Nkrabea · For Him", sub: "Strength rituals for men" },
-  { id: "unisex",  label: "African Black Soap", sub: "World renowned formula" },
+  { id: "unisex",  label: "Felicia's Black Soap", sub: "World renowned formula" },
 ];
 
 export default function ShopPage() {
@@ -32,12 +33,13 @@ function ShopContent() {
   const [added, setAdded] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const rangeParam = searchParams.get("range");
-  const initial: Tab = rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex" ? rangeParam : "all";
+  const selectorParam = searchParams.get("selector");
+  const initial: Tab =
+    rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex" ? rangeParam : "all";
   const [activeTab, setActiveTab] = useState<Tab>(initial);
-
-  useEffect(() => {
-    if (rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex") setActiveTab(rangeParam);
-  }, [rangeParam]);
+  const [allSelector, setAllSelector] = useState<AllSelector>(
+    selectorParam === "gift-cards" || selectorParam === "accessories" || selectorParam === "clothing" ? selectorParam : "all"
+  );
 
   function handleAdd(product: (typeof PRODUCTS)[0]) {
     addItem({ id: product.id, name: product.name, price: product.price });
@@ -45,7 +47,15 @@ function ShopContent() {
     setTimeout(() => setAdded(null), 1500);
   }
 
-  const visible = activeTab === "all" ? PRODUCTS : PRODUCTS.filter(p => p.range === activeTab);
+  const visible = (() => {
+    if (activeTab === "all") {
+      if (allSelector === "gift-cards") return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
+      if (allSelector === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+      if (allSelector === "clothing") return [];
+      return PRODUCTS;
+    }
+    return PRODUCTS.filter((p) => p.range === activeTab);
+  })();  
   const odoCount     = PRODUCTS.filter(p => p.range === "odo").length;
   const nkrabeaCount = PRODUCTS.filter(p => p.range === "nkrabea").length;
 
@@ -117,25 +127,27 @@ function ShopContent() {
           <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
             {/* Tab bar */}
-            <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-fit mb-12 sm:mb-14">
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-col items-start px-5 py-3 rounded-xl transition-all duration-200 text-left ${
-                    activeTab === tab.id
-                      ? "bg-brand-black-soft border border-white/10"
-                      : "hover:bg-white/5"
-                  }`}
-                >
-                  <span className={`text-sm font-medium transition-colors ${activeTab === tab.id ? "text-brand-cream" : "text-brand-cream/50"}`}>
-                    {tab.label}
-                  </span>
-                  <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5">
-                    {tab.sub}
-                  </span>
-                </button>
-              ))}
+            <div className="overflow-x-auto pb-1 mb-12 sm:mb-14">
+              <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-max min-w-full">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-col items-start px-5 py-3 rounded-xl transition-all duration-200 text-left whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "bg-brand-black-soft border border-white/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <span className={`text-sm font-medium transition-colors ${activeTab === tab.id ? "text-brand-cream" : "text-brand-cream/50"}`}>
+                      {tab.label}
+                    </span>
+                    <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5">
+                      {tab.sub}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Range header */}
@@ -155,8 +167,33 @@ function ShopContent() {
             )}
 
             {/* Black Soap — inline product configurator */}
+            {activeTab === "all" && (
+              <div className="mb-6">
+                <label className="text-xs tracking-[0.2em] uppercase text-brand-cream/40 mr-3">All products selector</label>
+                <select
+                  value={allSelector}
+                  onChange={(e) => setAllSelector(e.target.value as AllSelector)}
+                  className="bg-brand-black-card border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
+                >
+                  <option value="all">All Products</option>
+                  <option value="gift-cards">Buying for a friend (Gift Cards)</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="clothing">Clothing (Coming Soon)</option>
+                </select>
+              </div>
+            )}
+
             {activeTab === "unisex" ? (
               <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
+            ) : activeTab === "all" && allSelector === "clothing" ? (
+              <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10">
+                <p className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-3">Coming soon</p>
+                <h3 className="font-display font-bold text-brand-cream text-3xl mb-3">Support Tees</h3>
+                <p className="text-brand-cream/60 max-w-2xl">
+                  We&apos;re adding a limited run of Luv &amp; Ker t-shirts so you can support the mission through what you wear.
+                  Proceeds help us invest in farmer partnerships across Africa and clean, health-first formulations.
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
                 {visible.map(product => (
