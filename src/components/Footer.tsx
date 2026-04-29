@@ -1,11 +1,16 @@
 import Link from "next/link";
 
-const SHOP_LINKS = [
-  { label: "Odo Hands", href: "/products/odo-hands" },
-  { label: "Odo Face", href: "/products/odo-face" },
-  { label: "Odo Body", href: "/products/odo-body" },
-  { label: "The Ritual Set", href: "/products/odo-ritual-set" },
-  { label: "Gift Cards", href: "/products/odo-gift-card" },
+const COLLECTION_LINKS = [
+  { label: "For Her · Odo",     href: "/products?range=odo",     colour: "text-brand-orange" },
+  { label: "For Him · Nkrabea", href: "/products?range=nkrabea", colour: "text-brand-amber" },
+  { label: "Shop All",          href: "/products",               colour: "text-brand-cream/60" },
+];
+
+const POPULAR_LINKS = [
+  { label: "Odo Hands",            href: "/products/odo-hands" },
+  { label: "Odo Face",             href: "/products/odo-face" },
+  { label: "Odo Body",             href: "/products/odo-body" },
+  { label: "Luv & Ker Gift Card",  href: "/products/odo-gift-card" },
 ];
 
 const COMPANY_LINKS = [
@@ -75,11 +80,22 @@ export default function Footer() {
 
           {/* Shop */}
           <div>
-            <h4 className="text-xs tracking-[0.25em] uppercase text-brand-cream/40 mb-5">Shop — Odo Range</h4>
-            <ul className="space-y-3">
-              {SHOP_LINKS.map(({ label, href }) => (
+            <h4 className="text-xs tracking-[0.25em] uppercase text-brand-cream/40 mb-5">Shop</h4>
+            <ul className="space-y-3 mb-5">
+              {COLLECTION_LINKS.map(({ label, href, colour }) => (
                 <li key={label}>
-                  <Link href={href} className="text-sm xl:text-base text-brand-cream/60 hover:text-brand-cream transition-colors">
+                  <Link href={href} className={`text-sm xl:text-base font-medium hover:opacity-80 transition-opacity ${colour}`}>
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="w-full h-px bg-white/8 mb-5" />
+            <p className="text-[10px] tracking-[0.2em] uppercase text-brand-cream/25 mb-3">Popular</p>
+            <ul className="space-y-3">
+              {POPULAR_LINKS.map(({ label, href }) => (
+                <li key={label}>
+                  <Link href={href} className="text-sm xl:text-base text-brand-cream/50 hover:text-brand-cream transition-colors">
                     {label}
                   </Link>
                 </li>

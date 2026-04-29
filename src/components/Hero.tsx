@@ -50,7 +50,7 @@ export default function Hero() {
                 </svg>
               </Link>
               <a
-                href="#why-odo"
+                href="#our-philosophy"
                 className="inline-flex items-center justify-center
                   px-8 py-4 rounded-full border border-white/20 text-brand-cream/75
                   hover:text-brand-cream hover:border-white/40

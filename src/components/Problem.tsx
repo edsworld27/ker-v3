@@ -25,7 +25,7 @@ export default function Problem() {
   ];
 
   return (
-    <section id="why-odo" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black">
+    <section id="our-philosophy" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black">
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
         {/* Header — left aligned */}
@@ -63,10 +63,10 @@ export default function Problem() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
-              href="/the-problem"
+              href="/our-philosophy"
               className="group inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 rounded-full bg-brand-orange hover:bg-brand-orange-light transition-all duration-300 text-sm sm:text-base font-semibold text-white shadow-lg shadow-brand-orange/15 hover:-translate-y-0.5"
             >
-              Find out more
+              Our Philosophy
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </Link>
             <Link

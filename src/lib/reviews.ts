@@ -112,6 +112,10 @@ export const PRODUCTS = [
   "Odo Body",
   "Odo Pumice",
   "The Ritual Set",
+  "Nkrabea Face",
+  "Nkrabea Body",
+  "Nkrabea Shave",
+  "The Nkrabea Set",
 ] as const;
 
 export type ProductFilter = (typeof PRODUCTS)[number];

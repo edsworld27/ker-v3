@@ -172,13 +172,13 @@ function ShopContent() {
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl border border-brand-purple/20 bg-brand-purple-muted/20">
               <div>
                 <p className="font-display font-bold text-brand-cream text-lg">Not sure which range?</p>
-                <p className="text-brand-cream/50 text-sm mt-1">Give the gift of choice — our digital gift cards work across both ranges.</p>
+                <p className="text-brand-cream/50 text-sm mt-1">Give the gift of choice — Luv &amp; Ker Gift Cards work across both Odo and Nkrabea.</p>
               </div>
               <Link
                 href="/products/odo-gift-card"
                 className="shrink-0 px-6 py-3 rounded-xl border border-brand-purple/50 text-brand-purple-light text-sm font-medium hover:bg-brand-purple/10 transition-colors whitespace-nowrap"
               >
-                Get a Gift Card →
+                Luv &amp; Ker Gift Card →
               </Link>
             </div>
           </div>
