@@ -3,17 +3,18 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
 
 const PERKS = [
   {
     icon: "🎁",
     title: "You get £10 off",
-    desc: "Every time a friend makes their first purchase using your link, you earn £10 credit towards your next order.",
+    desc: "Every time a friend makes their first purchase using your code, you earn £10 credit towards your next order.",
   },
   {
     icon: "🧡",
     title: "They get £10 off too",
-    desc: "Your friend automatically gets £10 off their first order — no code needed, it's applied at checkout.",
+    desc: "Your friend gets £10 off their first order — they just enter your code at checkout.",
   },
   {
     icon: "∞",
@@ -22,8 +23,8 @@ const PERKS = [
   },
   {
     icon: "⚡",
-    title: "Instant credit",
-    desc: "Your credit lands the moment your friend's order is confirmed. No waiting, no hoops.",
+    title: "Tracked on Shopify",
+    desc: "Every use of your code is attributed to you automatically. Credit lands the moment the order is confirmed.",
   },
 ];
 
@@ -35,13 +36,12 @@ const TIERS = [
 
 export default function ReferPage() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [code, setCode] = useState<ReferralCode | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const referralLink = "https://luv-and-ker.com/ref/your-link";
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink).then(() => {
+    if (!code) return;
+    navigator.clipboard.writeText(code.code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -50,8 +50,12 @@ export default function ReferPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    setSubmitted(true);
+    setCode(getOrCreateCodeForUser(email));
   };
+
+  const shareText = code
+    ? `I've been using Odo by Felicia and it's genuinely changed my skin. Use my code ${code.code} for £10 off your first order: https://luv-and-ker.com/products`
+    : "";
 
   return (
     <>
@@ -73,13 +77,13 @@ export default function ReferPage() {
                 <span className="gradient-text">Get rewarded.</span>
               </h1>
               <p className="text-brand-cream/60 text-base sm:text-lg leading-relaxed max-w-2xl mb-10">
-                When you love something this much, sharing it should pay off. Refer a friend to Odo and you both get £10 off — instantly.
+                When you love something this much, sharing it should pay off. Share your unique discount code — when a friend uses it at checkout, you both get £10 off.
               </p>
 
-              {/* CTA / link box */}
-              {!submitted ? (
+              {/* CTA / code box */}
+              {!code ? (
                 <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col gap-3">
-                  <p className="text-brand-cream/50 text-sm">Enter your email to get your unique referral link</p>
+                  <p className="text-brand-cream/50 text-sm">Enter your email to get your unique discount code</p>
                   <div className="flex gap-2">
                     <input
                       type="email"
@@ -93,15 +97,19 @@ export default function ReferPage() {
                       type="submit"
                       className="px-6 py-3 rounded-xl bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-medium transition-colors whitespace-nowrap"
                     >
-                      Get my link
+                      Get my code
                     </button>
                   </div>
                 </form>
               ) : (
                 <div className="w-full max-w-md flex flex-col gap-3">
-                  <p className="text-brand-cream/50 text-sm">Your referral link is ready — copy and share it anywhere</p>
+                  <p className="text-brand-cream/50 text-sm">
+                    Share this code. Your friend enters it at checkout and you both get £10 off.
+                  </p>
                   <div className="flex gap-2 p-1 bg-brand-black-card border border-white/10 rounded-xl">
-                    <span className="flex-1 px-3 py-2.5 text-brand-amber text-sm truncate">{referralLink}</span>
+                    <span className="flex-1 px-3 py-3 text-brand-amber font-display font-bold text-2xl tracking-[0.18em] text-center">
+                      {code.code}
+                    </span>
                     <button
                       onClick={handleCopy}
                       className="px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-medium transition-all"
@@ -111,7 +119,7 @@ export default function ReferPage() {
                   </div>
                   <div className="flex gap-3 justify-center mt-2">
                     <a
-                      href={`https://wa.me/?text=I've been using Odo by Felicia and it's genuinely changed my skin. Try it with £10 off: ${referralLink}`}
+                      href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30 text-xs transition-colors"
@@ -119,7 +127,7 @@ export default function ReferPage() {
                       Share on WhatsApp
                     </a>
                     <a
-                      href={`https://twitter.com/intent/tweet?text=My skin has never felt this good. Try Odo by Felicia with £10 off: ${referralLink}`}
+                      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30 text-xs transition-colors"
@@ -144,9 +152,9 @@ export default function ReferPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {[
-                { step: "01", title: "Get your link", desc: "Enter your email above and we'll generate your unique referral link instantly." },
-                { step: "02", title: "Share it anywhere", desc: "Send it via WhatsApp, Instagram, email — anywhere. No restrictions." },
-                { step: "03", title: "Both of you earn", desc: "Your friend gets £10 off their first order. You get £10 credit the moment it's confirmed." },
+                { step: "01", title: "Get your code", desc: "Enter your email above and we'll generate your unique discount code instantly." },
+                { step: "02", title: "Share it anywhere", desc: "Send it via WhatsApp, Instagram, email — anywhere. They enter it at checkout." },
+                { step: "03", title: "Both of you earn", desc: "Your friend gets £10 off their first order. You get £10 credit the moment Shopify confirms it." },
               ].map((s) => (
                 <div key={s.step} className="flex flex-col p-7 rounded-2xl bg-brand-black-card border border-white/5">
                   <span className="font-display text-4xl font-bold text-brand-orange/20 mb-4">{s.step}</span>
@@ -220,14 +228,14 @@ export default function ReferPage() {
               Ready to start sharing?
             </h2>
             <p className="text-brand-cream/50 text-base mb-8 max-w-md mx-auto">
-              Get your link in seconds and start earning today.
+              Get your code in seconds and start earning today.
             </p>
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-medium tracking-wide transition-colors"
             >
-              Get my referral link →
+              Get my discount code →
             </a>
           </div>
         </section>
