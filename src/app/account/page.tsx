@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import {
+  AUTH_EVENT,
   getSession, signOut, signInWithEmail, signInWithGoogle, signUp,
   resendVerificationEmail,
   type Session, type User,
@@ -45,12 +47,32 @@ const MOCK_REFERRALS = [
 type DashTab = "orders" | "affiliate";
 
 export default function AccountPage() {
+  return (
+    <Suspense>
+      <AccountContent />
+    </Suspense>
+  );
+}
+
+function AccountContent() {
+  const searchParams = useSearchParams();
+  const initialTab: DashTab = searchParams.get("tab") === "affiliate" ? "affiliate" : "orders";
+
   const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setSession(getSession());
     setHydrated(true);
+    // Keep this page in sync if the user signs out from the navbar dropdown
+    // (or signs in from another tab).
+    const refresh = () => setSession(getSession());
+    window.addEventListener(AUTH_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
 
   if (!hydrated) {
@@ -66,7 +88,9 @@ export default function AccountPage() {
   if (session) {
     return (
       <Dashboard
+        key={initialTab}
         user={session.user}
+        initialTab={initialTab}
         onLogout={() => { signOut(); setSession(null); }}
         onRefresh={() => setSession(getSession())}
       />
@@ -220,10 +244,10 @@ function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 
-function Dashboard({ user, onLogout, onRefresh }: {
-  user: User; onLogout: () => void; onRefresh: () => void;
+function Dashboard({ user, initialTab, onLogout, onRefresh }: {
+  user: User; initialTab: DashTab; onLogout: () => void; onRefresh: () => void;
 }) {
-  const [tab, setTab] = useState<DashTab>("orders");
+  const [tab, setTab] = useState<DashTab>(initialTab);
   const firstName  = user.name.split(" ")[0];
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 

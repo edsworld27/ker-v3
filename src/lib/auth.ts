@@ -59,6 +59,15 @@ function write<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+// Notify same-tab listeners (Navbar, /account) that the session changed.
+// `storage` events only fire across tabs, so we ship a custom event for the
+// current tab.
+export const AUTH_EVENT = "lk-auth-change";
+function notifyAuthChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_EVENT));
+}
+
 function loadUsers(): Record<string, StoredUser> { return read(USERS_KEY, {} as Record<string, StoredUser>); }
 function saveUsers(u: Record<string, StoredUser>) { write(USERS_KEY, u); }
 function loadTokens(): Record<string, VerifyToken> { return read(TOKENS_KEY, {} as Record<string, VerifyToken>); }
@@ -110,11 +119,13 @@ function startSession(user: User): Session {
     expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 days, matches Shopify default
   };
   write(SESSION_KEY, session);
+  notifyAuthChange();
   return session;
 }
 
 export function signOut() {
   if (typeof window !== "undefined") localStorage.removeItem(SESSION_KEY);
+  notifyAuthChange();
   // TODO Shopify: also call customerAccessTokenDelete to invalidate server-side.
 }
 
@@ -244,6 +255,7 @@ export function consumeVerifyToken(token: string): { ok: true; email: string } |
     if (session && session.user.email === user.email) {
       const { passwordHash: _drop, ...publicUser } = user; void _drop;
       write(SESSION_KEY, { ...session, user: publicUser });
+      notifyAuthChange();
     }
   }
   delete tokens[token];

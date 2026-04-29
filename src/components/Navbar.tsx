@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { AUTH_EVENT, getSession, signOut, type Session } from "@/lib/auth";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -34,10 +35,14 @@ export default function Navbar() {
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [aboutOpen,       setAboutOpen]       = useState(false);
   const [shopOpen,        setShopOpen]        = useState(false);
+  const [profileOpen,     setProfileOpen]     = useState(false);
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
   const [mobileShopOpen,  setMobileShopOpen]  = useState(false);
-  const aboutRef = useRef<HTMLDivElement>(null);
-  const shopRef  = useRef<HTMLDivElement>(null);
+  const [session,         setSession]         = useState<Session | null>(null);
+  const [hydrated,        setHydrated]        = useState(false);
+  const aboutRef   = useRef<HTMLDivElement>(null);
+  const shopRef    = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -46,13 +51,35 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    setSession(getSession());
+    setHydrated(true);
+    const refresh = () => setSession(getSession());
+    window.addEventListener(AUTH_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
-      if (shopRef.current  && !shopRef.current.contains(e.target as Node))  setShopOpen(false);
+      if (aboutRef.current   && !aboutRef.current.contains(e.target as Node))   setAboutOpen(false);
+      if (shopRef.current    && !shopRef.current.contains(e.target as Node))    setShopOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const firstName  = session?.user.name.split(" ")[0] ?? "";
+  const initial    = firstName.charAt(0).toUpperCase() || session?.user.email.charAt(0).toUpperCase() || "·";
+
+  function handleSignOut() {
+    setProfileOpen(false);
+    setMenuOpen(false);
+    signOut();
+  }
 
   return (
     <>
@@ -146,14 +173,39 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/account"
-              aria-label="Account"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm tracking-wide text-brand-cream/70 hover:text-brand-cream transition-colors"
-            >
-              <AccountIcon />
-              <span className="hidden lg:inline">Log in</span>
-            </Link>
+            {hydrated && session ? (
+              <div ref={profileRef} className="relative hidden sm:block">
+                <button
+                  onClick={() => { setProfileOpen(v => !v); setAboutOpen(false); setShopOpen(false); }}
+                  aria-label="Account menu"
+                  className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-white/10 hover:border-white/25 transition-colors"
+                >
+                  <span className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-orange to-brand-purple text-white text-xs font-semibold flex items-center justify-center">
+                    {initial}
+                  </span>
+                  <span className="hidden lg:inline text-xs text-brand-cream/70 truncate max-w-[80px]">
+                    {firstName || session.user.email.split("@")[0]}
+                  </span>
+                  <Chevron open={profileOpen} />
+                </button>
+                {profileOpen && (
+                  <ProfileDropdown
+                    user={session.user}
+                    onClose={() => setProfileOpen(false)}
+                    onSignOut={handleSignOut}
+                  />
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/account"
+                aria-label="Account"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm tracking-wide text-brand-cream/70 hover:text-brand-cream transition-colors"
+              >
+                <AccountIcon />
+                <span className="hidden lg:inline">Log in</span>
+              </Link>
+            )}
 
             <Link
               href="/cart"
@@ -229,17 +281,91 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <Link
-              href="/account"
-              onClick={() => setMenuOpen(false)}
-              className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1 flex items-center gap-2"
-            >
-              <AccountIcon /> Log in
-            </Link>
+            {hydrated && session ? (
+              <div className="border-t border-white/5 mt-2 pt-3 px-1 flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-brand-purple text-white text-sm font-semibold flex items-center justify-center">
+                    {initial}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm text-brand-cream truncate">{session.user.name || session.user.email}</p>
+                    <p className="text-[11px] text-brand-cream/40 truncate">{session.user.email}</p>
+                  </div>
+                </div>
+                <Link
+                  href="/account?tab=orders"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-2.5 px-1"
+                >
+                  Orders
+                </Link>
+                <Link
+                  href="/account?tab=affiliate"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-2.5 px-1"
+                >
+                  Affiliate Dashboard
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="text-left text-brand-cream/55 hover:text-brand-orange text-sm tracking-wide py-2.5 px-1"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/account"
+                onClick={() => setMenuOpen(false)}
+                className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1 flex items-center gap-2"
+              >
+                <AccountIcon /> Log in
+              </Link>
+            )}
           </div>
         )}
       </nav>
     </>
+  );
+}
+
+function ProfileDropdown({ user, onClose, onSignOut }: {
+  user: { name: string; email: string }; onClose: () => void; onSignOut: () => void;
+}) {
+  return (
+    <div className="absolute top-full right-0 mt-3 w-64 bg-brand-black-card border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50">
+      <div className="px-4 py-3 border-b border-white/5">
+        <p className="text-[10px] tracking-[0.22em] uppercase text-brand-cream/40 mb-0.5">Signed in as</p>
+        <p className="text-sm text-brand-cream truncate">{user.name || user.email}</p>
+        <p className="text-[11px] text-brand-cream/40 truncate">{user.email}</p>
+      </div>
+      <div className="p-2">
+        <Link
+          href="/account?tab=orders"
+          onClick={onClose}
+          className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-brand-cream/80 hover:text-brand-cream transition-colors"
+        >
+          <span>Orders</span>
+          <span className="text-brand-cream/30">→</span>
+        </Link>
+        <Link
+          href="/account?tab=affiliate"
+          onClick={onClose}
+          className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-brand-cream/80 hover:text-brand-cream transition-colors"
+        >
+          <span>Affiliate Dashboard</span>
+          <span className="text-brand-cream/30">→</span>
+        </Link>
+      </div>
+      <div className="border-t border-white/5 p-2">
+        <button
+          onClick={onSignOut}
+          className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-brand-orange/10 text-sm text-brand-cream/55 hover:text-brand-orange transition-colors"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
   );
 }
 
