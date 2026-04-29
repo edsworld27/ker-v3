@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import SocialStrip from "@/components/SocialStrip";
 import Problem from "@/components/Problem";
 import Solution from "@/components/Solution";
 import Shop from "@/components/Shop";
@@ -12,6 +13,7 @@ export default function Home() {
       <Navbar />
       <main className="w-full">
         <Hero />
+        <SocialStrip />
         <Problem />
         <Solution />
         <Shop />

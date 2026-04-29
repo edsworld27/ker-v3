@@ -16,6 +16,7 @@ export interface ProductReview {
 export interface Product {
   slug: string;
   id: string;
+  range: "odo" | "nkrabea";
   name: string;
   tagline: string;
   price: number;
@@ -61,6 +62,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-hands",
     id: "odo-hands",
+    range: "odo",
     name: "Odo Hands",
     tagline: "Purifying · Hand Soap",
     price: 18.0,
@@ -244,6 +246,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-face",
     id: "odo-face",
+    range: "odo",
     name: "Odo Face",
     tagline: "Exfoliating · Honey Cleanser",
     price: 24.0,
@@ -289,6 +292,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-body",
     id: "odo-body",
+    range: "odo",
     name: "Odo Body",
     tagline: "Hydrating · Body Wash",
     price: 22.0,
@@ -332,6 +336,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-pumice",
     id: "odo-pumice",
+    range: "odo",
     name: "Odo Pumice",
     tagline: "Natural · Exfoliating Stone",
     price: 12.0,
@@ -371,6 +376,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-ritual-set",
     id: "odo-ritual-set",
+    range: "odo",
     name: "The Ritual Set",
     tagline: "Hands, Face, Body",
     price: 55.0,
@@ -413,6 +419,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odo-gift-card",
     id: "odo-gift-card",
+    range: "odo",
     name: "Odo Gift Card",
     tagline: "The Gift of Choice · Digital Delivery",
     price: 25.0,
@@ -457,6 +464,184 @@ export const PRODUCTS: Product[] = [
       { name: "Jess W.", location: "Edinburgh, UK", stars: 5, title: "Saved my Mother's Day", body: "Last-minute panic — bought this at 9pm and it was in mum's inbox before bedtime. She loved being able to pick her own bars." },
       { name: "Tomi A.", location: "London, UK", stars: 5, title: "Beautiful design", body: "The card itself is gorgeous. Felt like a proper gift, not just a code in an email." },
     ],
+  },
+
+  // ── Nkrabea · For Him ──────────────────────────────────────────────────────
+  {
+    slug: "nkrabea-face",
+    id: "nkrabea-face",
+    range: "nkrabea",
+    name: "Nkrabea Face",
+    tagline: "Deep Clean · Men's Charcoal Wash",
+    price: 22.0,
+    badge: "New Range",
+    badgeColor: "bg-brand-black border border-white/20",
+    rating: 4.9,
+    reviewCount: 0,
+    origin: "Handcrafted in Accra, Ghana",
+    shortBullets: [
+      "Activated charcoal draws out impurities and excess oil",
+      "Black soap base strengthens the skin barrier",
+      "Shea butter prevents post-wash tightness",
+      "Designed for daily use on all skin types",
+    ],
+    description: [
+      "Nkrabea Face is built for clarity. Activated charcoal and cocoa pod ash pull impurities and excess sebum from deep in the pore, while our raw shea butter base ensures skin never feels stripped or tight after washing.",
+      "The result is clean, balanced, fresh-feeling skin — every morning, no fuss.",
+    ],
+    note: "Charcoal & Cedar notes",
+    formats: ["bar", "jar"],
+    sizes: [
+      { label: "100g", price: 22.0 },
+      { label: "200g", price: 38.0 },
+    ],
+    fragrances: ["Cedarwood", "Frankincense", "Peppermint", "Unscented"],
+    ingredients: [
+      { name: "Activated Charcoal", note: "Food-grade" },
+      { name: "Shea Butter", note: "Northern Ghana" },
+      { name: "Black Soap Base", note: "Kumasi, Ashanti" },
+      { name: "Cocoa Pod Ash", note: "Eastern Region" },
+      { name: "Cedarwood Essential Oil" },
+    ],
+    directions: "Wet face with warm water. Work the bar into a lather and massage into skin for 30–60 seconds. Rinse with cool water and pat dry.",
+    benefits: [
+      { icon: "⚫", title: "Deep Clean", body: "Charcoal pulls oil and debris from the pore." },
+      { icon: "🌿", title: "No Stripping", body: "Shea butter keeps the barrier intact." },
+      { icon: "💧", title: "Daily Use", body: "Balanced formula for morning and night." },
+      { icon: "🧴", title: "Hormone-safe", body: "Zero synthetic fragrance or parabens." },
+    ],
+    reviews: [],
+  },
+  {
+    slug: "nkrabea-body",
+    id: "nkrabea-body",
+    range: "nkrabea",
+    name: "Nkrabea Body",
+    tagline: "Strength & Recovery · Body Wash",
+    price: 20.0,
+    badge: "New Range",
+    badgeColor: "bg-brand-black border border-white/20",
+    rating: 4.9,
+    reviewCount: 0,
+    origin: "Handcrafted in Accra, Ghana",
+    shortBullets: [
+      "Rich, dense lather built for daily showers",
+      "Soothes razor burn, ingrown hairs, and body breakouts",
+      "Cedarwood and black pepper essential oils — earthy and grounding",
+      "Anti-inflammatory shea base calms skin post-workout",
+    ],
+    description: [
+      "Nkrabea Body is a no-compromise wash for men who know what goes on their skin matters. A dense, luxurious black soap lather scented with Cedarwood and Black Pepper — grounding, masculine, and completely free of synthetic fragrance.",
+      "Long-lasting solid bar format — one bar outlasts three bottles of shower gel.",
+    ],
+    note: "Cedarwood & Black Pepper",
+    formats: ["bar", "jar"],
+    sizes: [
+      { label: "200g", price: 20.0 },
+      { label: "400g", price: 36.0 },
+    ],
+    fragrances: ["Cedarwood", "Frankincense", "Wild Orange", "Unscented"],
+    ingredients: [
+      { name: "Shea Butter", note: "Northern Ghana" },
+      { name: "Black Soap Base", note: "Kumasi, Ashanti" },
+      { name: "Coconut Oil", note: "Volta Region" },
+      { name: "Cedarwood Essential Oil" },
+      { name: "Black Pepper Essential Oil" },
+    ],
+    directions: "In the shower, work the bar into a rich lather. Massage into skin from shoulders to feet. Leave for 30 seconds and rinse. Hang bar to dry between uses.",
+    benefits: [
+      { icon: "🌲", title: "Grounding Scent", body: "Cedarwood and black pepper — no synthetic fragrance." },
+      { icon: "🔥", title: "Post-workout", body: "Anti-inflammatory shea soothes tired muscles." },
+      { icon: "🪒", title: "Razor Calm", body: "Reduces ingrown hairs and razor burn." },
+      { icon: "💪", title: "Long-lasting", body: "One bar replaces three bottles of shower gel." },
+    ],
+    reviews: [],
+  },
+  {
+    slug: "nkrabea-shave",
+    id: "nkrabea-shave",
+    range: "nkrabea",
+    name: "Nkrabea Shave",
+    tagline: "Precision · Shave Soap Bar",
+    price: 18.0,
+    badge: "New Range",
+    badgeColor: "bg-brand-black border border-white/20",
+    rating: 5.0,
+    reviewCount: 0,
+    origin: "Handcrafted in Accra, Ghana",
+    shortBullets: [
+      "Dense, cushioning lather for a close, comfortable shave",
+      "Anti-inflammatory formula reduces razor burn and irritation",
+      "Shea butter and palm kernel oil soften stubble before the blade",
+      "Works with any shave brush or directly by hand",
+    ],
+    description: [
+      "Nkrabea Shave replaces every aerosol can in your bathroom. A traditional hard soap lather that creates dense, glycerin-rich foam to lift stubble, cushion the blade, and leave skin calm after every shave.",
+      "Formulated with the same black soap heritage base as the full Nkrabea range.",
+    ],
+    note: "Sandalwood & Vetiver",
+    formats: ["bar"],
+    sizes: [
+      { label: "100g", price: 18.0 },
+      { label: "200g", price: 30.0 },
+    ],
+    fragrances: ["Sandalwood & Vetiver", "Frankincense", "Unscented"],
+    ingredients: [
+      { name: "Shea Butter", note: "Northern Ghana" },
+      { name: "Black Soap Base", note: "Kumasi, Ashanti" },
+      { name: "Palm Kernel Oil", note: "Western Ghana" },
+      { name: "Sandalwood Essential Oil" },
+      { name: "Vetiver Essential Oil" },
+    ],
+    directions: "Wet the bar and face. Swirl a damp brush on the bar, then work into the beard in circles. Shave as normal. No brush? Rub directly onto damp skin and lather with hands.",
+    benefits: [
+      { icon: "🪒", title: "Close Shave", body: "Dense lather lifts and softens stubble." },
+      { icon: "🕊", title: "Calm Skin", body: "Anti-inflammatory formula cuts razor burn." },
+      { icon: "🌿", title: "No Aerosol", body: "Zero synthetic propellants or chemicals." },
+      { icon: "🏺", title: "Sandalwood", body: "Deep, warm, heritage scent." },
+    ],
+    reviews: [],
+  },
+  {
+    slug: "nkrabea-ritual-set",
+    id: "nkrabea-ritual-set",
+    range: "nkrabea",
+    name: "The Nkrabea Set",
+    tagline: "Face, Body, Shave · Men's Ritual",
+    price: 52.0,
+    badge: "New Range",
+    badgeColor: "bg-brand-black border border-white/20",
+    rating: 5.0,
+    reviewCount: 0,
+    origin: "Handcrafted in Accra, Ghana",
+    shortBullets: [
+      "The complete Nkrabea trio: Face, Body, Shave",
+      "Arrives in a handwoven Ghanaian ritual pouch",
+      "Saves £8 vs buying the items individually",
+      "The perfect introduction — or a meaningful gift for him",
+    ],
+    description: [
+      "The Nkrabea Set brings the complete men's ritual together. Nkrabea Face, Nkrabea Body, and Nkrabea Shave — all three, arriving in a handwoven pouch made by women artisans in Bolgatanga, northern Ghana.",
+      "Everything a man needs, in one considered package.",
+    ],
+    note: "Limited handwoven pouches",
+    formats: ["bar"],
+    sizes: [{ label: "Gift Set", price: 52.0 }],
+    fragrances: ["Signature Nkrabea Scents"],
+    ingredients: [
+      { name: "Nkrabea Face 100g" },
+      { name: "Nkrabea Body 200g" },
+      { name: "Nkrabea Shave 100g" },
+      { name: "Handwoven Bolga pouch" },
+    ],
+    directions: "Use Nkrabea Face morning and night. Use Nkrabea Body in the shower. Use Nkrabea Shave before the blade. Store everything in the pouch between uses.",
+    benefits: [
+      { icon: "🎁", title: "Ready to gift", body: "Arrives wrapped — no assembly required." },
+      { icon: "🧺", title: "Handwoven pouch", body: "Made by women artisans in Bolgatanga, Ghana." },
+      { icon: "💛", title: "Save £8", body: "The set is £8 less than buying separately." },
+      { icon: "🌍", title: "Zero-waste", body: "Fully compostable packaging." },
+    ],
+    reviews: [],
   },
 ];
 

@@ -1,27 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import CartDrawer from "./CartDrawer";
 
-const NAV_LINKS = [
-  { label: "Story", href: "/our-story" },
-  { label: "Why Odo", href: "/the-problem" },
-  { label: "Shop", href: "/#shop" },
-  { label: "Heritage", href: "/#heritage" },
-  { label: "FAQ", href: "/faq" },
+const ABOUT_LINKS = [
+  { label: "Our Story",     href: "/our-story",      desc: "How Odo came to be" },
+  { label: "Our Philosophy", href: "/our-philosophy",  desc: "The Luv & Ker way" },
+  { label: "Ingredients",   href: "/ingredients",     desc: "What goes inside" },
+  { label: "Sustainability", href: "/sustainability",  desc: "Our commitment to the planet" },
+  { label: "Lab Tests",     href: "/lab-tests",       desc: "Third-party verified results" },
+  { label: "FAQ",           href: "/faq",             desc: "Your questions answered" },
+];
+
+const SHOP_LINKS = [
+  { label: "All Products",      href: "/products",              desc: "Browse the full collection" },
+  { label: "Odo · For Her",     href: "/products?range=odo",    desc: "Heritage skincare for women" },
+  { label: "Nkrabea · For Him", href: "/products?range=nkrabea", desc: "Strength rituals for men" },
+];
+
+const TOP_LINKS = [
+  { label: "Reviews",       href: "/reviews" },
+  { label: "Refer a Friend", href: "/refer" },
 ];
 
 export default function Navbar() {
   const { count, openCart } = useCart();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled,        setScrolled]        = useState(false);
+  const [menuOpen,        setMenuOpen]        = useState(false);
+  const [aboutOpen,       setAboutOpen]       = useState(false);
+  const [shopOpen,        setShopOpen]        = useState(false);
+  const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
+  const [mobileShopOpen,  setMobileShopOpen]  = useState(false);
+  const aboutRef = useRef<HTMLDivElement>(null);
+  const shopRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
+      if (shopRef.current  && !shopRef.current.contains(e.target as Node))  setShopOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   return (
@@ -34,7 +61,6 @@ export default function Navbar() {
             : "bg-transparent"
         }`}
       >
-        {/* Inner bar — scales height and padding across breakpoints */}
         <div className="max-w-7xl 2xl:max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 h-16 sm:h-18 lg:h-20 2xl:h-24 flex items-center justify-between gap-4">
 
           {/* Logo */}
@@ -47,22 +73,77 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav links */}
+          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-5 lg:gap-7 xl:gap-9 2xl:gap-11">
-            {NAV_LINKS.map((link) => (
-              <a
+
+            {/* Shop dropdown */}
+            <div ref={shopRef} className="relative">
+              <button
+                onClick={() => { setShopOpen(v => !v); setAboutOpen(false); }}
+                className="flex items-center gap-1.5 text-sm 2xl:text-base tracking-wide text-brand-cream/60 hover:text-brand-cream transition-colors duration-200"
+              >
+                Shop
+                <Chevron open={shopOpen} />
+              </button>
+              {shopOpen && (
+                <Dropdown>
+                  {SHOP_LINKS.map(link => (
+                    <DropdownItem
+                      key={link.label}
+                      href={link.href}
+                      label={link.label}
+                      desc={link.desc}
+                      colour={link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : "text-brand-cream"}
+                      onClose={() => setShopOpen(false)}
+                    />
+                  ))}
+                </Dropdown>
+              )}
+            </div>
+
+            {/* About dropdown */}
+            <div ref={aboutRef} className="relative">
+              <button
+                onClick={() => { setAboutOpen(v => !v); setShopOpen(false); }}
+                className="flex items-center gap-1.5 text-sm 2xl:text-base tracking-wide text-brand-cream/60 hover:text-brand-cream transition-colors duration-200"
+              >
+                About
+                <Chevron open={aboutOpen} />
+              </button>
+              {aboutOpen && (
+                <Dropdown>
+                  {ABOUT_LINKS.map(link => (
+                    <DropdownItem
+                      key={link.label}
+                      href={link.href}
+                      label={link.label}
+                      desc={link.desc}
+                      colour="text-brand-cream"
+                      onClose={() => setAboutOpen(false)}
+                    />
+                  ))}
+                </Dropdown>
+              )}
+            </div>
+
+            {/* Flat links */}
+            {TOP_LINKS.map(link => (
+              <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm 2xl:text-base tracking-wide text-brand-cream/60 hover:text-brand-cream transition-colors duration-200 whitespace-nowrap"
+                className={`text-sm 2xl:text-base tracking-wide transition-colors duration-200 whitespace-nowrap ${
+                  link.label === "Refer a Friend"
+                    ? "text-brand-amber hover:text-brand-orange"
+                    : "text-brand-cream/60 hover:text-brand-cream"
+                }`}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
           {/* Right actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Account / Login */}
             <Link
               href="/account"
               aria-label="Account"
@@ -72,7 +153,6 @@ export default function Navbar() {
               <span className="hidden lg:inline">Log in</span>
             </Link>
 
-            {/* Cart */}
             <button
               onClick={openCart}
               className="relative p-2 text-brand-cream/70 hover:text-brand-cream transition-colors"
@@ -86,10 +166,9 @@ export default function Navbar() {
               )}
             </button>
 
-            {/* Mobile hamburger */}
             <button
               className="md:hidden p-2 text-brand-cream/70"
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => setMenuOpen(v => !v)}
               aria-label="Toggle menu"
             >
               <div className="w-5 space-y-1.5">
@@ -101,29 +180,112 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile dropdown — scrollable so landscape mode doesn't clip it */}
+        {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden bg-brand-black-soft border-t border-white/5 px-4 sm:px-6 py-5 flex flex-col gap-4 sm:gap-5 max-h-[60vh] overflow-y-auto">
-            {NAV_LINKS.map((link) => (
-              <a
+          <div className="md:hidden bg-brand-black-soft border-t border-white/5 px-4 sm:px-6 py-5 flex flex-col gap-1 max-h-[70vh] overflow-y-auto">
+
+            {/* Shop accordion */}
+            <MobileAccordion label="Shop" open={mobileShopOpen} onToggle={() => setMobileShopOpen(v => !v)}>
+              {SHOP_LINKS.map(link => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`text-sm tracking-wide py-2.5 ${
+                    link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : "text-brand-cream/60 hover:text-brand-cream"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </MobileAccordion>
+
+            {/* About accordion */}
+            <MobileAccordion label="About" open={mobileAboutOpen} onToggle={() => setMobileAboutOpen(v => !v)}>
+              {ABOUT_LINKS.map(link => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="text-brand-cream/60 hover:text-brand-cream text-sm tracking-wide py-2.5"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </MobileAccordion>
+
+            {TOP_LINKS.map(link => (
+              <Link
                 key={link.label}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-1"
+                className={`text-sm tracking-wide py-3 px-1 ${
+                  link.label === "Refer a Friend" ? "text-brand-amber" : "text-brand-cream/70 hover:text-brand-cream"
+                }`}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
+
             <Link
               href="/account"
               onClick={() => setMenuOpen(false)}
-              className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-1 flex items-center gap-2"
+              className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1 flex items-center gap-2"
             >
               <AccountIcon /> Log in
             </Link>
           </div>
         )}
       </nav>
+    </>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function Dropdown({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-64 bg-brand-black-card border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50">
+      <div className="p-2">{children}</div>
+    </div>
+  );
+}
+
+function DropdownItem({ href, label, desc, colour, onClose }: {
+  href: string; label: string; desc: string; colour: string; onClose: () => void;
+}) {
+  return (
+    <Link href={href} onClick={onClose} className="flex flex-col px-4 py-3 rounded-xl hover:bg-white/5 transition-colors group">
+      <span className={`text-sm font-medium transition-colors ${colour}`}>{label}</span>
+      <span className="text-[11px] text-brand-cream/40 mt-0.5">{desc}</span>
+    </Link>
+  );
+}
+
+function MobileAccordion({ label, open, onToggle, children }: {
+  label: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <>
+      <button
+        onClick={onToggle}
+        className="flex items-center justify-between w-full text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1"
+      >
+        {label}
+        <Chevron open={open} />
+      </button>
+      {open && (
+        <div className="flex flex-col ml-3 border-l border-white/10 pl-4 mb-2">
+          {children}
+        </div>
+      )}
     </>
   );
 }

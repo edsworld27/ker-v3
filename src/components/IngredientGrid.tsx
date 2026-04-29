@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { INGREDIENTS, type IngredientDetail } from "@/lib/ingredients";
 
-export default function IngredientGrid() {
+export default function IngredientGrid({ limit, showViewAll }: { limit?: number; showViewAll?: boolean }) {
   const [active, setActive] = useState<IngredientDetail | null>(null);
+  const visible = limit ? INGREDIENTS.slice(0, limit) : INGREDIENTS;
 
   // Lock body scroll while modal is open + close on Escape
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function IngredientGrid() {
   return (
     <>
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 not-prose">
-        {INGREDIENTS.map((ing) => (
+        {visible.map((ing) => (
           <li key={ing.slug}>
             <button
               onClick={() => setActive(ing)}
@@ -56,6 +58,18 @@ export default function IngredientGrid() {
           </li>
         ))}
       </ul>
+
+      {showViewAll && (
+        <div className="mt-10 flex justify-center">
+          <Link
+            href="/ingredients"
+            className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-brand-amber/40 bg-brand-black-card text-brand-amber text-sm font-medium hover:border-brand-amber/70 hover:bg-brand-amber/5 transition-all duration-200 group"
+          >
+            View every ingredient we use
+            <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+          </Link>
+        </div>
+      )}
 
       {active && <IngredientModal ingredient={active} onClose={() => setActive(null)} />}
     </>
