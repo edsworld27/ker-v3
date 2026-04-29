@@ -19,7 +19,9 @@ const SHOP_LINKS = [
   { label: "Odo · For Her",          href: "/products?range=odo",        desc: "Heritage skincare for women" },
   { label: "Nkrabea · For Him",      href: "/products?range=nkrabea",    desc: "Strength rituals for men" },
   { label: "Felicia's Black Soap",    href: "/products/black-soap",       desc: "World renowned. One formula." },
-  { label: "Buying for a Friend",     href: "/products?selector=gift-cards", desc: "Gift card options" },
+  { label: "Gift Cards",              href: "/products?tab=gift-cards",   desc: "Digital gift cards" },
+  { label: "Accessories",             href: "/products?tab=accessories",  desc: "Ritual tools and add-ons" },
+  { label: "Clothing",                href: "/products?tab=clothing",     desc: "Support tees and merch" },
 ];
 
 const TOP_LINKS = [
@@ -194,7 +196,7 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   className={`text-sm tracking-wide py-2.5 ${
-                    link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("Buying for a Friend") ? "text-brand-purple-light" : "text-brand-cream/60 hover:text-brand-cream"
+                    link.label.includes("Nkrabea") ? "text-brand-amber" : link.label.includes("Odo ·") ? "text-brand-orange" : link.label.includes("Gift Cards") ? "text-brand-purple-light" : link.label.includes("Accessories") || link.label.includes("Clothing") ? "text-brand-amber/90" : "text-brand-cream/60 hover:text-brand-cream"
                   }`}
                 >
                   {link.label}

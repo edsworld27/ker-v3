@@ -10,14 +10,16 @@ import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
 
-type Tab = "all" | "odo" | "nkrabea" | "unisex";
-type AllSelector = "all" | "gift-cards" | "accessories" | "clothing";
+type Tab = "all" | "odo" | "nkrabea" | "unisex" | "gift-cards" | "accessories" | "clothing";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
   { id: "all",     label: "All Products",      sub: "Odo + Nkrabea + everything else" },
   { id: "odo",     label: "Odo · For Her",     sub: "Heritage skincare for women" },
   { id: "nkrabea", label: "Nkrabea · For Him", sub: "Strength rituals for men" },
   { id: "unisex",  label: "Felicia's Black Soap", sub: "World renowned formula" },
+  { id: "gift-cards", label: "Gift Cards", sub: "Give the gift of ritual" },
+  { id: "accessories", label: "Accessories", sub: "Tools that complete the ritual" },
+  { id: "clothing", label: "Clothing", sub: "Support tees and merch" },
 ];
 
 export default function ShopPage() {
@@ -33,13 +35,14 @@ function ShopContent() {
   const [added, setAdded] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const rangeParam = searchParams.get("range");
-  const selectorParam = searchParams.get("selector");
+  const tabParam = searchParams.get("tab");
   const initial: Tab =
-    rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex" ? rangeParam : "all";
+    tabParam === "gift-cards" || tabParam === "accessories" || tabParam === "clothing"
+      ? tabParam
+      : rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
+        ? rangeParam
+        : "all";
   const [activeTab, setActiveTab] = useState<Tab>(initial);
-  const [allSelector, setAllSelector] = useState<AllSelector>(
-    selectorParam === "gift-cards" || selectorParam === "accessories" || selectorParam === "clothing" ? selectorParam : "all"
-  );
 
   function handleAdd(product: (typeof PRODUCTS)[0]) {
     addItem({ id: product.id, name: product.name, price: product.price });
@@ -48,14 +51,12 @@ function ShopContent() {
   }
 
   const visible = (() => {
-    if (activeTab === "all") {
-      if (allSelector === "gift-cards") return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
-      if (allSelector === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
-      if (allSelector === "clothing") return [];
-      return PRODUCTS;
-    }
+    if (activeTab === "all") return PRODUCTS;
+    if (activeTab === "gift-cards") return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
+    if (activeTab === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+    if (activeTab === "clothing") return [];
     return PRODUCTS.filter((p) => p.range === activeTab);
-  })();  
+  })();
   const odoCount     = PRODUCTS.filter(p => p.range === "odo").length;
   const nkrabeaCount = PRODUCTS.filter(p => p.range === "nkrabea").length;
 
@@ -186,6 +187,7 @@ function ShopContent() {
             {activeTab === "unisex" ? (
               <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
             ) : activeTab === "all" && allSelector === "clothing" ? (
+            ) : activeTab === "clothing" ? (
               <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10">
                 <p className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-3">Coming soon</p>
                 <h3 className="font-display font-bold text-brand-cream text-3xl mb-3">Support Tees</h3>
