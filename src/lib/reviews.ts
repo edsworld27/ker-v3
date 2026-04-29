@@ -119,3 +119,21 @@ export const PRODUCTS = [
 ] as const;
 
 export type ProductFilter = (typeof PRODUCTS)[number];
+
+const SLUG_TO_PRODUCT: Record<string, string> = {
+  "odo-hands":        "Odo Hands",
+  "odo-face":         "Odo Face",
+  "odo-body":         "Odo Body",
+  "odo-pumice":       "Odo Pumice",
+  "odo-ritual-set":   "The Ritual Set",
+  "nkrabea-face":     "Nkrabea Face",
+  "nkrabea-body":     "Nkrabea Body",
+  "nkrabea-shave":    "Nkrabea Shave",
+  "nkrabea-ritual-set": "The Nkrabea Set",
+};
+
+export function getProductReviews(slug: string): Review[] {
+  const productName = SLUG_TO_PRODUCT[slug];
+  if (!productName) return [];
+  return REVIEWS.filter((r) => r.product === productName);
+}

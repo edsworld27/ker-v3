@@ -5,8 +5,17 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import type { Product, ProductFormat } from "@/lib/products";
 import { PRODUCTS } from "@/lib/products";
+import { getProductReviews } from "@/lib/reviews";
 import DiscountPopup from "@/components/DiscountPopup";
 import GiftCardPurchaseForm from "@/components/GiftCardPurchaseForm";
+
+interface DisplayReview {
+  name: string;
+  location: string;
+  stars: number;
+  title?: string;
+  body: string;
+}
 
 export default function ProductDetail({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -53,6 +62,26 @@ export default function ProductDetail({ product }: { product: Product }) {
     ingredients: fc?.ingredients ?? product.ingredients,
     directions: fc?.directions ?? product.directions,
   };
+
+  const globalReviews: DisplayReview[] = getProductReviews(product.slug).map((r) => ({
+    name: r.name,
+    location: r.location,
+    stars: r.stars,
+    body: r.quote,
+  }));
+  const inlineReviews: DisplayReview[] = product.reviews.map((r) => ({
+    name: r.name,
+    location: r.location,
+    stars: r.stars,
+    title: r.title,
+    body: r.body,
+  }));
+  // Merge: global reviews first, then any inline reviews not already in global (by name)
+  const globalNames = new Set(globalReviews.map((r) => r.name));
+  const displayReviews: DisplayReview[] = [
+    ...globalReviews,
+    ...inlineReviews.filter((r) => !globalNames.has(r.name)),
+  ];
 
   const getDisplaySize = (sLabel: string) => {
     if (sLabel === "Gift Set") return sLabel;
@@ -528,9 +557,11 @@ export default function ProductDetail({ product }: { product: Product }) {
             </div>
 
             <div className="lg:col-span-2 space-y-4">
-              {product.reviews.map((r) => (
+              {displayReviews.length === 0 ? (
+                <p className="text-brand-cream/40 text-sm py-8">No reviews yet — be the first.</p>
+              ) : displayReviews.map((r, idx) => (
                 <div
-                  key={r.name + r.title}
+                  key={r.name + idx}
                   className="p-6 xl:p-7 rounded-2xl bg-brand-black-card border border-white/5"
                 >
                   <div className="flex items-center justify-between gap-3 mb-3">
@@ -541,8 +572,10 @@ export default function ProductDetail({ product }: { product: Product }) {
                     </div>
                     <span className="text-[10px] tracking-widest uppercase text-brand-cream/30">Verified</span>
                   </div>
-                  <h4 className="font-display text-lg font-semibold text-brand-cream mb-2">{r.title}</h4>
-                  <p className="text-sm xl:text-base text-brand-cream/60 leading-relaxed mb-4">{r.body}</p>
+                  {r.title && (
+                    <h4 className="font-display text-lg font-semibold text-brand-cream mb-2">{r.title}</h4>
+                  )}
+                  <p className="text-sm xl:text-base text-brand-cream/60 leading-relaxed mb-4">&ldquo;{r.body}&rdquo;</p>
                   <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-orange to-brand-purple flex items-center justify-center text-xs font-bold text-white">
                       {r.name[0]}
