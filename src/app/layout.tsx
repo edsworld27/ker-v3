@@ -3,6 +3,7 @@ import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import ChatBot from "@/components/ChatBot";
+import PurpleSideScroller from "@/components/PurpleSideScroller";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -53,6 +54,7 @@ export default function RootLayout({
         <CartProvider>
           {children}
           <ChatBot />
+          <PurpleSideScroller />
         </CartProvider>
       </body>
     </html>

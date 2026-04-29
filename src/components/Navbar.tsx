@@ -6,8 +6,9 @@ import { useCart } from "@/context/CartContext";
 import CartDrawer from "./CartDrawer";
 
 const ABOUT_LINKS = [
-  { label: "Our Story",     href: "/our-story",      desc: "How Odo came to be" },
-  { label: "Our Philosophy", href: "/our-philosophy",  desc: "The Luv & Ker way" },
+  { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
+  { label: "Our Story",     href: "/our-story",       desc: "How Odo came to be" },
+  { label: "Our Philosophy", href: "/our-philosophy", desc: "The Luv & Ker way" },
   { label: "Ingredients",   href: "/ingredients",     desc: "What goes inside" },
   { label: "Sustainability", href: "/sustainability",  desc: "Our commitment to the planet" },
   { label: "Lab Tests",     href: "/lab-tests",       desc: "Third-party verified results" },
@@ -118,7 +119,7 @@ export default function Navbar() {
                       href={link.href}
                       label={link.label}
                       desc={link.desc}
-                      colour="text-brand-cream"
+                      colour={link.label === "About Us" ? "text-brand-purple-light" : "text-brand-cream"}
                       onClose={() => setAboutOpen(false)}
                     />
                   ))}
