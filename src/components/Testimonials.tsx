@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { REVIEWS } from "@/lib/reviews";
 
 interface IgStory {
   type: "story";
@@ -144,71 +146,6 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
   },
 ];
 
-const REVIEWS = [
-  {
-    quote:
-      "I'd struggled with hormone imbalances for years and had no idea my soap could be a contributing factor. Since switching to Odo, my skin feels completely different — softer, calmer, alive. I'll never go back.",
-    name: "Abena K.",
-    location: "London, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "As a Ghanaian woman, this soap feels like coming home. The scent, the texture, the story behind it — Felicia has bottled something truly special. It's ancestral wisdom in your hands.",
-    name: "Akosua M.",
-    location: "Accra, Ghana",
-    stars: 5,
-  },
-  {
-    quote:
-      "I'm a dermatologist and I'm genuinely impressed. The ingredient list is something I can actually stand behind — no parabens, no sulphates, no synthetic fragrance. My patients with sensitive skin love it.",
-    name: "Dr. Sarah T.",
-    location: "Birmingham, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "I've tried every ‘clean’ soap on the market and nothing comes close. The shea butter is so rich my skin doesn't need a moisturiser after. My partner has stolen mine, so I had to order two.",
-    name: "Priya R.",
-    location: "Manchester, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "Bought this on a friend's recommendation while pregnant. The peace of mind from knowing exactly what's in it is worth the price alone. Skin is happier than it's been in years.",
-    name: "Hannah L.",
-    location: "Bristol, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "The handwoven pouch in the Ritual Set is a piece of art. The bars themselves are unreal. This is the first brand I've actually felt good about being a customer of.",
-    name: "Nana A.",
-    location: "Accra, Ghana",
-    stars: 5,
-  },
-  {
-    quote:
-      "Genuinely the best soap I've ever used and I don't say that lightly. I'm 47 and my skin has the bounce back it had at 27. I will keep buying this for the rest of my life.",
-    name: "Marie D.",
-    location: "Edinburgh, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "Bought this for myself after my partner kept stealing hers. I had no idea what I'd been missing — my skin actually feels different. Razor burn is gone. I'm a convert.",
-    name: "James O.",
-    location: "Leeds, UK",
-    stars: 5,
-  },
-  {
-    quote:
-      "Got the gift set for my dad's birthday — he's not the type to comment on skincare. Two weeks later he asked me to order him another one. That tells you everything.",
-    name: "Kofi B.",
-    location: "London, UK",
-    stars: 5,
-  },
-];
 
 export default function Testimonials() {
   return (
@@ -268,6 +205,20 @@ export default function Testimonials() {
             reviews={[...REVIEWS.slice(4), ...REVIEWS.slice(0, 4)]}
             direction="right"
           />
+        </div>
+
+        {/* Read all reviews CTA */}
+        <div className="flex flex-col items-center mt-12 sm:mt-14">
+          <Link
+            href="/reviews"
+            className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-brand-amber/40 bg-brand-black-card text-brand-amber text-sm sm:text-base font-medium tracking-wide hover:bg-brand-amber hover:text-brand-black transition-all duration-300 group"
+          >
+            Read all {REVIEWS.length} reviews
+            <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
+          </Link>
+          <p className="text-brand-cream/30 text-xs mt-3 tracking-wide">
+            Unfiltered. Unsponsored. All verified.
+          </p>
         </div>
 
       </div>
