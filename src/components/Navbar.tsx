@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { AUTH_EVENT, getSession, signOut, type Session } from "@/lib/auth";
+import { AUTH_EVENT, getSession, isAdmin, signOut, type Session } from "@/lib/auth";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -191,6 +191,7 @@ export default function Navbar() {
                 {profileOpen && (
                   <ProfileDropdown
                     user={session.user}
+                    isAdmin={isAdmin(session)}
                     onClose={() => setProfileOpen(false)}
                     onSignOut={handleSignOut}
                   />
@@ -292,6 +293,15 @@ export default function Navbar() {
                     <p className="text-[11px] text-brand-cream/40 truncate">{session.user.email}</p>
                   </div>
                 </div>
+                {isAdmin(session) && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-brand-orange font-semibold text-sm tracking-wide py-2.5 px-1"
+                  >
+                    Admin dashboard →
+                  </Link>
+                )}
                 <Link
                   href="/account?tab=orders"
                   onClick={() => setMenuOpen(false)}
@@ -329,8 +339,8 @@ export default function Navbar() {
   );
 }
 
-function ProfileDropdown({ user, onClose, onSignOut }: {
-  user: { name: string; email: string }; onClose: () => void; onSignOut: () => void;
+function ProfileDropdown({ user, isAdmin, onClose, onSignOut }: {
+  user: { name: string; email: string }; isAdmin: boolean; onClose: () => void; onSignOut: () => void;
 }) {
   return (
     <div className="absolute top-full right-0 mt-3 w-64 bg-brand-black-card border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50">
@@ -339,6 +349,18 @@ function ProfileDropdown({ user, onClose, onSignOut }: {
         <p className="text-sm text-brand-cream truncate">{user.name || user.email}</p>
         <p className="text-[11px] text-brand-cream/40 truncate">{user.email}</p>
       </div>
+      {isAdmin && (
+        <div className="p-2 border-b border-white/5 bg-brand-orange/[0.04]">
+          <Link
+            href="/admin"
+            onClick={onClose}
+            className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-brand-orange/15 text-sm text-brand-orange transition-colors"
+          >
+            <span className="font-semibold tracking-wide">Admin dashboard</span>
+            <span className="text-brand-orange/60">→</span>
+          </Link>
+        </div>
+      )}
       <div className="p-2">
         <Link
           href="/account?tab=orders"

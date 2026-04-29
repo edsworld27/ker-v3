@@ -2,7 +2,6 @@
 
 import { useCart } from "@/context/CartContext";
 import { useEffect, useState } from "react";
-import { createCart, addToCart } from "@/lib/shopify";
 
 export default function CartDrawer() {
   const { items, count, subtotal, total, discounts, applyDiscount, removeDiscount, isOpen, closeCart, updateQty, removeItem } = useCart();
@@ -39,31 +38,31 @@ export default function CartDrawer() {
   async function handleCheckout() {
     setIsCheckingOut(true);
     try {
-      const lines = items
-        .filter((item) => item.shopifyVariantId)
-        .map((item) => ({
-          merchandiseId: item.shopifyVariantId as string,
-          quantity: item.quantity,
-        }));
-
-      if (lines.length === 0) {
-        alert("Please map your products to Shopify Variant IDs to enable checkout.");
-        setIsCheckingOut(false);
-        return;
-      }
-
-      const cart = await createCart();
-      const cartWithItems = await addToCart(cart.id, lines);
-
-      if (cartWithItems?.checkoutUrl) {
-        localStorage.setItem("odo_has_purchased", "true");
-        window.location.href = cartWithItems.checkoutUrl;
-      } else {
-        throw new Error("No checkout URL returned");
-      }
+      const totalDiscount = discounts.reduce((s, d) => s + d.amountOff, 0);
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map(i => ({
+            productId: i.id,
+            name: i.name,
+            variant: i.variant,
+            quantity: i.quantity,
+            unitPrice: i.price,
+          })),
+          discountAmount: totalDiscount > 0 ? totalDiscount : undefined,
+          metadata: {
+            discountCodes: discounts.map(d => d.code).join(","),
+          },
+        }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || "No checkout URL returned");
+      localStorage.setItem("odo_has_purchased", "true");
+      window.location.href = data.url;
     } catch (error) {
       console.error("Checkout error:", error);
-      alert("Something went wrong initiating checkout. Check the console.");
+      alert(error instanceof Error ? error.message : "Something went wrong initiating checkout.");
       setIsCheckingOut(false);
     }
   }

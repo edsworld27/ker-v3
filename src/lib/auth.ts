@@ -24,12 +24,27 @@ const TOKENS_KEY  = "lk_tokens_v1";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+// Hardcoded admin allowlist. In production this becomes a `role` column on the
+// customers table (Supabase / Postgres) — or a Shopify customer tag like
+// `role:admin` — read at session-creation time.
+const ADMIN_EMAILS: readonly string[] = [
+  "felicia@luvandker.com",
+  "edwardhallam07@gmail.com",
+];
+
+export type Role = "customer" | "admin";
+
+export function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   emailVerified: boolean;
   provider: "email" | "google";
+  role: Role;
   createdAt: number;
 }
 
@@ -109,7 +124,17 @@ export function getSession(): Session | null {
   const s = read<Session | null>(SESSION_KEY, null);
   if (!s) return null;
   if (s.expiresAt < Date.now()) { signOut(); return null; }
+  // Backfill role for sessions issued before the admin allowlist existed.
+  const expected: Role = isAdminEmail(s.user.email) ? "admin" : "customer";
+  if (s.user.role !== expected) {
+    s.user.role = expected;
+    write(SESSION_KEY, s);
+  }
   return s;
+}
+
+export function isAdmin(session: Session | null): boolean {
+  return !!session && session.user.role === "admin";
 }
 
 function startSession(user: User): Session {
@@ -142,6 +167,7 @@ export async function signUp(input: { email: string; password: string; name: str
     name: input.name.trim() || email.split("@")[0],
     emailVerified: false,
     provider: "email",
+    role: isAdminEmail(email) ? "admin" : "customer",
     createdAt: Date.now(),
     passwordHash: tinyHash(input.password),
   };
@@ -208,6 +234,7 @@ export async function signInWithGoogle(): Promise<AuthResult> {
       name: profile.name,
       emailVerified: profile.email_verified, // Google says it's verified
       provider: "google",
+      role: isAdminEmail(email) ? "admin" : "customer",
       createdAt: Date.now(),
     };
     users[email] = user;
