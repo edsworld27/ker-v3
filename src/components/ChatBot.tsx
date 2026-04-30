@@ -7,6 +7,7 @@ import { getGiftCard } from "@/lib/giftCards";
 import { listOrders, type Order } from "@/lib/admin/orders";
 import { getSession, AUTH_EVENT, type Session } from "@/lib/auth";
 import { createTicket } from "@/lib/admin/tickets";
+import { getShippingConfig } from "@/lib/admin/shipping";
 
 interface Message {
   id: string;
@@ -89,7 +90,17 @@ function botReply(input: string, session: Session | null): { text: string; signI
     };
   }
   if (/shipping|delivery|how long/i.test(q)) {
-    return { text: "UK standard: £4.99 (2–4 working days), free over £30. Express: £7.90 next-day if ordered before 2pm. EU/US/CA also available.", cta: { label: "Full shipping info", href: "/shipping-returns" } };
+    const cfg = getShippingConfig();
+    const uk = cfg.zones.find(z => z.name.toLowerCase().includes("uk") || z.countries.includes("GB"));
+    let shippingText = "We ship worldwide — see the full details on our shipping page.";
+    if (uk && uk.rates.length > 0) {
+      const parts = uk.rates.map(r => {
+        const free = r.freeThreshold ?? uk.freeThreshold;
+        return `${r.label}: £${r.price.toFixed(2)}${free ? ` (free over £${free})` : ""}`;
+      });
+      shippingText = `UK shipping — ${parts.join(" · ")}. International zones also available.`;
+    }
+    return { text: shippingText, cta: { label: "Full shipping info", href: "/shipping-returns" } };
   }
   if (/ingredient|whats in|allerg|paraben|phthalate|sulphate|sls/i.test(q)) {
     return { text: "Every ingredient is named on the product page. Odo is free from parabens, phthalates, sulphates (SLS/SLES) and synthetic fragrance.", cta: { label: "See ingredient sources", href: "/ingredients" } };
