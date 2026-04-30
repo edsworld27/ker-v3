@@ -2,8 +2,33 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useContent, useContentImage } from "@/lib/useContent";
 
 export default function Hero() {
+  const eyebrow         = useContent("home.hero.eyebrow",         "Pure Ghanaian black soap · Handcrafted in Accra");
+  const headlinePrefix  = useContent("home.hero.headlinePrefix",  "All natural");
+  const headlineHighlight = useContent("home.hero.headlineHighlight", "African soap");
+  const tagline         = useContent("home.hero.tagline",         "A ritual born from the soil of Ghana. Pure, sacred, and alive with ancestral wisdom — crafted to restore what modern life has taken.");
+  const ctaPrimary      = useContent("home.hero.ctaPrimary",      "Explore our ranges");
+  const ctaSecondary    = useContent("home.hero.ctaSecondary",    "Our Story");
+  const heroImage       = useContentImage("home.hero.image",      "/images/hero/elephants.png");
+  const heroImageAlt    = useContent("home.hero.imageAlt",        "Elephants in the African landscape");
+  const stat1Value      = useContent("home.hero.stat1Value",      "100%");
+  const stat1Label      = useContent("home.hero.stat1Label",      "Natural ingredients");
+  const stat2Value      = useContent("home.hero.stat2Value",      "0");
+  const stat2Label      = useContent("home.hero.stat2Label",      "Sulphates or synthetics");
+  const stat3Value      = useContent("home.hero.stat3Value",      "3");
+  const stat3Label      = useContent("home.hero.stat3Label",      "Independent lab partners");
+
+  const stats = [
+    { value: stat1Value, label: stat1Label },
+    { value: stat2Value, label: stat2Label },
+    { value: stat3Value, label: stat3Label },
+  ];
+
+  // next/image can't load data: URLs through its loader, so fall back to a plain <img> for those.
+  const isDataUrl = heroImage.startsWith("data:");
+
   return (
     <section
       id="story"
@@ -21,18 +46,17 @@ export default function Hero() {
             {/* Eyebrow */}
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Pure Ghanaian black soap · Handcrafted in Accra</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
             </div>
 
             {/* Headline */}
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl mb-6">
-              All natural <span className="gradient-text">African soap</span>
+              {headlinePrefix} <span className="gradient-text">{headlineHighlight}</span>
             </h1>
 
             {/* Tagline */}
             <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
-              A ritual born from the soil of Ghana. Pure, sacred, and alive with
-              ancestral wisdom — crafted to restore what modern life has taken.
+              {tagline}
             </p>
 
             {/* CTAs */}
@@ -44,7 +68,7 @@ export default function Hero() {
                   transition-all duration-200 text-white font-semibold tracking-wide
                   text-sm shadow-xl shadow-brand-orange/25 hover:-translate-y-0.5"
               >
-                Explore our ranges
+                {ctaPrimary}
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
@@ -56,17 +80,13 @@ export default function Hero() {
                   hover:text-brand-cream hover:border-white/40
                   transition-all duration-200 text-sm tracking-wide"
               >
-                Our Story
+                {ctaSecondary}
               </a>
             </div>
 
             {/* Stats */}
             <div className="flex flex-wrap justify-center lg:justify-start gap-10 xl:gap-14 pt-8 border-t border-white/10">
-              {[
-                { value: "100%", label: "Natural ingredients" },
-                { value: "0",    label: "Sulphates or synthetics" },
-                { value: "3",    label: "Independent lab partners" },
-              ].map(({ value, label }) => (
+              {stats.map(({ value, label }) => (
                 <div key={label} className="flex flex-col">
                   <span className="font-display text-2xl sm:text-3xl xl:text-4xl font-bold text-brand-amber">
                     {value}
@@ -82,14 +102,23 @@ export default function Hero() {
 
           {/* Right column — image */}
           <div className="relative aspect-[4/5] sm:aspect-[5/4] lg:aspect-square rounded-3xl overflow-hidden border border-white/5">
-            <Image
-              src="/images/hero/elephants.png"
-              alt="Elephants in the African landscape"
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover scale-125 object-center"
-              priority
-            />
+            {isDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroImage}
+                alt={heroImageAlt}
+                className="absolute inset-0 w-full h-full object-cover scale-125 object-center"
+              />
+            ) : (
+              <Image
+                src={heroImage}
+                alt={heroImageAlt}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover scale-125 object-center"
+                priority
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-brand-black/40 via-transparent to-transparent" />
           </div>
 

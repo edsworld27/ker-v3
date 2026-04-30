@@ -1,6 +1,14 @@
+"use client";
+
 import IngredientGrid from "@/components/IngredientGrid";
+import { useContent } from "@/lib/useContent";
 
 export default function Solution() {
+  const eyebrow   = useContent("home.solution.eyebrow",   "The Answer");
+  const headline1 = useContent("home.solution.headline1", "A gift carried across");
+  const headline2 = useContent("home.solution.headline2", "generations");
+  const body1     = useContent("home.solution.body1",     "Odo is the Twi word for love. It is more than a name — it is the philosophy behind every bar. Created by Felicia, drawing on centuries of Ghanaian skincare wisdom passed from grandmother to daughter, generation to generation.");
+  const body2     = useContent("home.solution.body2",     "Every ingredient is sourced directly from Ghanaian farmers. No middlemen. No shortcuts. No compromises. Just the earth in its purest form, pressed into your palms.");
 
   return (
     <section id="heritage" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft relative overflow-hidden">
@@ -15,21 +23,18 @@ export default function Solution() {
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">The Answer</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">{eyebrow}</span>
             </div>
             <h2 className="font-display font-bold text-brand-cream leading-tight mb-5
               text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl
               max-w-xl">
-              A gift carried across <span className="gradient-text">generations</span>
+              {headline1} <span className="gradient-text">{headline2}</span>
             </h2>
             <p className="text-brand-cream/60 text-base sm:text-lg xl:text-xl leading-relaxed max-w-xl mb-5">
-              Odo is the Twi word for love. It is more than a name — it is the philosophy behind every bar.
-              Created by Felicia, drawing on centuries of Ghanaian skincare wisdom passed from grandmother
-              to daughter, generation to generation.
+              {body1}
             </p>
             <p className="text-brand-cream/60 text-base sm:text-lg xl:text-xl leading-relaxed max-w-xl mb-8">
-              Every ingredient is sourced directly from Ghanaian farmers. No middlemen. No shortcuts.
-              No compromises. Just the earth in its purest form, pressed into your palms.
+              {body2}
             </p>
             <div className="flex flex-wrap justify-center lg:justify-start gap-2.5 sm:gap-3">
               {["Hormone-Safe","Fertility-Friendly","100% Natural","Vegan","Ethically Sourced","Cruelty-Free"].map((tag) => (
