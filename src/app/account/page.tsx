@@ -8,7 +8,7 @@ import Footer from "@/components/Footer";
 import {
   AUTH_EVENT,
   getSession, signOut, signInWithEmail, signInWithGoogle, signUp,
-  resendVerificationEmail,
+  resendVerificationEmail, isAdminEmail,
   type Session, type User,
 } from "@/lib/auth";
 import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
@@ -250,6 +250,7 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
   const [tab, setTab] = useState<DashTab>(initialTab);
   const firstName  = user.name.split(" ")[0];
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  const admin = isAdminEmail(user.email);
 
   return (
     <>
@@ -276,12 +277,28 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
                   {user.provider === "google" && <span className="ml-2 text-brand-cream/30">· via Google</span>}
                 </p>
               </div>
-              <button
-                onClick={onLogout}
-                className="text-xs tracking-wide text-brand-cream/40 hover:text-brand-cream border border-white/10 px-4 py-2 rounded-lg transition-colors"
-              >
-                Log out
-              </button>
+              <div className="flex items-center gap-3 flex-wrap">
+                {admin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-brand-orange/10 border border-brand-orange/30 text-brand-orange hover:bg-brand-orange/20 hover:border-brand-orange/50 transition-colors font-medium"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    Admin panel
+                  </Link>
+                )}
+                <button
+                  onClick={onLogout}
+                  className="text-xs tracking-wide text-brand-cream/40 hover:text-brand-cream border border-white/10 px-4 py-2 rounded-lg transition-colors"
+                >
+                  Log out
+                </button>
+              </div>
             </div>
 
             {/* Tab bar */}
