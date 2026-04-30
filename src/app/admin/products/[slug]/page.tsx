@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
-import { listInventory, adjustStock, upsertInventory, type InventoryItem } from "@/lib/admin/inventory";
+import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 600KB cap for localStorage uploads
 
@@ -105,6 +105,14 @@ export default function AdminProductEditPage() {
   function handleStockAdjust(delta: number) {
     if (!linkedItem) return;
     adjustStock(linkedItem.sku, delta);
+    const updated = listInventory();
+    setInventoryItems(updated);
+    setLinkedItem(updated.find(i => i.sku === linkedItem.sku) ?? null);
+  }
+
+  function handleStockFieldUpdate(patch: Partial<InventoryItem>) {
+    if (!linkedItem) return;
+    updateInventoryFields(linkedItem.sku, patch);
     const updated = listInventory();
     setInventoryItems(updated);
     setLinkedItem(updated.find(i => i.sku === linkedItem.sku) ?? null);
@@ -280,34 +288,75 @@ export default function AdminProductEditPage() {
               </div>
             )}
             {linkedItem && (
-              <div className="mt-4 p-4 rounded-xl bg-black/30 border border-white/8 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-brand-cream/60">On hand</p>
-                    <p className="font-display text-2xl text-brand-cream">{linkedItem.onHand}</p>
+              <div className="mt-4 p-4 rounded-xl bg-black/30 border border-white/8 space-y-4">
+                {!linkedItem.unlimited ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div>
+                        <p className="text-xs text-brand-cream/60">On hand</p>
+                        <p className="font-display text-2xl text-brand-cream">{linkedItem.onHand}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-brand-cream/60">Reserved</p>
+                        <p className="font-display text-2xl text-brand-cream">{linkedItem.reserved}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-brand-cream/60">Available</p>
+                        <p className={`font-display text-2xl ${Math.max(0, linkedItem.onHand - linkedItem.reserved) === 0 ? "text-brand-orange" : "text-brand-amber"}`}>
+                          {Math.max(0, linkedItem.onHand - linkedItem.reserved)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-brand-cream/60">Low at</p>
+                        <input
+                          type="number"
+                          min={0}
+                          value={linkedItem.lowAt}
+                          onChange={e => handleStockFieldUpdate({ lowAt: Math.max(0, parseInt(e.target.value || "0", 10)) })}
+                          className="font-display text-2xl text-brand-cream bg-transparent border-b border-white/15 w-full focus:outline-none focus:border-brand-orange/50 py-0.5"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => handleStockAdjust(-10)} className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">−10</button>
+                      <button onClick={() => handleStockAdjust(-1)}  className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">−1</button>
+                      <span className="text-xs text-brand-cream/40 px-1">Adjust stock</span>
+                      <button onClick={() => handleStockAdjust(1)}   className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">+1</button>
+                      <button onClick={() => handleStockAdjust(10)}  className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">+10</button>
+                      <input
+                        type="number"
+                        placeholder="Set"
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            const n = parseInt((e.target as HTMLInputElement).value, 10);
+                            if (!isNaN(n)) {
+                              handleStockFieldUpdate({ onHand: Math.max(0, n) });
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }
+                        }}
+                        className="ml-auto w-20 text-xs px-2 py-1.5 rounded-lg border border-white/15 bg-black/30 text-brand-cream focus:outline-none focus:border-brand-orange/40"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="font-display text-3xl text-brand-amber">∞</p>
+                    <p className="text-sm text-brand-cream/55 mt-1">Unlimited stock — never sold out</p>
                   </div>
+                )}
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-white/20 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!linkedItem.unlimited}
+                    onChange={e => handleStockFieldUpdate({ unlimited: e.target.checked })}
+                    className="w-4 h-4 accent-brand-amber"
+                  />
                   <div>
-                    <p className="text-xs text-brand-cream/60">Reserved</p>
-                    <p className="font-display text-2xl text-brand-cream">{linkedItem.reserved}</p>
+                    <p className="text-sm text-brand-cream">Unlimited stock</p>
+                    <p className="text-[11px] text-brand-cream/45">For digital goods, gift cards, or made-to-order items. Never goes sold out.</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-brand-cream/60">Available</p>
-                    <p className={`font-display text-2xl ${Math.max(0, linkedItem.onHand - linkedItem.reserved) === 0 ? "text-brand-orange" : "text-brand-amber"}`}>
-                      {Math.max(0, linkedItem.onHand - linkedItem.reserved)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-brand-cream/60">Low at</p>
-                    <p className="font-display text-2xl text-brand-cream">{linkedItem.lowAt}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleStockAdjust(-10)} className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">−10</button>
-                  <button onClick={() => handleStockAdjust(-1)}  className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">−1</button>
-                  <span className="text-xs text-brand-cream/40 px-1">Adjust stock</span>
-                  <button onClick={() => handleStockAdjust(1)}   className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">+1</button>
-                  <button onClick={() => handleStockAdjust(10)}  className="text-xs px-2.5 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream">+10</button>
-                </div>
+                </label>
               </div>
             )}
             <label className={`mt-4 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${

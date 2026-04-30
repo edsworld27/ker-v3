@@ -764,7 +764,7 @@ function loadCustomProducts(): CustomProduct[] {
   catch { return []; }
 }
 
-function loadInventory(): Record<string, { onHand: number; reserved: number; lowAt: number }> {
+function loadInventory(): Record<string, { onHand: number; reserved: number; lowAt: number; unlimited?: boolean }> {
   if (typeof window === "undefined") return {};
   try { return JSON.parse(localStorage.getItem("lk_admin_inventory_v1") || "{}"); }
   catch { return {}; }
@@ -787,10 +787,11 @@ function applyOverride(p: Product, o: OverrideShape | undefined): Product {
   };
 }
 
-function withAvailable(p: Product, inv: Record<string, { onHand: number; reserved: number; lowAt: number }>): Product {
+function withAvailable(p: Product, inv: Record<string, { onHand: number; reserved: number; lowAt: number; unlimited?: boolean }>): Product {
   if (!p.stockSku) return p;
   const item = inv[p.stockSku];
   if (!item) return p;
+  if (item.unlimited) return p; // unlimited stock — don't expose `available`, never sold-out
   return { ...p, available: Math.max(0, item.onHand - item.reserved) };
 }
 

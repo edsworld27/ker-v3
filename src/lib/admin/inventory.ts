@@ -16,8 +16,11 @@ export interface InventoryItem {
   onHand: number;      // physical stock
   reserved: number;    // attached to unfulfilled orders
   lowAt: number;       // restock threshold
+  unlimited?: boolean; // when true, item never shows sold-out (digital, made-to-order, services)
   archived?: boolean;
 }
+
+const CHANGE_EVENT = "lk-admin-products-change";
 
 interface Store { [sku: string]: InventoryItem; }
 
@@ -29,6 +32,7 @@ function read(): Store {
 function write(s: Store) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 function seedIfEmpty(s: Store): Store {
@@ -69,6 +73,13 @@ export function adjustStock(sku: string, delta: number) {
   write(s);
 }
 
+export function updateInventoryFields(sku: string, patch: Partial<Pick<InventoryItem, "lowAt" | "unlimited" | "onHand" | "reserved" | "name" | "price" | "archived">>) {
+  const s = read();
+  if (!s[sku]) return;
+  s[sku] = { ...s[sku], ...patch };
+  write(s);
+}
+
 export function lowStockCount(): number {
-  return listInventory().filter(i => !i.archived && i.onHand - i.reserved <= i.lowAt).length;
+  return listInventory().filter(i => !i.archived && !i.unlimited && i.onHand - i.reserved <= i.lowAt).length;
 }
