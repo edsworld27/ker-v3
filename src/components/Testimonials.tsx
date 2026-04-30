@@ -1,6 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { REVIEWS } from "@/lib/reviews";
+import { useState, useEffect } from "react";
+import { REVIEWS, type Review } from "@/lib/reviews";
+import { getGlobalReviews, onReviewsChange } from "@/lib/admin/reviews";
 
 interface IgStory {
   type: "story";
@@ -148,6 +152,24 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
 
 
 export default function Testimonials() {
+  const [extraReviews, setExtraReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    function load() {
+      const mapped: Review[] = getGlobalReviews().map(r => ({
+        quote: r.body,
+        name: r.name,
+        location: r.location,
+        stars: r.stars,
+      }));
+      setExtraReviews(mapped);
+    }
+    load();
+    return onReviewsChange(load);
+  }, []);
+
+  const allReviews = [...REVIEWS, ...extraReviews];
+
   return (
     <section className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft overflow-hidden">
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
@@ -198,11 +220,11 @@ export default function Testimonials() {
         {/* Break out of the max-width container so the marquee runs the full viewport width */}
         <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] space-y-5 xl:space-y-6">
           <ReviewMarquee
-            reviews={[...REVIEWS.slice(0, 5), ...REVIEWS.slice(5)]}
+            reviews={[...allReviews.slice(0, Math.ceil(allReviews.length / 2)), ...allReviews.slice(Math.ceil(allReviews.length / 2))]}
             direction="left"
           />
           <ReviewMarquee
-            reviews={[...REVIEWS.slice(4), ...REVIEWS.slice(0, 4)]}
+            reviews={[...allReviews.slice(Math.floor(allReviews.length / 2)), ...allReviews.slice(0, Math.floor(allReviews.length / 2))]}
             direction="right"
           />
         </div>
@@ -213,7 +235,7 @@ export default function Testimonials() {
             href="/reviews"
             className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-brand-amber/40 bg-brand-black-card text-brand-amber text-sm sm:text-base font-medium tracking-wide hover:bg-brand-amber hover:text-brand-black transition-all duration-300 group"
           >
-            Read all {REVIEWS.length} reviews
+            Read all {allReviews.length} reviews
             <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
           </Link>
           <p className="text-brand-cream/30 text-xs mt-3 tracking-wide">
@@ -230,7 +252,7 @@ function ReviewMarquee({
   reviews,
   direction,
 }: {
-  reviews: typeof REVIEWS;
+  reviews: Review[];
   direction: "left" | "right";
 }) {
   // Duplicate the list so the animation loops seamlessly
@@ -246,7 +268,7 @@ function ReviewMarquee({
   );
 }
 
-function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
+function ReviewCard({ review }: { review: Review }) {
   const { quote, name, location, stars } = review;
   return (
     <div className="shrink-0 w-[85vw] sm:w-[26rem] xl:w-[28rem] flex flex-col p-7 xl:p-8 rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-purple/30 transition-colors">

@@ -1,18 +1,33 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { REVIEWS, PRODUCTS, type ProductFilter } from "@/lib/reviews";
+import { REVIEWS, PRODUCTS, type ProductFilter, type Review } from "@/lib/reviews";
+import { listReviews, onReviewsChange } from "@/lib/admin/reviews";
 
 export default function ReviewsPage() {
   const [productFilter, setProductFilter] = useState<ProductFilter>("All Products");
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "rating">("recent");
+  const [adminReviews, setAdminReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    function load() {
+      const mapped: Review[] = listReviews()
+        .filter(r => !r.hidden)
+        .map(r => ({ quote: r.body, name: r.name, location: r.location, stars: r.stars }));
+      setAdminReviews(mapped);
+    }
+    load();
+    return onReviewsChange(load);
+  }, []);
+
+  const allReviews = useMemo(() => [...REVIEWS, ...adminReviews], [adminReviews]);
 
   const filtered = useMemo(() => {
-    let result = [...REVIEWS];
+    let result = [...allReviews];
     if (productFilter !== "All Products") {
       result = result.filter((r) => r.product === productFilter);
     }
@@ -23,9 +38,11 @@ export default function ReviewsPage() {
       result = result.sort((a, b) => b.stars - a.stars);
     }
     return result;
-  }, [productFilter, starFilter, sortBy]);
+  }, [productFilter, starFilter, sortBy, allReviews]);
 
-  const avgRating = (REVIEWS.reduce((s, r) => s + r.stars, 0) / REVIEWS.length).toFixed(1);
+  const avgRating = allReviews.length
+    ? (allReviews.reduce((s, r) => s + r.stars, 0) / allReviews.length).toFixed(1)
+    : "5.0";
 
   return (
     <>
@@ -51,7 +68,7 @@ export default function ReviewsPage() {
               <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl bg-white/5 w-full max-w-2xl">
                 {[
                   { big: avgRating, small: "Average rating" },
-                  { big: `${REVIEWS.length}+`, small: "Verified reviews" },
+                  { big: `${allReviews.length}+`, small: "Verified reviews" },
                   { big: "100%", small: "5-star reviews" },
                 ].map((s) => (
                   <div key={s.small} className="bg-brand-black-card px-5 py-5 flex flex-col items-center text-center">
@@ -145,7 +162,7 @@ export default function ReviewsPage() {
 
             {/* Result count */}
             <p className="text-brand-cream/40 text-sm mb-8">
-              Showing <span className="text-brand-cream font-medium">{filtered.length}</span> of {REVIEWS.length} reviews
+              Showing <span className="text-brand-cream font-medium">{filtered.length}</span> of {allReviews.length} reviews
             </p>
 
             {/* Review grid */}
