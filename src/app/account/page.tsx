@@ -235,6 +235,21 @@ function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
             By continuing you agree to our{" "}
             <Link href="/privacy" className="text-brand-cream/60 hover:underline">Privacy Policy</Link>.
           </p>
+
+          <div className="mt-6 pt-6 border-t border-white/8">
+            <Link
+              href="/admin"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-brand-orange/30 bg-brand-orange/8 text-brand-orange hover:bg-brand-orange/15 hover:border-brand-orange/50 transition-all text-sm font-medium"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              Admin Access
+            </Link>
+          </div>
         </div>
       </main>
       <Footer />
