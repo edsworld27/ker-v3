@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { PRODUCTS } from "@/lib/products";
+import { type Product } from "@/lib/products";
 
 export default function Shop() {
   return (
@@ -145,33 +145,61 @@ export default function Shop() {
   );
 }
 
-// ProductCard is still exported for use on the /products page
-export function ProductCard({ product, isAdded, onAdd }: { product: (typeof PRODUCTS)[0]; isAdded: boolean; onAdd: () => void }) {
-  const { addItem } = useCart();
-  void addItem;
+// ProductCard is exported for use on the /products page
+export function ProductCard({ product, isAdded, onAdd }: { product: Product; isAdded: boolean; onAdd: () => void }) {
+  const soldOut = product.available === 0;
+  const lowStockQty = product.showLowStock && product.available !== undefined && product.available > 0 && product.available <= 8
+    ? product.available
+    : null;
+  const activePrice = product.onSale && product.salePrice ? product.salePrice : product.price;
+
   return (
-    <div className="group relative flex flex-col rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-orange/20 transition-all duration-300 overflow-hidden card-glow">
-      <div className="absolute top-4 left-4 z-10">
-        {product.badge && (
-          <span className={`text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white ${product.badgeColor}`}>
+    <div className={`group relative flex flex-col rounded-2xl bg-brand-black-card border transition-all duration-300 overflow-hidden card-glow ${
+      soldOut ? "border-white/5 opacity-70" : "border-white/5 hover:border-brand-orange/20"
+    }`}>
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
+        {soldOut && (
+          <span className="text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white bg-white/20">
+            Sold out
+          </span>
+        )}
+        {!soldOut && product.badge && (
+          <span className={`text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white ${product.badgeColor ?? "bg-brand-purple"}`}>
             {product.badge}
+          </span>
+        )}
+        {!soldOut && lowStockQty !== null && (
+          <span className="text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white bg-brand-orange/80">
+            Only {lowStockQty} left
+          </span>
+        )}
+        {!soldOut && product.onSale && product.salePrice && (
+          <span className="text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full text-white bg-brand-orange">
+            Sale
           </span>
         )}
       </div>
 
       {/* Image area */}
       <Link href={`/products/${product.id}`} className="relative h-52 sm:h-56 xl:h-60 2xl:h-72 bg-gradient-to-br from-brand-purple-muted via-brand-black-card to-brand-purple-dark flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="absolute rounded-full border border-brand-purple/30"
-              style={{ width: `${(i+1)*80}px`, height: `${(i+1)*80}px`, top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
-          ))}
-        </div>
-        <div className="relative z-10 w-32 h-20 rounded-2xl bg-gradient-to-br from-brand-orange/20 to-brand-purple/30 border border-white/10 flex flex-col items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-500">
-          <p className="font-display text-brand-cream text-xs font-bold tracking-widest">ODO</p>
-          <div className="w-8 h-px bg-brand-amber/50 my-1.5" />
-          <p className="text-brand-cream/40 text-[8px] tracking-widest uppercase">by Felicia</p>
-        </div>
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.image} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <>
+            <div className="absolute inset-0 opacity-20">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="absolute rounded-full border border-brand-purple/30"
+                  style={{ width: `${(i+1)*80}px`, height: `${(i+1)*80}px`, top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+              ))}
+            </div>
+            <div className="relative z-10 w-32 h-20 rounded-2xl bg-gradient-to-br from-brand-orange/20 to-brand-purple/30 border border-white/10 flex flex-col items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-500">
+              <p className="font-display text-brand-cream text-xs font-bold tracking-widest">ODO</p>
+              <div className="w-8 h-px bg-brand-amber/50 my-1.5" />
+              <p className="text-brand-cream/40 text-[8px] tracking-widest uppercase">by Felicia</p>
+            </div>
+          </>
+        )}
       </Link>
 
       {/* Info */}
@@ -180,11 +208,20 @@ export function ProductCard({ product, isAdded, onAdd }: { product: (typeof PROD
           <Link href={`/products/${product.id}`} className="font-display text-xl sm:text-2xl font-bold text-brand-cream hover:text-brand-orange transition-colors">
             {product.name}
           </Link>
-          <span className="font-display text-xl sm:text-2xl font-bold text-brand-orange shrink-0">£{product.price.toFixed(2)}</span>
+          <div className="shrink-0 text-right">
+            {product.onSale && product.salePrice ? (
+              <>
+                <span className="font-display text-xl sm:text-2xl font-bold text-brand-orange">£{activePrice.toFixed(2)}</span>
+                <span className="block text-xs text-brand-cream/40 line-through">£{product.price.toFixed(2)}</span>
+              </>
+            ) : (
+              <span className="font-display text-xl sm:text-2xl font-bold text-brand-orange">£{product.price.toFixed(2)}</span>
+            )}
+          </div>
         </div>
         <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/30 mb-4">{product.tagline}</p>
         <p className="text-sm xl:text-base text-brand-cream/55 leading-relaxed flex-1 mb-4">{product.description[0]}</p>
-        <p className="text-xs sm:text-sm italic text-brand-amber/60 mb-5">✦ {product.note}</p>
+        {product.note && <p className="text-xs sm:text-sm italic text-brand-amber/60 mb-5">✦ {product.note}</p>}
         <Link
           href={`/products/${product.id}`}
           className="w-full py-3 mb-2.5 rounded-xl text-center text-sm font-medium text-brand-cream/70 border border-white/10 hover:border-brand-cream/30 hover:text-brand-cream transition-colors"
@@ -193,13 +230,16 @@ export function ProductCard({ product, isAdded, onAdd }: { product: (typeof PROD
         </Link>
         <button
           onClick={onAdd}
+          disabled={soldOut}
           className={`w-full py-4 rounded-xl font-semibold text-sm sm:text-base tracking-wide transition-all duration-300 ${
-            isAdded
+            soldOut
+              ? "bg-white/10 text-brand-cream/30 cursor-not-allowed"
+              : isAdded
               ? "bg-brand-purple text-white"
               : "bg-brand-orange hover:bg-brand-orange-light text-white hover:-translate-y-0.5 shadow-lg shadow-brand-orange/15"
           }`}
         >
-          {isAdded ? "✓ Added to Bag" : "Add to Bag"}
+          {soldOut ? "Sold out" : isAdded ? "✓ Added to Bag" : "Add to Bag"}
         </button>
       </div>
     </div>

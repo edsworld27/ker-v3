@@ -16,13 +16,19 @@ export interface ProductReview {
 export interface Product {
   slug: string;
   id: string;
-  range: "odo" | "nkrabea" | "unisex";
+  range: string;           // "odo" | "nkrabea" | "unisex" or any custom range
   name: string;
   tagline: string;
   price: number;
   salePrice?: number;
+  onSale?: boolean;
+  image?: string;
   badge?: string;
   badgeColor?: string;
+  archived?: boolean;
+  stockSku?: string;       // links to inventory item SKU
+  showLowStock?: boolean;  // show "Only X left" badge when stock is low
+  available?: number;      // computed: onHand - reserved (undefined = not tracked)
   rating: number;
   reviewCount: number;
   origin: string;
@@ -721,6 +727,93 @@ export const PRODUCTS: Product[] = [
   },
 ];
 
-export function getProduct(slug: string) {
-  return PRODUCTS.find((p) => p.slug === slug);
+// ── Override layer ────────────────────────────────────────────────────────────
+//
+// Admin edits live in localStorage (src/lib/admin/productOverrides.ts).
+// applyOverride() merges them on top of the static catalog at read time.
+// On the server this is a no-op — SSR renders defaults; the client re-merges
+// on hydration. Once a real DB lands, `loadOverrides()` becomes a fetch.
+
+interface OverrideShape {
+  slug: string;
+  price?: number;
+  salePrice?: number;
+  onSale?: boolean;
+  description?: string[];
+  image?: string;
+  badge?: string;
+  badgeColor?: string;
+  archived?: boolean;
+  stockSku?: string;
+  showLowStock?: boolean;
+}
+
+interface CustomProduct extends Product {
+  _custom: true;
+}
+
+function loadOverrides(): Record<string, OverrideShape> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem("lk_admin_product_overrides_v1") || "{}"); }
+  catch { return {}; }
+}
+
+function loadCustomProducts(): CustomProduct[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem("lk_admin_custom_products_v1") || "[]"); }
+  catch { return []; }
+}
+
+function loadInventory(): Record<string, { onHand: number; reserved: number; lowAt: number }> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem("lk_admin_inventory_v1") || "{}"); }
+  catch { return {}; }
+}
+
+function applyOverride(p: Product, o: OverrideShape | undefined): Product {
+  if (!o) return p;
+  return {
+    ...p,
+    price:        o.price        ?? p.price,
+    salePrice:    o.salePrice    ?? p.salePrice,
+    onSale:       o.onSale       ?? p.onSale,
+    description:  o.description  ?? p.description,
+    image:        o.image        ?? p.image,
+    badge:        o.badge        ?? p.badge,
+    badgeColor:   o.badgeColor   ?? p.badgeColor,
+    archived:     o.archived     ?? p.archived,
+    stockSku:     o.stockSku     ?? p.stockSku,
+    showLowStock: o.showLowStock ?? p.showLowStock,
+  };
+}
+
+function withAvailable(p: Product, inv: Record<string, { onHand: number; reserved: number; lowAt: number }>): Product {
+  if (!p.stockSku) return p;
+  const item = inv[p.stockSku];
+  if (!item) return p;
+  return { ...p, available: Math.max(0, item.onHand - item.reserved) };
+}
+
+export function getProduct(slug: string): Product | undefined {
+  const inv = loadInventory();
+  const overrides = loadOverrides();
+  const base = [...PRODUCTS, ...loadCustomProducts()].find((p) => p.slug === slug);
+  if (!base) return undefined;
+  return withAvailable(applyOverride(base, overrides[slug]), inv);
+}
+
+export function getProducts(): Product[] {
+  const overrides = loadOverrides();
+  const inv = loadInventory();
+  const all = [...PRODUCTS, ...loadCustomProducts()];
+  return all.map((p) => withAvailable(applyOverride(p, overrides[p.slug]), inv));
+}
+
+export const CHANGE_EVENT = "lk-products-change";
+
+export function onProductsChange(handler: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const events = [CHANGE_EVENT, "lk-admin-products-change", "storage"];
+  events.forEach(e => window.addEventListener(e, handler));
+  return () => events.forEach(e => window.removeEventListener(e, handler));
 }

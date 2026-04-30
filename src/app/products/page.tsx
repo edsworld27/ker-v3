@@ -1,23 +1,14 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { PRODUCTS } from "@/lib/products";
+import { getProducts, onProductsChange, type Product } from "@/lib/products";
 import { ProductCard } from "@/components/Shop";
 import { useCart } from "@/context/CartContext";
 import ProductDetail from "@/components/ProductDetail";
-
-type Tab = "all" | "odo" | "nkrabea" | "unisex";
-type AllSelector = "all" | "odo" | "nkrabea" | "unisex" | "gift-cards" | "accessories" | "clothing";
-
-const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "all",     label: "All Products",          sub: "Browse the full collection" },
-  { id: "odo",     label: "Odo · For Her",         sub: "Heritage skincare for women" },
-  { id: "nkrabea", label: "Nkrabea · For Him",     sub: "Strength rituals for men" },
-  { id: "unisex",  label: "Felicia's Black Soap",  sub: "World renowned formula" },
-];
+import { listCollections, onCollectionsChange, type Collection } from "@/lib/admin/collections";
 
 export default function ShopPage() {
   return (
@@ -34,40 +25,48 @@ function ShopContent() {
   const rangeParam = searchParams.get("range");
   const tabParam   = searchParams.get("tab");
 
-  const initial: Tab =
-    rangeParam === "odo" || rangeParam === "nkrabea" || rangeParam === "unisex"
-      ? rangeParam
-      : "all";
+  const [products, setProducts] = useState<Product[]>(() => getProducts());
+  const [collections, setCollections] = useState<Collection[]>(() => listCollections());
 
-  const initialSelector: AllSelector =
-    tabParam === "gift-cards" || tabParam === "clothing" || tabParam === "accessories"
-      ? tabParam
-      : "all";
+  useEffect(() => {
+    const refresh = () => {
+      setProducts(getProducts());
+      setCollections(listCollections());
+    };
+    const unsub1 = onProductsChange(refresh);
+    const unsub2 = onCollectionsChange(refresh);
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
-  const [activeTab,   setActiveTab]   = useState<Tab>(initial);
-  const [allSelector, setAllSelector] = useState<AllSelector>(initialSelector);
+  const activeProducts = products.filter(p => !p.archived);
 
-  function handleAdd(product: (typeof PRODUCTS)[0]) {
-    addItem({ id: product.id, name: product.name, price: product.price });
+  const allRanges = ["all", ...collections.map(c => c.slug)];
+  const initialTab = allRanges.includes(rangeParam ?? "") ? (rangeParam ?? "all") : "all";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [allSelector, setAllSelector] = useState<string>(
+    tabParam === "gift-cards" || tabParam === "clothing" || tabParam === "accessories" ? tabParam : "all"
+  );
+
+  function handleAdd(product: Product) {
+    if (product.available === 0) return;
+    const price = product.onSale && product.salePrice ? product.salePrice : product.price;
+    addItem({ id: product.id, name: product.name, price });
     setAdded(product.id);
     setTimeout(() => setAdded(null), 1500);
   }
 
   const visible = (() => {
-    if (activeTab === "odo")     return PRODUCTS.filter((p) => p.range === "odo");
-    if (activeTab === "nkrabea") return PRODUCTS.filter((p) => p.range === "nkrabea");
-    // "all" tab — apply sub-selector
-    if (allSelector === "odo")         return PRODUCTS.filter((p) => p.range === "odo");
-    if (allSelector === "nkrabea")     return PRODUCTS.filter((p) => p.range === "nkrabea");
-    if (allSelector === "unisex")      return PRODUCTS.filter((p) => p.slug === "black-soap");
-    if (allSelector === "gift-cards")  return PRODUCTS.filter((p) => p.slug.includes("gift-card"));
-    if (allSelector === "accessories") return PRODUCTS.filter((p) => p.formats.includes("stone"));
+    const base = activeProducts;
+    if (activeTab !== "all") return base.filter(p => p.range === activeTab);
+    if (allSelector === "gift-cards")  return base.filter(p => p.slug.includes("gift-card"));
+    if (allSelector === "accessories") return base.filter(p => p.formats.includes("stone"));
     if (allSelector === "clothing")    return [];
-    return PRODUCTS;
+    if (allSelector !== "all")         return base.filter(p => p.range === allSelector);
+    return base;
   })();
 
-  const odoCount     = PRODUCTS.filter(p => p.range === "odo").length;
-  const nkrabeaCount = PRODUCTS.filter(p => p.range === "nkrabea").length;
+  const blackSoap = activeProducts.find(p => p.slug === "black-soap");
+  const isBlackSoapView = activeTab === "unisex" || (activeTab === "all" && allSelector === "unisex");
 
   return (
     <>
@@ -84,8 +83,7 @@ function ShopContent() {
                 <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">The Shop</span>
                 <div className="adinkra-line w-8 sm:w-10" />
               </div>
-              <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-5
-                text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
+              <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-5 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
                 Begin your ritual
               </h1>
               <p className="text-brand-cream/60 text-base sm:text-lg leading-relaxed max-w-2xl mb-10">
@@ -101,9 +99,7 @@ function ShopContent() {
                   <span className="text-xs tracking-[0.2em] uppercase text-brand-orange mb-2">Odo · For Her</span>
                   <span className="font-display text-xl font-bold text-brand-cream mb-1">Heritage skincare</span>
                   <span className="text-sm text-brand-cream/50">Rooted in love &amp; Ghanaian tradition</span>
-                  <span className="mt-4 text-brand-orange text-sm group-hover:translate-x-1 transition-transform inline-block">
-                    Shop Odo →
-                  </span>
+                  <span className="mt-4 text-brand-orange text-sm group-hover:translate-x-1 transition-transform inline-block">Shop Odo →</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("nkrabea")}
@@ -112,9 +108,7 @@ function ShopContent() {
                   <span className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-2">Nkrabea · For Him</span>
                   <span className="font-display text-xl font-bold text-brand-cream mb-1">Strength &amp; destiny</span>
                   <span className="text-sm text-brand-cream/50">Power rituals built for men</span>
-                  <span className="mt-4 text-brand-amber text-sm group-hover:translate-x-1 transition-transform inline-block">
-                    Shop Nkrabea →
-                  </span>
+                  <span className="mt-4 text-brand-amber text-sm group-hover:translate-x-1 transition-transform inline-block">Shop Nkrabea →</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("unisex")}
@@ -123,9 +117,7 @@ function ShopContent() {
                   <span className="text-xs tracking-[0.2em] uppercase text-brand-cream/50 mb-2">For Everyone</span>
                   <span className="font-display text-xl font-bold text-brand-cream mb-1">African Black Soap</span>
                   <span className="text-sm text-brand-cream/50">World renowned. One formula.</span>
-                  <span className="mt-4 text-brand-cream/60 text-sm group-hover:translate-x-1 group-hover:text-brand-cream transition-all inline-block">
-                    Shop Black Soap →
-                  </span>
+                  <span className="mt-4 text-brand-cream/60 text-sm group-hover:translate-x-1 group-hover:text-brand-cream transition-all inline-block">Shop Black Soap →</span>
                 </button>
               </div>
             </div>
@@ -136,24 +128,35 @@ function ShopContent() {
         <section className="w-full py-12 sm:py-16">
           <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
-            {/* Tab bar */}
+            {/* Tab bar — dynamic from collections */}
             <div className="overflow-x-auto pb-1 mb-12 sm:mb-14">
-              <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-full">
-                {TABS.map(tab => (
+              <div className="flex gap-1 p-1 bg-brand-black-card border border-white/8 rounded-2xl w-full min-w-max sm:min-w-0">
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className={`flex flex-col flex-1 items-start px-4 py-3 rounded-xl transition-all duration-200 text-left min-w-0 ${
+                    activeTab === "all" ? "bg-brand-black-soft border border-white/10" : "hover:bg-white/5"
+                  }`}
+                >
+                  <span className={`text-sm font-medium transition-colors truncate w-full ${activeTab === "all" ? "text-brand-cream" : "text-brand-cream/50"}`}>
+                    All Products
+                  </span>
+                  <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5 truncate w-full">
+                    Browse the full collection
+                  </span>
+                </button>
+                {collections.map(col => (
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    key={col.slug}
+                    onClick={() => setActiveTab(col.slug)}
                     className={`flex flex-col flex-1 items-start px-4 py-3 rounded-xl transition-all duration-200 text-left min-w-0 ${
-                      activeTab === tab.id
-                        ? "bg-brand-black-soft border border-white/10"
-                        : "hover:bg-white/5"
+                      activeTab === col.slug ? "bg-brand-black-soft border border-white/10" : "hover:bg-white/5"
                     }`}
                   >
-                    <span className={`text-sm font-medium transition-colors truncate w-full ${activeTab === tab.id ? "text-brand-cream" : "text-brand-cream/50"}`}>
-                      {tab.label}
+                    <span className={`text-sm font-medium transition-colors truncate w-full ${activeTab === col.slug ? "text-brand-cream" : "text-brand-cream/50"}`}>
+                      {col.label}
                     </span>
                     <span className="text-[10px] tracking-wide text-brand-cream/30 hidden sm:block mt-0.5 truncate w-full">
-                      {tab.sub}
+                      {col.sub}
                     </span>
                   </button>
                 ))}
@@ -172,7 +175,8 @@ function ShopContent() {
                   { id: "gift-cards",  label: "Buying for a Friend" },
                   { id: "accessories", label: "Accessories" },
                   { id: "clothing",    label: "Clothing" },
-                ] as { id: AllSelector; label: string }[]).map(opt => (
+                  ...collections.filter(c => !["odo","nkrabea","unisex"].includes(c.slug)).map(c => ({ id: c.slug, label: c.label })),
+                ] as { id: string; label: string }[]).map(opt => (
                   <button
                     key={opt.id}
                     onClick={() => setAllSelector(opt.id)}
@@ -193,50 +197,56 @@ function ShopContent() {
               <RangeHeader
                 name="Odo" tagline="For Her" colour="text-brand-orange"
                 description="Odo — meaning 'love' in Twi — is our women's range. Every formula is built on centuries of Ghanaian skincare tradition: raw shea, black soap, and plant actives sourced from named farms across Ghana. No synthetic ingredients, ever."
-                count={odoCount}
+                count={activeProducts.filter(p => p.range === "odo").length}
               />
             )}
             {activeTab === "nkrabea" && (
               <RangeHeader
                 name="Nkrabea" tagline="For Him" colour="text-brand-amber"
-                description="Nkrabea — meaning 'destiny' in Twi — is our men's range. Built on the same heritage black soap base, engineered for stronger skin, closer shaves, and a daily ritual that actually works. No fuss. No synthetic fragrance. Just results."
-                count={nkrabeaCount}
+                description="Nkrabea — meaning 'destiny' in Twi — is our men's range. Built on the same heritage black soap base, engineered for stronger skin, closer shaves, and a daily ritual that actually works."
+                count={activeProducts.filter(p => p.range === "nkrabea").length}
+              />
+            )}
+            {/* Custom collection header */}
+            {activeTab !== "all" && !["odo","nkrabea","unisex"].includes(activeTab) && (
+              <RangeHeader
+                name={collections.find(c => c.slug === activeTab)?.label ?? activeTab}
+                tagline=""
+                colour="text-brand-cream"
+                description=""
+                count={visible.length}
               />
             )}
 
-            {/* Accessories sub-selector header */}
             {activeTab === "all" && allSelector === "accessories" && (
               <RangeHeader
                 name="Accessories" tagline="Complete the ritual" colour="text-brand-cream"
-                description="The tools that make your ritual complete. Sourced to complement every Odo and Nkrabea formula."
-                count={PRODUCTS.filter(p => p.formats.includes("stone")).length}
+                description="The tools that make your ritual complete."
+                count={visible.length}
               />
             )}
-
-            {/* Gift card sub-selector header */}
             {activeTab === "all" && allSelector === "gift-cards" && (
               <RangeHeader
                 name="Buying for a Friend" tagline="Gift Cards" colour="text-brand-purple-light"
-                description="Send the gift of choice. Digital gift cards arrive by email within minutes — your friend picks any product across Odo, Nkrabea, or Black Soap. Never expires."
-                count={PRODUCTS.filter(p => p.slug.includes("gift-card")).length}
+                description="Send the gift of choice. Digital gift cards arrive by email within minutes. Never expires."
+                count={visible.length}
               />
             )}
 
-            {/* Clothing — coming soon banner */}
+            {/* Clothing coming soon */}
             {activeTab === "all" && allSelector === "clothing" && (
               <div className="rounded-2xl border border-brand-amber/30 bg-gradient-to-br from-brand-amber/10 to-brand-black-card p-8 sm:p-10 mb-8">
                 <p className="text-xs tracking-[0.2em] uppercase text-brand-amber mb-3">Coming soon</p>
                 <h3 className="font-display font-bold text-brand-cream text-3xl mb-3">Support Tees</h3>
                 <p className="text-brand-cream/60 max-w-2xl">
                   We&apos;re adding a limited run of Luv &amp; Ker t-shirts so you can support the mission through what you wear.
-                  Proceeds help us invest in farmer partnerships across Africa and clean, health-first formulations.
                 </p>
               </div>
             )}
 
             {/* Product grid / Black Soap detail */}
-            {activeTab === "unisex" || (activeTab === "all" && allSelector === "unisex") ? (
-              <ProductDetail product={PRODUCTS.find(p => p.slug === "black-soap")!} />
+            {isBlackSoapView && blackSoap ? (
+              <ProductDetail product={blackSoap} />
             ) : activeTab !== "all" || allSelector !== "clothing" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6 2xl:gap-8">
                 {visible.map(product => (
@@ -268,7 +278,6 @@ function ShopContent() {
               ))}
             </div>
 
-            {/* Gift card nudge */}
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl border border-brand-purple/20 bg-brand-purple-muted/20">
               <div>
                 <p className="font-display font-bold text-brand-cream text-lg">Not sure which range?</p>
@@ -296,10 +305,10 @@ function RangeHeader({ name, tagline, colour, description, count }: {
     <div className="mb-10 pb-10 border-b border-white/8">
       <div className="flex items-baseline gap-3 mb-3">
         <h2 className={`font-display font-bold text-3xl sm:text-4xl ${colour}`}>{name}</h2>
-        <span className="text-sm tracking-[0.2em] uppercase text-brand-cream/40">{tagline}</span>
+        {tagline && <span className="text-sm tracking-[0.2em] uppercase text-brand-cream/40">{tagline}</span>}
         <span className="ml-auto text-xs text-brand-cream/30">{count} products</span>
       </div>
-      <p className="text-brand-cream/55 text-sm sm:text-base leading-relaxed max-w-3xl">{description}</p>
+      {description && <p className="text-brand-cream/55 text-sm sm:text-base leading-relaxed max-w-3xl">{description}</p>}
     </div>
   );
 }

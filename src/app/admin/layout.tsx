@@ -8,11 +8,13 @@ import { pendingOrdersCount } from "@/lib/admin/stats";
 import { lowStockCount } from "@/lib/admin/inventory";
 
 const NAV = [
-  { href: "/admin",            label: "Overview",   match: (p: string) => p === "/admin" },
-  { href: "/admin/orders",     label: "Orders",     match: (p: string) => p.startsWith("/admin/orders") },
-  { href: "/admin/inventory",  label: "Inventory",  match: (p: string) => p.startsWith("/admin/inventory") },
-  { href: "/admin/customers",  label: "Customers",  match: (p: string) => p.startsWith("/admin/customers") },
-  { href: "/admin/settings",   label: "Settings",   match: (p: string) => p.startsWith("/admin/settings") },
+  { href: "/admin",              label: "Overview",    match: (p: string) => p === "/admin" },
+  { href: "/admin/orders",       label: "Orders",      match: (p: string) => p.startsWith("/admin/orders") },
+  { href: "/admin/products",     label: "Products",    match: (p: string) => p.startsWith("/admin/products") },
+  { href: "/admin/collections",  label: "Collections", match: (p: string) => p.startsWith("/admin/collections") },
+  { href: "/admin/inventory",    label: "Inventory",   match: (p: string) => p.startsWith("/admin/inventory") },
+  { href: "/admin/customers",    label: "Customers",   match: (p: string) => p.startsWith("/admin/customers") },
+  { href: "/admin/settings",     label: "Settings",    match: (p: string) => p.startsWith("/admin/settings") },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -107,6 +109,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
+
+        <div className="px-3 pb-3">
+          <Link
+            href="/admin/products/new"
+            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-brand-orange/25 text-[11px] text-brand-orange/80 hover:text-brand-orange hover:border-brand-orange/50 transition-colors"
+          >
+            + Add product
+          </Link>
+        </div>
 
         <div className="p-4 border-t border-white/5 text-[11px] text-brand-cream/40">
           <p className="truncate">{session.user.email}</p>
