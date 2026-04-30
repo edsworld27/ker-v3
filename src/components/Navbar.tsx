@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { AUTH_EVENT, getSession, isAdmin, signOut, type Session } from "@/lib/auth";
 import { useContent } from "@/lib/useContent";
+import { listPublishedNavPages, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -44,6 +45,7 @@ export default function Navbar() {
   const [mobileShopOpen,  setMobileShopOpen]  = useState(false);
   const [session,         setSession]         = useState<Session | null>(null);
   const [hydrated,        setHydrated]        = useState(false);
+  const [navPages,        setNavPages]        = useState<CustomPage[]>([]);
   const aboutRef   = useRef<HTMLDivElement>(null);
   const shopRef    = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -64,6 +66,11 @@ export default function Navbar() {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
+  }, []);
+
+  useEffect(() => {
+    setNavPages(listPublishedNavPages());
+    return onPagesChange(() => setNavPages(listPublishedNavPages()));
   }, []);
 
   useEffect(() => {
@@ -171,6 +178,15 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
+              </Link>
+            ))}
+            {navPages.map(page => (
+              <Link
+                key={page.id}
+                href={`/p/${page.slug}`}
+                className="text-sm 2xl:text-base tracking-wide transition-colors duration-200 whitespace-nowrap text-brand-cream/60 hover:text-brand-cream"
+              >
+                {page.navLabel ?? page.title}
               </Link>
             ))}
           </div>
@@ -283,6 +299,16 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
+              </Link>
+            ))}
+            {navPages.map(page => (
+              <Link
+                key={page.id}
+                href={`/p/${page.slug}`}
+                onClick={() => setMenuOpen(false)}
+                className="text-brand-cream/70 hover:text-brand-cream text-sm tracking-wide py-3 px-1"
+              >
+                {page.navLabel ?? page.title}
               </Link>
             ))}
 

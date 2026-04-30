@@ -7,6 +7,7 @@ import { getGiftCard } from "@/lib/giftCards";
 import { listOrders, type Order } from "@/lib/admin/orders";
 import { getSession, AUTH_EVENT, type Session } from "@/lib/auth";
 import { createTicket } from "@/lib/admin/tickets";
+import { getShippingConfig } from "@/lib/admin/shipping";
 
 interface Message {
   id: string;
@@ -89,7 +90,22 @@ function botReply(input: string, session: Session | null): { text: string; signI
     };
   }
   if (/shipping|delivery|how long/i.test(q)) {
-    return { text: "UK standard: £4.99 (2–4 working days), free over £30. Express: £7.90 next-day if ordered before 2pm. EU/US/CA also available.", cta: { label: "Full shipping info", href: "/shipping-returns" } };
+    const { zones } = getShippingConfig();
+    const uk = zones.find(z => z.id === "z_uk" || z.countries.includes("GB"));
+    let text = "";
+    if (uk) {
+      const parts = uk.rates.map(r => {
+        const days = r.minDays === r.maxDays ? `${r.minDays} day` : `${r.minDays}–${r.maxDays} days`;
+        return `${r.label}: £${r.price.toFixed(2)} (${days})`;
+      });
+      const threshold = uk.freeThreshold;
+      if (threshold) parts.push(`Free over £${threshold}`);
+      text = `UK shipping — ${parts.join(" · ")}.`;
+    } else {
+      text = "UK and international shipping available.";
+    }
+    text += " EU, US/CA and worldwide also covered.";
+    return { text, cta: { label: "Full shipping info", href: "/shipping-returns" } };
   }
   if (/ingredient|whats in|allerg|paraben|phthalate|sulphate|sls/i.test(q)) {
     return { text: "Every ingredient is named on the product page. Odo is free from parabens, phthalates, sulphates (SLS/SLES) and synthetic fragrance.", cta: { label: "See ingredient sources", href: "/ingredients" } };
