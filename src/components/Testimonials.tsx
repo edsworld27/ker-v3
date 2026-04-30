@@ -184,7 +184,7 @@ export default function Testimonials() {
   const allReviews = [...REVIEWS, ...extraReviews];
 
   return (
-    <section className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft overflow-hidden">
+    <section id="testimonials" className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft overflow-hidden">
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
         {/* Header */}

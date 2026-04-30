@@ -6,6 +6,7 @@ import ChatBot from "@/components/ChatBot";
 import PurpleSideScroller from "@/components/PurpleSideScroller";
 import SiteHead from "@/components/SiteHead";
 import PreviewBar from "@/components/PreviewBar";
+import ThemeInjector from "@/components/ThemeInjector";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -54,6 +55,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-brand-black text-brand-cream font-body antialiased">
         <CartProvider>
+          <ThemeInjector />
           <PreviewBar />
           <SiteHead />
           {children}

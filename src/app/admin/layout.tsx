@@ -39,6 +39,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/faq",          label: "FAQ",         match: (p) => p.startsWith("/admin/faq") },
       { href: "/admin/pages",        label: "Pages",       match: (p) => p.startsWith("/admin/pages") },
       { href: "/admin/website",      label: "Website",     match: (p) => p.startsWith("/admin/website") },
+      { href: "/admin/theme",        label: "Theme",       match: (p) => p.startsWith("/admin/theme") },
     ],
   },
   {

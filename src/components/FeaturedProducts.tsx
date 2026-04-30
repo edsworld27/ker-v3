@@ -43,7 +43,7 @@ export default function FeaturedProducts() {
     .filter((p): p is Product => !!p && !p.archived);
 
   return (
-    <section className="w-full py-20 sm:py-24 bg-brand-black relative overflow-hidden">
+    <section id="featured" className="w-full py-20 sm:py-24 bg-brand-black relative overflow-hidden">
       {/* top divider */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-orange/20 to-transparent" />
 

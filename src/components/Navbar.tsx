@@ -95,6 +95,7 @@ export default function Navbar() {
   return (
     <>
       <nav
+        data-navbar
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
             ? "bg-brand-black/95 backdrop-blur-md border-b border-white/5"
