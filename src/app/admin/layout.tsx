@@ -124,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <div className="p-4 border-t border-white/5 text-[11px] text-brand-cream/40">
-          <p className="truncate">{session.user.email}</p>
+          <p className="truncate">{session?.user.email ?? "dev mode"}</p>
           <Link href="/" className="hover:text-brand-cream transition-colors">View site →</Link>
         </div>
       </aside>
