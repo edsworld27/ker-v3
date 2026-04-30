@@ -10,6 +10,7 @@ export const metadata = {
 export default function Page() {
   return (
     <InfoPage
+      contentKey="ingredients.hero"
       eyebrow="Ingredients"
       title="Every element has a name, a region, a story"
       intro="We don't hide behind ‘fragrance’. Tap any ingredient to see the co-operative that grows it, how it's processed, and why we use it."

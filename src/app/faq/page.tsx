@@ -174,6 +174,7 @@ export default function Page() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
       />
       <InfoPage
+        contentKey="faq.hero"
         eyebrow="FAQ"
         title="30 questions, honestly answered"
         intro="Everything you've asked us — about the bars, the bottles, the shipping, and the values behind them. Use the menu below to jump to a section, or scroll for the full list."

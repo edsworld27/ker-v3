@@ -5,6 +5,7 @@ export const metadata = { title: "Contact Us | Luv & Ker" };
 export default function Page() {
   return (
     <InfoPage
+      contentKey="contact.hero"
       eyebrow="Contact"
       title="We read every message"
       intro="Questions about your order, our ingredients, or just want to say hello? We&apos;d love to hear from you."

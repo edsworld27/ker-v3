@@ -6,12 +6,17 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { REVIEWS, PRODUCTS, type ProductFilter, type Review } from "@/lib/reviews";
 import { listReviews, onReviewsChange } from "@/lib/admin/reviews";
+import { useContent } from "@/lib/useContent";
 
 export default function ReviewsPage() {
   const [productFilter, setProductFilter] = useState<ProductFilter>("All Products");
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "rating">("recent");
   const [adminReviews, setAdminReviews] = useState<Review[]>([]);
+  const eyebrow   = useContent("reviews.hero.eyebrow",   "Verified reviews");
+  const headline1 = useContent("reviews.hero.headline1", "What people are");
+  const headline2 = useContent("reviews.hero.headline2", "actually saying");
+  const intro     = useContent("reviews.hero.intro",     "Real customers. Real results. We don't pay for testimonials and we don't curate them.");
 
   useEffect(() => {
     function load() {
@@ -54,14 +59,14 @@ export default function ReviewsPage() {
             <div className="flex flex-col items-center text-center">
               <div className="flex items-center gap-3 mb-5">
                 <div className="adinkra-line w-8 sm:w-10" />
-                <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">Verified reviews</span>
+                <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">{eyebrow}</span>
                 <div className="adinkra-line w-8 sm:w-10" />
               </div>
               <h1 className="font-display font-bold text-brand-cream leading-tight mb-5 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
-                What people are <span className="gradient-text">actually saying</span>
+                {headline1} <span className="gradient-text">{headline2}</span>
               </h1>
               <p className="text-brand-cream/60 text-base sm:text-lg leading-relaxed max-w-2xl mb-10">
-                Real customers. Real results. We don&apos;t pay for testimonials and we don&apos;t curate them.
+                {intro}
               </p>
 
               {/* Stats strip */}

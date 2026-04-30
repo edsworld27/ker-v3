@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useContent } from "@/lib/useContent";
 
 interface Post {
   slug: string;
@@ -75,6 +78,9 @@ const CATEGORY_COLOURS: Record<string, string> = {
 
 export default function BlogPage() {
   const featured = POSTS.find(p => p.featured);
+  const eyebrow  = useContent("blog.hero.eyebrow",  "Journal");
+  const headline = useContent("blog.hero.headline", "The Luv & Ker Journal");
+  const intro    = useContent("blog.hero.intro",    "Stories, ingredients, sourcing, and skin — written by the people who make the soap.");
   const rest = POSTS.filter(p => !p.featured);
 
   return (
@@ -89,14 +95,14 @@ export default function BlogPage() {
             <div className="flex flex-col items-center text-center">
               <div className="flex items-center gap-3 mb-5">
                 <div className="adinkra-line w-8 sm:w-10" />
-                <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Journal</span>
+                <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
                 <div className="adinkra-line w-8 sm:w-10" />
               </div>
               <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-5 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-                The Luv &amp; Ker Journal
+                {headline}
               </h1>
               <p className="text-brand-cream/60 text-base sm:text-lg leading-relaxed max-w-xl">
-                Stories, ingredients, sourcing, and skin — written by the people who make the soap.
+                {intro}
               </p>
             </div>
           </div>

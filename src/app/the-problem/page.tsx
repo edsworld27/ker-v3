@@ -1,12 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-export const metadata = {
-  title: "The Problem | Luv & Ker",
-  description:
-    "An honest, research-backed look at phthalates, parabens, sulphates, and the fragrance loophole — and why we built Odo without any of them.",
-};
+import { useContent } from "@/lib/useContent";
 
 const SOURCES = [
   {
@@ -112,6 +109,11 @@ const SECTIONS = [
 ];
 
 export default function Page() {
+  const eyebrow   = useContent("the-problem.hero.eyebrow",   "The Problem");
+  const headline1 = useContent("the-problem.hero.headline1", "They told us beauty was");
+  const headline2 = useContent("the-problem.hero.headline2", "pain.");
+  const headline3 = useContent("the-problem.hero.headline3", "They lied.");
+  const intro     = useContent("the-problem.hero.intro",     "For centuries women have been sold the same story — that to be radiant, you must suffer. That to be soft, you must burn. That to glow, you must absorb a hundred chemicals you cannot pronounce.");
   return (
     <>
       <Navbar />
@@ -122,17 +124,16 @@ export default function Page() {
           <div className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-16 sm:py-20 lg:py-24">
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">{eyebrow}</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-              They told us beauty was <span className="italic gradient-text">pain.</span>
+              {headline1} <span className="italic gradient-text">{headline2}</span>
               <br />
-              <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">They lied.</span>
+              <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">{headline3}</span>
             </h1>
             <div className="space-y-5 text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-[1.8] mb-8">
               <p>
-                For centuries women have been sold the same story — that to be radiant, you must suffer.
-                That to be soft, you must burn. That to glow, you must absorb a hundred chemicals you cannot pronounce.
+                {intro}
               </p>
               <p>
                 But our grandmothers&apos; grandmothers had skin like the morning sun. They walked through the heat of Ghana

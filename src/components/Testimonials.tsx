@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { REVIEWS, type Review } from "@/lib/reviews";
 import { getGlobalReviews, onReviewsChange } from "@/lib/admin/reviews";
+import { useContent } from "@/lib/useContent";
 
 interface IgStory {
   type: "story";
@@ -153,6 +154,18 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
 
 export default function Testimonials() {
   const [extraReviews, setExtraReviews] = useState<Review[]>([]);
+  const eyebrow   = useContent("home.testimonials.eyebrow",   "Stories");
+  const headline1 = useContent("home.testimonials.headline1", "What people are");
+  const headline2 = useContent("home.testimonials.headline2", "actually saying");
+  const intro     = useContent("home.testimonials.intro",     "Real DMs. Real reposts. Real customers — men and women, mothers and fathers, dermatologists and daughters. We don't pay for testimonials and we don't curate them.");
+  const stat1Big  = useContent("home.testimonials.stat1Big",  "4.9");
+  const stat1Small= useContent("home.testimonials.stat1Small","Average rating");
+  const stat2Big  = useContent("home.testimonials.stat2Big",  "3,400+");
+  const stat2Small= useContent("home.testimonials.stat2Small","Happy customers");
+  const stat3Big  = useContent("home.testimonials.stat3Big",  "91%");
+  const stat3Small= useContent("home.testimonials.stat3Small","Buy again within 90 days");
+  const stat4Big  = useContent("home.testimonials.stat4Big",  "0");
+  const stat4Small= useContent("home.testimonials.stat4Small","Synthetic ingredients · ever");
 
   useEffect(() => {
     function load() {
@@ -178,26 +191,25 @@ export default function Testimonials() {
         <div className="flex flex-col items-center text-center mb-10 sm:mb-12">
           <div className="flex items-center gap-3 mb-5">
             <div className="adinkra-line w-8 sm:w-10" />
-            <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">Stories</span>
+            <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">{eyebrow}</span>
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-tight mb-5
             text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            What people are <span className="gradient-text">actually saying</span>
+            {headline1} <span className="gradient-text">{headline2}</span>
           </h2>
           <p className="text-brand-cream/60 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">
-            Real DMs. Real reposts. Real customers — men and women, mothers and fathers, dermatologists and daughters.
-            We don&apos;t pay for testimonials and we don&apos;t curate them.
+            {intro}
           </p>
         </div>
 
         {/* Trust strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl bg-white/5 mb-14 sm:mb-16">
           {[
-            { big: "4.9", small: "Average rating" },
-            { big: "3,400+", small: "Happy customers" },
-            { big: "91%", small: "Buy again within 90 days" },
-            { big: "0", small: "Synthetic ingredients · ever" },
+            { big: stat1Big, small: stat1Small },
+            { big: stat2Big, small: stat2Small },
+            { big: stat3Big, small: stat3Small },
+            { big: stat4Big, small: stat4Small },
           ].map((s) => (
             <div key={s.small} className="bg-brand-black-card px-5 py-6 sm:py-7 flex flex-col items-center text-center">
               <span className="font-display text-3xl sm:text-4xl xl:text-5xl font-bold text-brand-amber leading-none mb-2">

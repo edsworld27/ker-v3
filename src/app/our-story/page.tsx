@@ -5,6 +5,7 @@ export const metadata = { title: "Our Story | Luv & Ker" };
 export default function Page() {
   return (
     <InfoPage
+      contentKey="our-story.hero"
       eyebrow="Our Story"
       title="A gift carried across generations"
       intro="Odo is the Twi word for love. Every bar is built on Ghanaian skincare wisdom passed from grandmother to daughter, generation to generation."

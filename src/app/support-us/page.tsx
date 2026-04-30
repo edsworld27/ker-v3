@@ -3,20 +3,24 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useContent } from "@/lib/useContent";
 
 export default function SupportUsPage() {
+  const eyebrow  = useContent("support-us.hero.eyebrow",  "Support Us");
+  const headline = useContent("support-us.hero.headline", "Help us grow the mission.");
+  const intro    = useContent("support-us.hero.intro",    "At Luv & Ker, what you put on your skin is health. Support us by sharing, learning, and wearing the movement.");
   return (
     <>
       <Navbar />
       <main className="w-full bg-brand-black min-h-screen">
         <section className="w-full pt-28 pb-16 sm:pt-36 sm:pb-20 bg-brand-black-soft">
           <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 text-center">
-            <p className="text-xs tracking-[0.28em] uppercase text-brand-amber mb-4">Support Us</p>
+            <p className="text-xs tracking-[0.28em] uppercase text-brand-amber mb-4">{eyebrow}</p>
             <h1 className="font-display font-bold text-brand-cream text-4xl sm:text-5xl xl:text-6xl mb-4">
-              Help us grow the mission.
+              {headline}
             </h1>
             <p className="text-brand-cream/60 max-w-3xl mx-auto">
-              At Luv &amp; Ker, what you put on your skin is health. Support us by sharing, learning, and wearing the movement.
+              {intro}
             </p>
           </div>
         </section>

@@ -1,13 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-export const metadata = {
-  title: "Lab Testing — Independently verified | Luv & Ker",
-  description:
-    "Our Odo formulations have been tested by independent UK and EU laboratories for heavy metals, microbial activity, pH, allergens, and ingredient identity. See the results.",
-};
+import { useContent } from "@/lib/useContent";
 
 const PANELS = [
   {
@@ -91,6 +88,10 @@ const RECENT_BATCHES = [
 ];
 
 export default function Page() {
+  const eyebrow   = useContent("lab-tests.hero.eyebrow",   "Lab Testing");
+  const headline1 = useContent("lab-tests.hero.headline1", "Lab tested,");
+  const headline2 = useContent("lab-tests.hero.headline2", "independently verified");
+  const intro     = useContent("lab-tests.hero.intro",     "We don't ask you to trust us. We've paid UKAS-accredited laboratories to independently test our Odo formulations for heavy metals, microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.");
   return (
     <>
       <Navbar />
@@ -102,14 +103,13 @@ export default function Page() {
           <div className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-14 sm:py-20 lg:py-24">
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Lab Testing</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-              Lab tested, <span className="gradient-text">independently verified</span>
+              {headline1} <span className="gradient-text">{headline2}</span>
             </h1>
             <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
-              We don&apos;t ask you to trust us. We&apos;ve paid UKAS-accredited laboratories to independently test our Odo formulations
-              for heavy metals, microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.
+              {intro}
             </p>
             <p className="text-brand-cream/55 text-base leading-relaxed">
               The tested batches listed below each come with a full certificate download. Older reports are archived in our public Drive.

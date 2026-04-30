@@ -1,12 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-export const metadata = {
-  title: "Our Philosophy | Luv & Ker",
-  description:
-    "The Luv & Ker philosophy — why we built two ranges without phthalates, parabens, sulphates, or synthetic fragrance, and what that means for every skin type.",
-};
+import { useContent } from "@/lib/useContent";
 
 const SOURCES = [
   {
@@ -112,6 +109,12 @@ const SECTIONS = [
 ];
 
 export default function Page() {
+  const eyebrow   = useContent("our-philosophy.hero.eyebrow",   "Luv & Ker");
+  const headline1 = useContent("our-philosophy.hero.headline1", "Our");
+  const headline2 = useContent("our-philosophy.hero.headline2", "philosophy");
+  const headline3 = useContent("our-philosophy.hero.headline3", "is simple.");
+  const headline4 = useContent("our-philosophy.hero.headline4", "Your skin deserves the truth.");
+  const intro     = useContent("our-philosophy.hero.intro",     "Luv & Ker was built on a single belief: that skincare should honour the body, not compromise it. Whether you reach for Odo — our women's range rooted in love — or Nkrabea, our men's range built on strength and destiny, the promise underneath is identical.");
   return (
     <>
       <Navbar />
@@ -122,18 +125,16 @@ export default function Page() {
           <div className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-16 sm:py-20 lg:py-24">
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">Luv &amp; Ker</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">{eyebrow}</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-              Our <span className="italic gradient-text">philosophy</span> is simple.
+              {headline1} <span className="italic gradient-text">{headline2}</span> {headline3}
               <br />
-              <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">Your skin deserves the truth.</span>
+              <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">{headline4}</span>
             </h1>
             <div className="space-y-5 text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-[1.8] mb-8">
               <p>
-                Luv &amp; Ker was built on a single belief: that skincare should honour the body, not compromise it.
-                Whether you reach for Odo — our women's range rooted in love — or Nkrabea, our men's range built
-                on strength and destiny, the promise underneath is identical.
+                {intro}
               </p>
               <p>
                 Every bar is made in Accra from ingredients that have names, regions, and stories. Our grandmothers&apos;

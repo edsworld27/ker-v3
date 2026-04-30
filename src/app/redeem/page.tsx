@@ -4,9 +4,12 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getGiftCard, type GiftCard } from "@/lib/giftCards";
+import { useContent } from "@/lib/useContent";
 
 export default function RedeemPage() {
   const [code, setCode] = useState("");
+  const eyebrow  = useContent("redeem.hero.eyebrow",  "Gift Cards");
+  const headline = useContent("redeem.hero.headline", "Check your balance");
   const [card, setCard] = useState<GiftCard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,10 +33,10 @@ export default function RedeemPage() {
           <div className="w-full max-w-2xl mx-auto px-6 sm:px-10 lg:px-12 py-14 sm:py-20">
             <div className="flex items-center gap-3 mb-5">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Gift Cards</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl leading-tight mb-5">
-              Check your balance
+              {headline}
             </h1>
             <p className="text-brand-cream/65 leading-relaxed mb-8">
               Enter the code from your Odo gift card. To spend the balance, head to{" "}

@@ -1,13 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-export const metadata = {
-  title: "Sustainability — How Odo is sourced, made and shipped | Luv & Ker",
-  description:
-    "From shea co-operatives in northern Ghana to compostable packaging and sea-freight shipping — how Luv & Ker keeps Odo radically transparent and low-impact.",
-};
+import { useContent } from "@/lib/useContent";
 
 const PILLARS = [
   {
@@ -64,6 +61,10 @@ const STATS = [
 ];
 
 export default function Page() {
+  const eyebrow   = useContent("sustainability.hero.eyebrow",   "Sustainability");
+  const headline1 = useContent("sustainability.hero.headline1", "The earth in its");
+  const headline2 = useContent("sustainability.hero.headline2", "purest form");
+  const intro     = useContent("sustainability.hero.intro",     "Every decision at Luv & Ker — from how we buy raw shea butter to how we ship our bars — is made with the planet and the women of Ghana in mind. We were founded on a single conviction: that you cannot make something honest if any step in the supply chain is hidden.");
   return (
     <>
       <Navbar />
@@ -77,15 +78,13 @@ export default function Page() {
               <div>
                 <div className="flex items-center gap-3 mb-5">
                   <div className="adinkra-line w-10" />
-                  <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Sustainability</span>
+                  <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
                 </div>
                 <h1 className="font-display font-bold text-brand-cream leading-[1.05] text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl mb-6">
-                  The earth in its <span className="gradient-text">purest form</span>
+                  {headline1} <span className="gradient-text">{headline2}</span>
                 </h1>
                 <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
-                  Every decision at Luv &amp; Ker — from how we buy raw shea butter to how we ship our bars — is made with the planet
-                  and the women of Ghana in mind. We were founded on a single conviction: that you cannot make something honest if any
-                  step in the supply chain is hidden.
+                  {intro}
                 </p>
                 <p className="text-brand-cream/65 text-base sm:text-lg leading-relaxed">
                   Below is exactly how Odo gets from a co-operative in northern Ghana to your bathroom — every step, every name, every
