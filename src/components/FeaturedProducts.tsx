@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { PRODUCTS } from "@/lib/products";
+import { getProducts, onProductsChange, type Product } from "@/lib/products";
 
 const FEATURED_SLUGS = ["black-soap", "odo-face", "nkrabea-shave"];
 
@@ -26,10 +27,16 @@ const PRODUCT_VISUALS: Record<string, { gradient: string; accent: string; symbol
 
 export default function FeaturedProducts() {
   const { addItem } = useCart();
+  const [allProducts, setAllProducts] = useState<Product[]>(() => getProducts());
 
-  const products = FEATURED_SLUGS.map((slug) =>
-    PRODUCTS.find((p) => p.slug === slug)
-  ).filter(Boolean) as (typeof PRODUCTS)[number][];
+  useEffect(() => {
+    setAllProducts(getProducts());
+    return onProductsChange(() => setAllProducts(getProducts()));
+  }, []);
+
+  const products = FEATURED_SLUGS
+    .map(slug => allProducts.find(p => p.slug === slug))
+    .filter((p): p is Product => !!p && !p.archived);
 
   return (
     <section className="w-full py-20 sm:py-24 bg-brand-black relative overflow-hidden">
@@ -125,24 +132,31 @@ export default function FeaturedProducts() {
                       >
                         View
                       </Link>
-                      <button
-                        onClick={() =>
-                          addItem({
-                            id: `${product.id}-default`,
-                            name: product.name,
-                            price: product.salePrice ?? product.price,
-                          })
-                        }
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          product.range === "odo"
-                            ? "bg-brand-orange hover:bg-brand-orange/90 text-white"
-                            : product.range === "nkrabea"
-                            ? "bg-brand-amber hover:bg-brand-amber/90 text-brand-black"
-                            : "bg-brand-cream hover:bg-white text-brand-black"
-                        }`}
-                      >
-                        Add
-                      </button>
+                      {product.available === 0 ? (
+                        <span className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 text-brand-cream/40 cursor-not-allowed">
+                          Sold out
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            addItem({
+                              id: `${product.id}-default`,
+                              name: product.name,
+                              price: (product.onSale && product.salePrice ? product.salePrice : undefined) ?? product.salePrice ?? product.price,
+                              stockSku: product.stockSku,
+                            })
+                          }
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                            product.range === "odo"
+                              ? "bg-brand-orange hover:bg-brand-orange/90 text-white"
+                              : product.range === "nkrabea"
+                              ? "bg-brand-amber hover:bg-brand-amber/90 text-brand-black"
+                              : "bg-brand-cream hover:bg-white text-brand-black"
+                          }`}
+                        >
+                          Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

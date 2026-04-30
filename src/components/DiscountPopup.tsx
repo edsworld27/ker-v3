@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getSession } from "@/lib/auth";
 
 export default function DiscountPopup() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +13,9 @@ export default function DiscountPopup() {
   useEffect(() => {
     const hasSeen = localStorage.getItem("odo_discount_seen");
     const hasPurchased = localStorage.getItem("odo_has_purchased");
-    if (hasSeen || hasPurchased) return;
+    // Don't nag logged-in users — they've already signed up (and may have ordered)
+    const isLoggedIn = !!getSession();
+    if (hasSeen || hasPurchased || isLoggedIn) return;
 
     const timer = setTimeout(() => {
       setIsOpen(true);
