@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getOrder, setOrderStatus, type Order, type OrderStatus } from "@/lib/admin/orders";
 import { createLabel, printLabel, type Carrier } from "@/lib/admin/labels";
+import { listAllSources, getAffiliate } from "@/lib/admin/marketing";
 import { StatusPill } from "../../page";
 
 const CARRIERS: Carrier[] = ["Royal Mail", "Evri", "DPD", "UPS"];
@@ -174,31 +175,7 @@ export default function AdminOrderDetailPage() {
           </section>
 
           {/* Attribution */}
-          {(order.source || order.discountCode || order.affiliateId) && (
-            <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
-              <h2 className="text-sm tracking-wide text-brand-cream/80 mb-3">Attribution</h2>
-              <div className="space-y-2 text-xs">
-                {order.source && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-brand-cream/45">Source</span>
-                    <span className="text-brand-cream">{order.source}{order.sourceDetail ? ` · ${order.sourceDetail}` : ""}</span>
-                  </div>
-                )}
-                {order.discountCode && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-brand-cream/45">Discount</span>
-                    <span className="font-mono text-brand-amber">{order.discountCode}</span>
-                  </div>
-                )}
-                {order.affiliateId && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-brand-cream/45">Affiliate</span>
-                    <span className="text-brand-cream font-mono">{order.affiliateId}</span>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
+          {(order.source || order.discountCode || order.affiliateId) && <AttributionCard order={order} />}
 
           {/* Payment */}
           <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
@@ -221,5 +198,36 @@ function Row({ label, value, bold, accent }: { label: string; value: string; bol
       <span className={accent ? "text-brand-amber" : "text-brand-cream/55"}>{label}</span>
       <span className={`${bold ? "text-brand-cream font-semibold" : "text-brand-cream/80"} ${accent ? "text-brand-amber" : ""}`}>{value}</span>
     </div>
+  );
+}
+
+function AttributionCard({ order }: { order: Order }) {
+  const sourceLabel = order.source ? (listAllSources().find(s => s.id === order.source)?.label ?? order.source) : null;
+  const aff = order.affiliateId ? getAffiliate(order.affiliateId) : undefined;
+  return (
+    <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
+      <h2 className="text-sm tracking-wide text-brand-cream/80 mb-3">Attribution</h2>
+      <div className="space-y-2 text-xs">
+        {sourceLabel && (
+          <div className="flex justify-between gap-3">
+            <span className="text-brand-cream/45">Source</span>
+            <span className="text-brand-cream text-right">{sourceLabel}{order.sourceDetail ? <span className="block text-brand-cream/55 text-[11px]">{order.sourceDetail}</span> : null}</span>
+          </div>
+        )}
+        {order.discountCode && (
+          <div className="flex justify-between gap-3">
+            <span className="text-brand-cream/45">Discount</span>
+            <span className="font-mono text-brand-amber">{order.discountCode}</span>
+          </div>
+        )}
+        {aff && (
+          <div className="flex justify-between gap-3">
+            <span className="text-brand-cream/45">Affiliate</span>
+            <span className="text-brand-cream text-right">{aff.name} <span className="block text-[11px] text-brand-cream/55">{aff.commissionPct}% · £{(order.subtotal * aff.commissionPct / 100).toFixed(2)} earned</span></span>
+          </div>
+        )}
+      </div>
+      <Link href="/admin/marketing" className="block mt-4 text-[11px] text-brand-cream/55 hover:text-brand-cream">Manage marketing →</Link>
+    </section>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
-import { listSources, onSourcesChange, type OrderSource } from "@/lib/admin/marketing";
+import { listSources, onSourcesChange, readAttribution, findSourceBySlug, type OrderSource } from "@/lib/admin/marketing";
 
 export default function CartPage() {
   const { items, count, subtotal, total, discounts, applyDiscount, removeDiscount, updateQty, removeItem } = useCart();
@@ -18,9 +18,13 @@ export default function CartPage() {
 
   useEffect(() => {
     setSources(listSources());
-    // Restore prior selection so it survives a page bounce
+    // Pre-fill from attribution captured at landing (?src=), then fall back
+    // to a previous in-cart selection — both survive a page bounce.
+    const att = readAttribution();
+    const fromUrl = att?.source ? findSourceBySlug(att.source)?.id ?? att.source : "";
     const saved = localStorage.getItem("lk_cart_source");
     if (saved) setSource(saved);
+    else if (fromUrl) setSource(fromUrl);
     const savedDetail = localStorage.getItem("lk_cart_source_detail");
     if (savedDetail) setSourceDetail(savedDetail);
     return onSourcesChange(() => setSources(listSources()));
