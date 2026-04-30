@@ -12,6 +12,7 @@ import {
   type Session, type User,
 } from "@/lib/auth";
 import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
+import CookiePreferencesModal from "@/components/CookiePreferencesModal";
 
 // ── Mock orders + referrals ─────────────────────────────────────────────────
 //
@@ -44,7 +45,7 @@ const MOCK_REFERRALS = [
   { name: "Tom B.",    date: "7 Mar 2026",  status: "Converted", earned: 10 },
 ];
 
-type DashTab = "orders" | "affiliate";
+type DashTab = "orders" | "affiliate" | "privacy";
 
 export default function AccountPage() {
   return (
@@ -56,7 +57,8 @@ export default function AccountPage() {
 
 function AccountContent() {
   const searchParams = useSearchParams();
-  const initialTab: DashTab = searchParams.get("tab") === "affiliate" ? "affiliate" : "orders";
+  const rawTab = searchParams.get("tab");
+  const initialTab: DashTab = rawTab === "affiliate" ? "affiliate" : rawTab === "privacy" ? "privacy" : "orders";
 
   const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -321,6 +323,7 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
               {([
                 { id: "orders",    label: "Orders" },
                 { id: "affiliate", label: "Affiliate Dashboard" },
+                { id: "privacy",   label: "Privacy & Data" },
               ] as { id: DashTab; label: string }[]).map(t => (
                 <button
                   key={t.id}
@@ -343,6 +346,7 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
           <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">
             {tab === "orders"    && <OrdersTab />}
             {tab === "affiliate" && <AffiliateTab user={user} />}
+            {tab === "privacy"   && <PrivacyTab />}
           </div>
         </section>
       </main>
@@ -624,6 +628,86 @@ function AffiliateTab({ user }: { user: User }) {
         </a>
       </div>
 
+    </div>
+  );
+}
+
+// ── Privacy & Data tab ───────────────────────────────────────────────────────
+
+function PrivacyTab() {
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [prefTab, setPrefTab] = useState<"cookies" | "data">("cookies");
+
+  return (
+    <div className="space-y-6">
+      {/* Cookie preferences */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="font-display text-lg text-brand-cream">Cookie preferences</h3>
+          <p className="text-sm text-brand-cream/45 mt-1">Control which cookies are active on your account.</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            {[
+              { key: "necessary", label: "Strictly necessary", desc: "Always on — required for the site to function.", fixed: true },
+              { key: "functional", label: "Functional", desc: "Cart, preferences, personalisation." },
+              { key: "analytics", label: "Analytics", desc: "Usage patterns to improve the site." },
+              { key: "marketing", label: "Marketing", desc: "Personalised ads on social platforms." },
+            ].map(cat => (
+              <div key={cat.key} className="rounded-xl border border-white/8 p-3">
+                <p className="font-medium text-brand-cream text-xs mb-0.5">{cat.label}</p>
+                <p className="text-[11px] text-brand-cream/40 leading-relaxed">{cat.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setPrefTab("cookies"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
+            >
+              Manage cookie settings
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Data rights */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="font-display text-lg text-brand-cream">Your data rights (GDPR)</h3>
+          <p className="text-sm text-brand-cream/45 mt-1">Download or delete data we hold about you in this browser.</p>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-brand-cream/55 leading-relaxed">
+            We store your session, cart, orders, and preferences in your browser. You have the right to access, download,
+            or permanently delete this data at any time.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setPrefTab("data"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg border border-brand-orange/40 text-brand-orange hover:bg-brand-orange/10 font-semibold transition-colors"
+            >
+              ↓ Download my data
+            </button>
+            <button
+              onClick={() => { setPrefTab("data"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 font-semibold transition-colors"
+            >
+              Delete my data
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card px-6 py-5">
+        <p className="text-sm font-medium text-brand-cream mb-1">Questions about your data?</p>
+        <p className="text-sm text-brand-cream/50 leading-relaxed">
+          Email <a href="mailto:privacy@luvandker.com" className="text-brand-orange hover:underline">privacy@luvandker.com</a> — we respond within 72 hours.
+        </p>
+      </div>
+
+      {showPrefs && <CookiePreferencesModal onClose={() => setShowPrefs(false)} initialTab={prefTab} />}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getPage, updatePage, addBlock, updateBlock, deleteBlock, moveBlock,
-  publishPage, unpublishPage, deletePage, onPagesChange,
+  publishPage, unpublishPage, deletePage, togglePageHidden, onPagesChange,
   type CustomPage, type Block, type BlockType,
 } from "@/lib/admin/customPages";
 import RichEditor from "@/components/admin/RichEditor";
@@ -52,9 +52,18 @@ export default function CustomPageEditor() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-4xl space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Link href="/admin/pages" className="text-[11px] text-brand-cream/40 hover:text-brand-cream">← Pages</Link>
-        <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${page.status === "published" ? "bg-green-400/20 text-green-300" : "bg-white/10 text-brand-cream/55"}`}>{page.status}</span>
+        <div className="flex items-center gap-2">
+          {page.hidden && <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-white/10 text-brand-cream/40">hidden</span>}
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${page.status === "published" ? "bg-green-400/20 text-green-300" : "bg-white/10 text-brand-cream/55"}`}>{page.status}</span>
+          <button
+            onClick={() => togglePageHidden(page.id)}
+            className="text-[11px] px-2.5 py-0.5 rounded-full border border-white/15 text-brand-cream/50 hover:text-brand-cream"
+          >
+            {page.hidden ? "👁 Show" : "🫥 Hide"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

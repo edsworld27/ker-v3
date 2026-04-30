@@ -10,9 +10,13 @@ export type GoalType = "page_visit" | "add_to_cart" | "purchase";
 export interface ABVariant {
   id: string;
   name: string;
-  weight: number;        // 0–100 (must sum to 100 across variants)
-  pageSlug?: string;     // custom page slug to show for this variant (empty = control/original)
+  weight: number;           // 0–100 (must sum to 100 across variants)
+  pageSlug?: string;        // custom page slug to show for this variant (empty = control/original)
   description?: string;
+  seoTitle?: string;        // override <title> for this variant
+  seoDescription?: string;  // override meta description for this variant
+  seoOgTitle?: string;      // override OG title
+  seoOgDescription?: string;// override OG description
 }
 
 export interface ABTest {
@@ -143,6 +147,33 @@ export function recordConversion(testId: string, variantId: string) {
   }
   tests[idx].stats[variantId].conversions++;
   write(tests);
+}
+
+export interface SeoOverride {
+  title?: string;
+  description?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+}
+
+export function getActiveSeoOverride(pathname: string): SeoOverride | null {
+  const tests = read().filter(t => t.status === "running" && t.targetPath === pathname);
+  for (const test of tests) {
+    const variantId = getAssignment(test.id);
+    if (!variantId) continue;
+    const variant = test.variants.find(v => v.id === variantId);
+    if (!variant) continue;
+    const { seoTitle, seoDescription, seoOgTitle, seoOgDescription } = variant;
+    if (seoTitle || seoDescription || seoOgTitle || seoOgDescription) {
+      return {
+        title: seoTitle || undefined,
+        description: seoDescription || undefined,
+        ogTitle: seoOgTitle || undefined,
+        ogDescription: seoOgDescription || undefined,
+      };
+    }
+  }
+  return null;
 }
 
 export function onABTestsChange(handler: () => void): () => void {

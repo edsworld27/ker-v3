@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { AUTH_EVENT, getSession, isAdmin, signOut, type Session } from "@/lib/auth";
 import { useContent } from "@/lib/useContent";
 import { listPublishedNavPages, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -195,6 +196,7 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeSwitcher />
             {hydrated && session ? (
               <div ref={profileRef} className="relative hidden sm:block">
                 <button

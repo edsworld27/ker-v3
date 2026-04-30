@@ -118,25 +118,47 @@ function TestModal({ test, pages, onClose }: {
             <div className={`text-xs mb-2 font-mono ${totalWeight === 100 ? "text-green-400" : "text-red-400"}`}>
               Total: {totalWeight}% {totalWeight !== 100 ? "(must be 100%)" : "✓"}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {variants.map((v, i) => (
-                <div key={v.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
-                  <F label={i === 0 ? "Variant name" : undefined}>
-                    <input value={v.name} onChange={(e) => patchVariant(v.id, { name: e.target.value })} className={INPUT} />
-                  </F>
-                  <F label={i === 0 ? "Page (leave blank = original)" : undefined}>
-                    <select value={v.pageSlug ?? ""} onChange={(e) => patchVariant(v.id, { pageSlug: e.target.value })} className={INPUT}>
-                      <option value="">Original page</option>
-                      {pages.map((p) => <option key={p.slug} value={p.slug}>{p.title}</option>)}
-                    </select>
-                  </F>
-                  <F label={i === 0 ? "Weight %" : undefined}>
-                    <input type="number" min={0} max={100} value={v.weight}
-                      onChange={(e) => patchVariant(v.id, { weight: Number(e.target.value) })}
-                      className={INPUT + " w-20 font-mono"} />
-                  </F>
-                  <button type="button" disabled={variants.length <= 2} onClick={() => removeVariant(v.id)}
-                    className="text-red-400/50 hover:text-red-400 disabled:opacity-20 disabled:cursor-default text-lg pb-0.5">✕</button>
+                <div key={v.id} className="rounded-xl border border-white/8 p-3 space-y-2">
+                  <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
+                    <F label={i === 0 ? "Variant name" : undefined}>
+                      <input value={v.name} onChange={(e) => patchVariant(v.id, { name: e.target.value })} className={INPUT} />
+                    </F>
+                    <F label={i === 0 ? "Page (leave blank = original)" : undefined}>
+                      <select value={v.pageSlug ?? ""} onChange={(e) => patchVariant(v.id, { pageSlug: e.target.value })} className={INPUT}>
+                        <option value="">Original page</option>
+                        {pages.map((p) => <option key={p.slug} value={p.slug}>{p.title}</option>)}
+                      </select>
+                    </F>
+                    <F label={i === 0 ? "Weight %" : undefined}>
+                      <input type="number" min={0} max={100} value={v.weight}
+                        onChange={(e) => patchVariant(v.id, { weight: Number(e.target.value) })}
+                        className={INPUT + " w-20 font-mono"} />
+                    </F>
+                    <button type="button" disabled={variants.length <= 2} onClick={() => removeVariant(v.id)}
+                      className="text-red-400/50 hover:text-red-400 disabled:opacity-20 disabled:cursor-default text-lg pb-0.5">✕</button>
+                  </div>
+                  {/* SEO overrides */}
+                  <details className="group">
+                    <summary className="text-[11px] text-brand-cream/40 hover:text-brand-cream/70 cursor-pointer list-none flex items-center gap-1">
+                      <span className="group-open:rotate-90 transition-transform inline-block">›</span> SEO overrides (optional)
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <F label="Meta title">
+                        <input value={v.seoTitle ?? ""} onChange={(e) => patchVariant(v.id, { seoTitle: e.target.value })} placeholder="Leave blank to use default" className={INPUT} />
+                      </F>
+                      <F label="Meta description">
+                        <input value={v.seoDescription ?? ""} onChange={(e) => patchVariant(v.id, { seoDescription: e.target.value })} placeholder="Leave blank to use default" className={INPUT} />
+                      </F>
+                      <F label="OG title">
+                        <input value={v.seoOgTitle ?? ""} onChange={(e) => patchVariant(v.id, { seoOgTitle: e.target.value })} placeholder="Leave blank to use meta title" className={INPUT} />
+                      </F>
+                      <F label="OG description">
+                        <input value={v.seoOgDescription ?? ""} onChange={(e) => patchVariant(v.id, { seoOgDescription: e.target.value })} placeholder="Leave blank to use meta description" className={INPUT} />
+                      </F>
+                    </div>
+                  </details>
                 </div>
               ))}
             </div>

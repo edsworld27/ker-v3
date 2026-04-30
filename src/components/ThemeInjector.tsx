@@ -9,6 +9,11 @@ import {
   type BackgroundConfig,
 } from "@/lib/admin/theme";
 import { isPreviewMode } from "@/lib/admin/content";
+import {
+  getActiveVariantId,
+  resolveVariantTheme,
+  onVariantChange,
+} from "@/lib/admin/themeVariants";
 
 const LETTER_SPACING: Record<string, string> = {
   tighter: "-0.05em",
@@ -172,7 +177,9 @@ export default function ThemeInjector() {
   const linkRef = useRef<HTMLLinkElement | null>(null);
 
   function apply() {
-    const theme = isPreviewMode() ? getDraftTheme() : getPublishedTheme();
+    const base = isPreviewMode() ? getDraftTheme() : getPublishedTheme();
+    const variantId = getActiveVariantId();
+    const theme = resolveVariantTheme(base, variantId);
 
     if (!styleRef.current) {
       const existing = document.getElementById("lk-theme-css");
@@ -205,7 +212,10 @@ export default function ThemeInjector() {
 
   useEffect(() => {
     apply();
-    return onThemeChange(apply);
+    const off1 = onThemeChange(apply);
+    const off2 = onVariantChange(apply);
+    return () => { off1(); off2(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;

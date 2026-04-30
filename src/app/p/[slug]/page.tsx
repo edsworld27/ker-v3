@@ -32,7 +32,8 @@ export default function CustomPageView() {
     );
   }
 
-  const visible = page && (page.status === "published" || isPreviewMode());
+  const preview = isPreviewMode();
+  const visible = page && (page.status === "published" || preview) && (!page.hidden || preview);
 
   if (!page || !visible) {
     return (

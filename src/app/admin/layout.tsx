@@ -56,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/split-test",   label: "Split test",   match: (p) => p.startsWith("/admin/split-test"),   resource: "split_test" },
       { href: "/admin/funnels",      label: "Funnels",      match: (p) => p.startsWith("/admin/funnels"),      resource: "funnels" },
+      { href: "/admin/features",     label: "Feature flags", match: (p) => p.startsWith("/admin/features"),    resource: "settings" },
     ],
   },
   {

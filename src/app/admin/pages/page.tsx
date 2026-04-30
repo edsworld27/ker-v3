@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { listPages, createPage, deletePage, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
+import { listPages, createPage, deletePage, togglePageHidden, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
 
 export default function AdminPagesIndex() {
   const router = useRouter();
@@ -39,16 +39,24 @@ export default function AdminPagesIndex() {
       ) : (
         <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden divide-y divide-white/5">
           {pages.map(p => (
-            <div key={p.id} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02]">
+            <div key={p.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] ${p.hidden ? "opacity-50" : ""}`}>
               <Link href={`/admin/pages/${p.id}`} className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-sm font-medium text-brand-cream truncate">{p.title}</span>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.status === "published" ? "bg-green-400/20 text-green-300" : "bg-white/10 text-brand-cream/55"}`}>{p.status}</span>
+                  {p.hidden && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-brand-cream/40">hidden</span>}
                   {p.showInNav && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple-light">in nav</span>}
                 </div>
                 <p className="text-xs text-brand-cream/40">/p/{p.slug} · {p.blocks.length} block{p.blocks.length === 1 ? "" : "s"}</p>
               </Link>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => togglePageHidden(p.id)}
+                  title={p.hidden ? "Show page" : "Hide page"}
+                  className="text-[11px] text-brand-cream/40 hover:text-brand-cream"
+                >
+                  {p.hidden ? "👁" : "🫥"}
+                </button>
                 <Link href={`/p/${p.slug}`} target="_blank" className="text-[11px] text-brand-cream/40 hover:text-brand-cream">View</Link>
                 <button onClick={() => { if (confirm(`Delete "${p.title}"?`)) deletePage(p.id); }} className="text-[11px] text-brand-cream/40 hover:text-brand-orange">Delete</button>
               </div>

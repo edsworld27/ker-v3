@@ -14,6 +14,16 @@ import {
   type BackgroundConfig,
 } from "@/lib/admin/theme";
 import { computeBackground } from "@/components/ThemeInjector";
+import {
+  listVariants,
+  createVariant,
+  updateVariant,
+  deleteVariant,
+  getSiteDefaultVariantId,
+  setSiteDefaultVariantId,
+  onVariantChange,
+  type ThemeVariant,
+} from "@/lib/admin/themeVariants";
 
 // ── Google Fonts catalogue ────────────────────────────────────────────────────
 
@@ -301,7 +311,7 @@ function BackgroundEditor({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type Tab = "colors" | "typography" | "backgrounds" | "highlights" | "animations";
+type Tab = "colors" | "typography" | "backgrounds" | "highlights" | "animations" | "variants";
 
 export default function AdminThemePage() {
   const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
@@ -310,6 +320,8 @@ export default function AdminThemePage() {
   const [published, setPublished] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [localFonts, setLocalFonts] = useState<string[]>([]);
+  const [variants, setVariants] = useState<ThemeVariant[]>([]);
+  const [defaultVariantId, setDefaultVariantId] = useState<string>("dark");
 
   useEffect(() => {
     const load = () => {
@@ -318,6 +330,15 @@ export default function AdminThemePage() {
     };
     load();
     return onThemeChange(load);
+  }, []);
+
+  useEffect(() => {
+    const refreshVariants = () => {
+      setVariants(listVariants());
+      setDefaultVariantId(getSiteDefaultVariantId());
+    };
+    refreshVariants();
+    return onVariantChange(refreshVariants);
   }, []);
 
   useEffect(() => {
@@ -388,6 +409,7 @@ export default function AdminThemePage() {
     { id: "backgrounds", label: "Backgrounds" },
     { id: "highlights", label: "Highlights" },
     { id: "animations", label: "Animations" },
+    { id: "variants", label: "Themes / Modes" },
   ];
 
   return (
@@ -910,6 +932,104 @@ export default function AdminThemePage() {
           <div className="rounded-xl border border-white/8 p-4 text-xs text-brand-cream/40 space-y-1">
             <p className="font-medium text-brand-cream/60">Note on accessibility</p>
             <p>Users with &ldquo;prefers reduced motion&rdquo; set in their OS have marquees disabled automatically regardless of this setting.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── VARIANTS / MODES ──────────────────────────────────────────────── */}
+      {tab === "variants" && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 text-sm text-brand-cream/55 leading-relaxed">
+            Theme variants let visitors switch between visual modes (e.g. dark, light, earth) using the palette icon in the navbar.
+            The &ldquo;Default&rdquo; variant is shown to new visitors. Built-in variants cannot be edited but can be cloned.
+          </div>
+
+          {/* Default variant selector */}
+          <Section title="Site default variant">
+            <div className="py-2">
+              <p className="text-xs text-brand-cream/40 mb-3">Choose which variant visitors see when they first arrive.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {variants.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => { setSiteDefaultVariantId(v.id); setDefaultVariantId(v.id); }}
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border transition-colors ${
+                      defaultVariantId === v.id
+                        ? "border-brand-orange bg-brand-orange/10 text-brand-cream"
+                        : "border-white/10 text-brand-cream/55 hover:border-white/25"
+                    }`}
+                  >
+                    <span className="text-2xl">{v.icon}</span>
+                    <span className="text-xs font-medium truncate w-full text-center">{v.name}</span>
+                    {defaultVariantId === v.id && <span className="text-[10px] text-brand-orange">Default</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Section>
+
+          {/* All variants */}
+          <Section title="All variants">
+            <div className="divide-y divide-white/5">
+              {variants.map(v => (
+                <div key={v.id} className="flex items-center gap-3 py-3">
+                  <span className="text-xl shrink-0">{v.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-brand-cream font-medium">{v.name}</p>
+                    {v.description && <p className="text-xs text-brand-cream/40 mt-0.5 truncate">{v.description}</p>}
+                    {v.isBuiltIn && <span className="text-[10px] text-brand-cream/30">Built-in</span>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        const name = prompt("Name for cloned variant", `${v.name} copy`);
+                        if (name) createVariant(name, v.id);
+                      }}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream"
+                    >
+                      Clone
+                    </button>
+                    {!v.isBuiltIn && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const name = prompt("Rename variant", v.name);
+                            if (name) updateVariant(v.id, { name });
+                          }}
+                          className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete "${v.name}"?`)) deleteVariant(v.id);
+                          }}
+                          className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-orange"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="pt-3">
+              <button
+                onClick={() => {
+                  const name = prompt("New variant name", "My theme");
+                  if (name) createVariant(name);
+                }}
+                className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
+              >
+                + New variant
+              </button>
+            </div>
+          </Section>
+
+          <div className="rounded-xl border border-white/8 p-4 text-xs text-brand-cream/40 space-y-1">
+            <p className="font-medium text-brand-cream/60">How it works</p>
+            <p>The base theme (all other tabs) is the canvas. Each variant overrides specific colours, backgrounds, and highlights on top of it. Visitors&apos; choices are saved to their browser — they persist across visits.</p>
           </div>
         </div>
       )}

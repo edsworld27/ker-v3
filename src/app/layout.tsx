@@ -10,6 +10,7 @@ import ThemeInjector from "@/components/ThemeInjector";
 import ABTestRunner from "@/components/ABTestRunner";
 import ImpersonationBar from "@/components/ImpersonationBar";
 import ForcePasswordChange from "@/components/ForcePasswordChange";
+import FeatureGate from "@/components/FeatureGate";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -65,8 +66,8 @@ export default function RootLayout({
           <PreviewBar />
           <SiteHead />
           {children}
-          <ChatBot />
-          <PurpleSideScroller />
+          <FeatureGate flag="chatbot"><ChatBot /></FeatureGate>
+          <FeatureGate flag="purple_scroller"><PurpleSideScroller /></FeatureGate>
         </CartProvider>
       </body>
     </html>

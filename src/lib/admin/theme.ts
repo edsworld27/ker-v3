@@ -173,7 +173,7 @@ export const DEFAULT_THEME: ThemeConfig = {
   },
 };
 
-function deepMerge<T>(defaults: T, overrides: Partial<T>): T {
+export function deepMerge<T>(defaults: T, overrides: Partial<T>): T {
   const result = { ...defaults };
   for (const key in overrides) {
     const val = overrides[key];
