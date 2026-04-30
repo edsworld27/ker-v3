@@ -173,6 +173,33 @@ export default function AdminOrderDetailPage() {
             )}
           </section>
 
+          {/* Attribution */}
+          {(order.source || order.discountCode || order.affiliateId) && (
+            <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
+              <h2 className="text-sm tracking-wide text-brand-cream/80 mb-3">Attribution</h2>
+              <div className="space-y-2 text-xs">
+                {order.source && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-brand-cream/45">Source</span>
+                    <span className="text-brand-cream">{order.source}{order.sourceDetail ? ` · ${order.sourceDetail}` : ""}</span>
+                  </div>
+                )}
+                {order.discountCode && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-brand-cream/45">Discount</span>
+                    <span className="font-mono text-brand-amber">{order.discountCode}</span>
+                  </div>
+                )}
+                {order.affiliateId && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-brand-cream/45">Affiliate</span>
+                    <span className="text-brand-cream font-mono">{order.affiliateId}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Payment */}
           <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
             <h2 className="text-sm tracking-wide text-brand-cream/80 mb-3">Payment</h2>

@@ -69,6 +69,10 @@ export interface Order {
   paymentIntent?: string;
   shippingAddress?: ShippingAddress;
   tracking?: Tracking;
+  source?: string;          // OrderSource.id captured at checkout
+  sourceDetail?: string;    // free-text "where did you hear about us?"
+  discountCode?: string;    // applied code (uppercase)
+  affiliateId?: string;     // attributed affiliate
 }
 
 interface Store { [id: string]: Order; }
@@ -96,6 +100,7 @@ function seedIfEmpty(s: Store): Store {
       subtotal: 46, discount: 0, shipping: 4.5, tax: 0, total: 50.5, currency: "GBP",
       status: "paid",
       shippingAddress: { name: "Ama Boateng", line1: "12 Crescent Rd", city: "London", postcode: "E2 9PA", country: "GB" },
+      source: "instagram",
     },
     {
       id: "ORD-4820", createdAt: now - day * 5, customerEmail: "tom.b@example.com", customerName: "Tom Brennan",
@@ -104,12 +109,14 @@ function seedIfEmpty(s: Store): Store {
       status: "fulfilled",
       shippingAddress: { name: "Tom Brennan", line1: "4 Granby St", city: "Manchester", postcode: "M1 7AY", country: "GB" },
       tracking: { carrier: "Royal Mail", code: "AB123456789GB", printedAt: now - day * 4 },
+      source: "friend", discountCode: "WELCOME10",
     },
     {
       id: "ORD-4819", createdAt: now - day * 9, customerEmail: "yaa.s@example.com", customerName: "Yaa Sarpong",
       items: [{ productId: "odo-hands-frank-100", name: "Odo Hands · Frankincense · 100g", quantity: 2, unitPrice: 18 }],
       subtotal: 36, discount: 0, shipping: 4.5, tax: 0, total: 40.5, currency: "GBP",
       status: "pending",
+      source: "google",
     },
   ];
   const next: Store = {};
@@ -154,6 +161,9 @@ interface PendingOrderData {
   subtotal: number;
   discountAmount: number;
   total: number;
+  discountCode?: string;
+  source?: string;
+  sourceDetail?: string;
 }
 
 export function stashPendingOrder(data: PendingOrderData) {
@@ -168,6 +178,35 @@ export function commitPendingOrder(paymentIntent?: string): Order | null {
   localStorage.removeItem(PENDING_ORDER_KEY);
   try {
     const data: PendingOrderData = JSON.parse(raw);
+    // Resolve attribution captured from ?src= / ?aff= tracking links
+    let resolvedSource = data.source;
+    let affiliateId: string | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const m = require("./marketing") as typeof import("./marketing");
+      const att = m.readAttribution();
+      if (!resolvedSource && att?.source) {
+        const s = m.findSourceBySlug(att.source);
+        resolvedSource = s?.id ?? att.source;
+      }
+      if (att?.affiliate) {
+        const aff = m.findAffiliateBySlug(att.affiliate);
+        if (aff) affiliateId = aff.id;
+      }
+      // Discount code may also be linked to an affiliate
+      if (!affiliateId && data.discountCode) {
+        const aff = m.findAffiliateByCode(data.discountCode);
+        if (aff) affiliateId = aff.id;
+      }
+      // Record discount usage and affiliate earnings
+      if (data.discountCode) m.recordDiscountUse(data.discountCode);
+      if (affiliateId) {
+        const aff = m.getAffiliate(affiliateId);
+        if (aff) m.recordAffiliateEarning(affiliateId, Math.round(data.subtotal * (aff.commissionPct / 100) * 100) / 100);
+      }
+      m.clearAttribution();
+    } catch { /* marketing module unavailable — non-fatal */ }
+
     const order: Order = {
       id: nextOrderId(),
       createdAt: Date.now(),
@@ -188,6 +227,10 @@ export function commitPendingOrder(paymentIntent?: string): Order | null {
       currency: "GBP",
       status: "paid",
       paymentIntent,
+      source: resolvedSource,
+      sourceDetail: data.sourceDetail,
+      discountCode: data.discountCode?.toUpperCase(),
+      affiliateId,
     };
     upsertOrder(order);
     window.dispatchEvent(new Event("storage"));

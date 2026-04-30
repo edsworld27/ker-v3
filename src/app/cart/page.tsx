@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
+import { listSources, onSourcesChange, type OrderSource } from "@/lib/admin/marketing";
 
 export default function CartPage() {
   const { items, count, subtotal, total, discounts, applyDiscount, removeDiscount, updateQty, removeItem } = useCart();
@@ -11,6 +12,14 @@ export default function CartPage() {
   const [discountCode, setDiscountCode] = useState("");
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [discountBusy, setDiscountBusy] = useState(false);
+  const [sources, setSources] = useState<OrderSource[]>([]);
+  const [source, setSource] = useState<string>("");
+  const [sourceDetail, setSourceDetail] = useState("");
+
+  useEffect(() => {
+    setSources(listSources());
+    return onSourcesChange(() => setSources(listSources()));
+  }, []);
 
   async function handleApplyDiscount(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +56,15 @@ export default function CartPage() {
       const { stashPendingSale } = await import("@/lib/admin/inventory");
       const { stashPendingOrder } = await import("@/lib/admin/orders");
       stashPendingSale(items);
-      stashPendingOrder({ items, subtotal, discountAmount: totalDiscount, total });
+      stashPendingOrder({
+        items,
+        subtotal,
+        discountAmount: totalDiscount,
+        total,
+        discountCode: discounts[0]?.code,
+        source: source || undefined,
+        sourceDetail: sourceDetail.trim() || undefined,
+      });
       localStorage.setItem("odo_has_purchased", "true");
       window.location.href = data.url;
     } catch (error) {
@@ -131,6 +148,32 @@ export default function CartPage() {
                   </div>
                 ))}
                 <div className="flex justify-between text-brand-cream"><span>Total</span><span className="font-display text-xl">£{total.toFixed(2)}</span></div>
+
+                {/* Where did you hear about us? */}
+                <div className="pt-3 border-t border-white/8">
+                  <label className="text-[10px] tracking-[0.22em] uppercase text-brand-cream/45 mb-1.5 block">
+                    Where did you hear about us?
+                  </label>
+                  <select
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2.5 text-xs text-brand-cream focus:outline-none focus:border-brand-amber/40"
+                  >
+                    <option value="">Select…</option>
+                    {sources.map(s => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                  {(source === "other" || source === "press") && (
+                    <input
+                      value={sourceDetail}
+                      onChange={(e) => setSourceDetail(e.target.value)}
+                      placeholder="Tell us more (optional)"
+                      className="mt-2 w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-xs text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-amber/40"
+                    />
+                  )}
+                </div>
+
                 <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full py-3 rounded-xl bg-brand-orange text-white font-semibold disabled:opacity-40">
                   {isCheckingOut ? "Loading Secure Checkout..." : "Checkout"}
                 </button>

@@ -39,6 +39,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [discounts, setDiscounts] = useState<AppliedDiscount[]>([]);
 
+  // Capture ?src= / ?aff= attribution on first load — first-touch
+  useEffect(() => {
+    import("@/lib/admin/marketing").then(m => m.captureAttribution());
+  }, []);
+
   const subtotal = useMemo(() => items.reduce((s, i) => s + i.price * i.quantity, 0), [items]);
   const totalDiscount = useMemo(() => discounts.reduce((s, d) => s + d.amountOff, 0), [discounts]);
   const total = Math.max(0, subtotal - totalDiscount);

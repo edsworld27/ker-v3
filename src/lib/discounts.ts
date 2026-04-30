@@ -97,5 +97,42 @@ export function resolveCode(
     };
   }
 
+  // 4. Admin-created discount code (managed in /admin/marketing)
+  // Dynamic require to avoid circular imports — marketing module is admin-side.
+  if (typeof window !== "undefined") {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { applyDiscount } = require("./admin/marketing") as typeof import("./admin/marketing");
+      const result = applyDiscount(code, subtotal, 0);
+      if (result.ok) {
+        const labelMap: Record<typeof result.rec.type, string> = {
+          percent:  `${result.rec.value}% off`,
+          fixed:    `£${result.rec.value.toFixed(2)} off`,
+          freeship: "Free shipping",
+        };
+        const amountOff = result.discount;
+        if (result.freeShipping) {
+          // Free shipping codes record £0 cart-side; the shipping line is
+          // suppressed at checkout. We still surface them as an applied
+          // discount so the customer sees confirmation.
+        }
+        if (amountOff > 0 || result.freeShipping) {
+          return {
+            ok: true,
+            discount: {
+              code,
+              type: result.rec.affiliateId ? "creator" : "promo",
+              label: labelMap[result.rec.type],
+              amountOff: amountOff || 0,
+            },
+          };
+        }
+      } else {
+        // Surface a more specific error if the code is recognised but invalid
+        if (result.reason !== "Code not recognised.") return { ok: false, reason: result.reason };
+      }
+    } catch { /* fall through */ }
+  }
+
   return { ok: false, reason: "We don't recognise that code. Double-check and try again." };
 }

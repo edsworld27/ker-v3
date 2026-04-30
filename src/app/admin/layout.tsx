@@ -9,24 +9,49 @@ import { lowStockCount } from "@/lib/admin/inventory";
 import { pendingDraftCount, onContentChange } from "@/lib/admin/content";
 import { openTicketCount, onTicketsChange } from "@/lib/admin/tickets";
 
-const NAV = [
-  { href: "/admin",              label: "Overview",    match: (p: string) => p === "/admin" },
-  { href: "/admin/orders",       label: "Orders",      match: (p: string) => p.startsWith("/admin/orders") },
-  { href: "/admin/products",     label: "Products",    match: (p: string) => p.startsWith("/admin/products") },
-  { href: "/admin/collections",  label: "Collections", match: (p: string) => p.startsWith("/admin/collections") },
-  { href: "/admin/inventory",    label: "Inventory",   match: (p: string) => p.startsWith("/admin/inventory") },
-  { href: "/admin/reviews",      label: "Reviews",     match: (p: string) => p.startsWith("/admin/reviews") },
-  { href: "/admin/customers",    label: "Customers",   match: (p: string) => p.startsWith("/admin/customers") },
-  { href: "/admin/support",      label: "Support",     match: (p: string) => p.startsWith("/admin/support") },
-  { href: "/admin/blog",         label: "Blog",        match: (p: string) => p.startsWith("/admin/blog") },
-  { href: "/admin/faq",          label: "FAQ",         match: (p: string) => p.startsWith("/admin/faq") },
-  { href: "/admin/pages",        label: "Pages",       match: (p: string) => p.startsWith("/admin/pages") },
-  { href: "/admin/website",      label: "Website",     match: (p: string) => p.startsWith("/admin/website") },
-  { href: "/admin/shipping",     label: "Shipping",    match: (p: string) => p.startsWith("/admin/shipping") },
-  { href: "/admin/settings",     label: "Settings",    match: (p: string) => p.startsWith("/admin/settings") },
+interface NavItem { href: string; label: string; match: (p: string) => boolean }
+interface NavGroup { label: string; items: NavItem[] }
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Sell",
+    items: [
+      { href: "/admin",              label: "Overview",    match: (p) => p === "/admin" },
+      { href: "/admin/orders",       label: "Orders",      match: (p) => p.startsWith("/admin/orders") },
+      { href: "/admin/customers",    label: "Customers",   match: (p) => p.startsWith("/admin/customers") },
+      { href: "/admin/marketing",    label: "Marketing",   match: (p) => p.startsWith("/admin/marketing") },
+    ],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { href: "/admin/products",     label: "Products",    match: (p) => p.startsWith("/admin/products") },
+      { href: "/admin/collections",  label: "Collections", match: (p) => p.startsWith("/admin/collections") },
+      { href: "/admin/inventory",    label: "Inventory",   match: (p) => p.startsWith("/admin/inventory") },
+      { href: "/admin/reviews",      label: "Reviews",     match: (p) => p.startsWith("/admin/reviews") },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/admin/blog",         label: "Blog",        match: (p) => p.startsWith("/admin/blog") },
+      { href: "/admin/faq",          label: "FAQ",         match: (p) => p.startsWith("/admin/faq") },
+      { href: "/admin/pages",        label: "Pages",       match: (p) => p.startsWith("/admin/pages") },
+      { href: "/admin/website",      label: "Website",     match: (p) => p.startsWith("/admin/website") },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/admin/support",      label: "Support",     match: (p) => p.startsWith("/admin/support") },
+      { href: "/admin/shipping",     label: "Shipping",    match: (p) => p.startsWith("/admin/shipping") },
+      { href: "/admin/settings",     label: "Settings",    match: (p) => p.startsWith("/admin/settings") },
+    ],
+  },
 ];
 
-const MOBILE_NAV = NAV.filter(n => ["/admin", "/admin/orders", "/admin/blog", "/admin/support", "/admin/website"].includes(n.href));
+const NAV: NavItem[] = NAV_GROUPS.flatMap(g => g.items);
+const MOBILE_NAV = NAV.filter(n => ["/admin", "/admin/orders", "/admin/marketing", "/admin/support", "/admin/website"].includes(n.href));
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -108,31 +133,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="block text-[10px] tracking-[0.25em] uppercase text-brand-amber mt-0.5">Admin</span>
         </Link>
 
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {NAV.map(item => {
-            const active = item.match(pathname ?? "");
-            const badge = badgeFor(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active
-                    ? "bg-brand-orange/15 text-brand-cream border border-brand-orange/30"
-                    : "text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream border border-transparent"
-                }`}
-              >
-                <span>{item.label}</span>
-                {badge && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    badge.tone === "orange" ? "bg-brand-orange/30 text-brand-orange" : "bg-brand-amber/25 text-brand-amber"
-                  }`}>
-                    {badge.count}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+          {NAV_GROUPS.map(group => (
+            <div key={group.label} className="space-y-0.5">
+              <p className="px-3 text-[10px] tracking-[0.22em] uppercase text-brand-cream/35 mb-1">{group.label}</p>
+              {group.items.map(item => {
+                const active = item.match(pathname ?? "");
+                const badge = badgeFor(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                      active
+                        ? "bg-brand-orange/15 text-brand-cream border border-brand-orange/30"
+                        : "text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream border border-transparent"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {badge && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        badge.tone === "orange" ? "bg-brand-orange/30 text-brand-orange" : "bg-brand-amber/25 text-brand-amber"
+                      }`}>
+                        {badge.count}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 pb-3 space-y-1.5">

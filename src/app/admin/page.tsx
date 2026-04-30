@@ -1,22 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { computeStats, type DashboardStats } from "@/lib/admin/stats";
 import { listOrders, type Order } from "@/lib/admin/orders";
+import { listAllSources, type OrderSource } from "@/lib/admin/marketing";
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recent, setRecent] = useState<Order[]>([]);
+  const [sources, setSources] = useState<OrderSource[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     setStats(computeStats());
-    setRecent(listOrders().slice(0, 6));
+    const all = listOrders();
+    setAllOrders(all);
+    setRecent(all.slice(0, 6));
+    setSources(listAllSources());
   }, []);
+
+  // Source breakdown over the last 30 days
+  const sourceBreakdown = useMemo(() => {
+    if (!stats) return [];
+    const since = Date.now() - 30 * 86400000;
+    const recent30 = allOrders.filter(o => o.createdAt >= since);
+    const m = new Map<string, { count: number; revenue: number; label: string }>();
+    recent30.forEach(o => {
+      const id = o.source ?? "unknown";
+      const label = sources.find(s => s.id === id)?.label ?? "Unknown";
+      const cur = m.get(id) ?? { count: 0, revenue: 0, label };
+      cur.count += 1; cur.revenue += o.total;
+      m.set(id, cur);
+    });
+    return [...m.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }, [stats, allOrders, sources]);
 
   if (!stats) return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
 
   const max = Math.max(1, ...stats.revenueByDay.map(d => d.revenue));
+  const topSourceRev = Math.max(1, ...sourceBreakdown.map(s => s.revenue));
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-7xl">
@@ -106,6 +129,33 @@ export default function AdminOverviewPage() {
           </div>
         </section>
       </div>
+
+      {/* Source breakdown */}
+      <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm tracking-wide text-brand-cream/80">Where orders came from (30d)</h2>
+          <Link href="/admin/marketing" className="text-xs text-brand-cream/55 hover:text-brand-cream">Manage →</Link>
+        </div>
+        {sourceBreakdown.length === 0 ? (
+          <p className="text-sm text-brand-cream/45">
+            No source data yet. <Link href="/admin/marketing" className="text-brand-amber hover:underline">Set up tracking links →</Link>
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {sourceBreakdown.map(s => (
+              <div key={s.label}>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-brand-cream truncate mr-2">{s.label}</span>
+                  <span className="text-brand-cream/55 shrink-0 text-xs">{s.count} order{s.count === 1 ? "" : "s"} · £{s.revenue.toFixed(0)}</span>
+                </div>
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-brand-amber/60" style={{ width: `${(s.revenue / topSourceRev) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
