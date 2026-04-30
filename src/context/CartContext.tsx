@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from "react";
 import type { AppliedDiscount } from "@/lib/discounts";
+import { syncReservations } from "@/lib/admin/inventory";
 
 export type { AppliedDiscount };
 
@@ -12,6 +13,7 @@ export interface CartItem {
   quantity: number;
   variant?: string;
   shopifyVariantId?: string;
+  stockSku?: string;     // links to inventory item; cart qty = reserved stock
 }
 
 interface CartContextValue {
@@ -41,6 +43,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalDiscount = useMemo(() => discounts.reduce((s, d) => s + d.amountOff, 0), [discounts]);
   const total = Math.max(0, subtotal - totalDiscount);
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
+
+  // Whenever the cart changes, mirror the totals to inventory.reserved.
+  // Every linked SKU is set to its current cart quantity; missing SKUs
+  // are reset to 0. Once the order is paid, consumeStock() in the success
+  // flow reduces onHand and clears the reservation.
+  useEffect(() => {
+    const map: Record<string, number> = {};
+    for (const i of items) {
+      if (i.stockSku) map[i.stockSku] = (map[i.stockSku] ?? 0) + i.quantity;
+    }
+    syncReservations(map);
+  }, [items]);
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     setItems((prev) => {

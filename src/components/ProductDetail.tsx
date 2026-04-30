@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import type { Product, ProductFormat } from "@/lib/products";
 import { PRODUCTS } from "@/lib/products";
 import { getProductReviews } from "@/lib/reviews";
+import { getReviewsForProduct } from "@/lib/admin/reviews";
 import DiscountPopup from "@/components/DiscountPopup";
 import GiftCardPurchaseForm from "@/components/GiftCardPurchaseForm";
 
@@ -76,12 +77,20 @@ export default function ProductDetail({ product }: { product: Product }) {
     title: r.title,
     body: r.body,
   }));
-  // Merge: global reviews first, then any inline reviews not already in global (by name)
-  const globalNames = new Set(globalReviews.map((r) => r.name));
-  const displayReviews: DisplayReview[] = [
-    ...globalReviews,
-    ...inlineReviews.filter((r) => !globalNames.has(r.name)),
-  ];
+  const adminReviews: DisplayReview[] = getReviewsForProduct(product.slug).map((r) => ({
+    name: r.name,
+    location: r.location,
+    stars: r.stars,
+    title: r.title,
+    body: r.body,
+  }));
+  // Merge: admin-created (newest) first, then global reviews, then inline. Dedupe by name.
+  const seen = new Set<string>();
+  const displayReviews: DisplayReview[] = [...adminReviews, ...globalReviews, ...inlineReviews].filter((r) => {
+    if (seen.has(r.name)) return false;
+    seen.add(r.name);
+    return true;
+  });
 
   const getDisplaySize = (sLabel: string) => {
     if (sLabel === "Gift Set") return sLabel;
@@ -101,6 +110,7 @@ export default function ProductDetail({ product }: { product: Product }) {
         price: displayPrice,
         variant: fragrance,
         shopifyVariantId,
+        stockSku: product.stockSku,
       });
     }
     setAdded(true);

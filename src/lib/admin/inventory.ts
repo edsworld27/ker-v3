@@ -80,6 +80,74 @@ export function updateInventoryFields(sku: string, patch: Partial<Pick<Inventory
   write(s);
 }
 
+/**
+ * Set the cart-reservation count for a SKU. Cart contents are the source of
+ * truth — call this every time the cart changes with the current quantity
+ * for that SKU. Pre-empts stock without committing it.
+ */
+export function setReserved(sku: string, quantity: number) {
+  const s = read();
+  if (!s[sku]) return;
+  s[sku].reserved = Math.max(0, quantity);
+  write(s);
+}
+
+/**
+ * Sync all reservations from a snapshot of cart quantities. Pass a map of
+ * sku → total qty in the cart; missing SKUs get reset to 0. Idempotent.
+ */
+export function syncReservations(skuQuantities: Record<string, number>) {
+  const s = read();
+  let changed = false;
+  for (const sku of Object.keys(s)) {
+    if (s[sku].unlimited) continue;
+    const want = Math.max(0, skuQuantities[sku] ?? 0);
+    if (s[sku].reserved !== want) {
+      s[sku].reserved = want;
+      changed = true;
+    }
+  }
+  if (changed) write(s);
+}
+
+/**
+ * Commit a sale: decrement onHand and release the reservation. Call this
+ * once an order has been paid (Stripe webhook → order.paid).
+ */
+export function consumeStock(sku: string, quantity: number) {
+  const s = read();
+  if (!s[sku] || s[sku].unlimited) return;
+  s[sku].onHand   = Math.max(0, s[sku].onHand   - quantity);
+  s[sku].reserved = Math.max(0, s[sku].reserved - quantity);
+  write(s);
+}
+
+const PENDING_KEY = "lk_pending_sale_v1";
+
+/**
+ * Snapshot the cart at checkout-submit time. The success page reads this
+ * back, calls consumeStock for each line, then clears it. Survives the
+ * Stripe redirect because it lives in localStorage.
+ */
+export function stashPendingSale(items: { stockSku?: string; quantity: number }[]) {
+  if (typeof window === "undefined") return;
+  const lines = items.filter(i => i.stockSku).map(i => ({ sku: i.stockSku!, qty: i.quantity }));
+  if (lines.length === 0) return;
+  localStorage.setItem(PENDING_KEY, JSON.stringify(lines));
+}
+
+export function commitPendingSale() {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (!raw) return;
+    const lines = JSON.parse(raw) as { sku: string; qty: number }[];
+    for (const line of lines) consumeStock(line.sku, line.qty);
+  } finally {
+    localStorage.removeItem(PENDING_KEY);
+  }
+}
+
 export function lowStockCount(): number {
   return listInventory().filter(i => !i.archived && !i.unlimited && i.onHand - i.reserved <= i.lowAt).length;
 }

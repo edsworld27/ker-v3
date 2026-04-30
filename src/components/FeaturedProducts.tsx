@@ -143,6 +143,7 @@ export default function FeaturedProducts() {
                               id: `${product.id}-default`,
                               name: product.name,
                               price: (product.onSale && product.salePrice ? product.salePrice : undefined) ?? product.salePrice ?? product.price,
+                              stockSku: product.stockSku,
                             })
                           }
                           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${

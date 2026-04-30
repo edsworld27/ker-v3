@@ -58,6 +58,8 @@ export default function CartDrawer() {
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error || "No checkout URL returned");
+      const { stashPendingSale } = await import("@/lib/admin/inventory");
+      stashPendingSale(items);
       localStorage.setItem("odo_has_purchased", "true");
       window.location.href = data.url;
     } catch (error) {

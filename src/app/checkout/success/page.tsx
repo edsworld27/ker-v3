@@ -21,6 +21,11 @@ function SuccessContent() {
   useEffect(() => {
     // Mark this browser as a returning customer (suppresses the first-order popup).
     localStorage.setItem("odo_has_purchased", "true");
+    // Commit the inventory reservation that was stashed at checkout-submit:
+    // decrement onHand and clear reserved for every linked SKU. In production
+    // the Stripe webhook would do this server-side; this client fallback
+    // keeps the admin dashboard accurate while we're on localStorage.
+    import("@/lib/admin/inventory").then(({ commitPendingSale }) => commitPendingSale());
     // TODO: hit /api/orders?session=... to fetch the confirmed order details
     // once the webhook has written them to the DB.
   }, []);

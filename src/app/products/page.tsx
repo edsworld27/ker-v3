@@ -50,7 +50,7 @@ function ShopContent() {
   function handleAdd(product: Product) {
     if (product.available === 0) return;
     const price = product.onSale && product.salePrice ? product.salePrice : product.price;
-    addItem({ id: product.id, name: product.name, price });
+    addItem({ id: product.id, name: product.name, price, stockSku: product.stockSku });
     setAdded(product.id);
     setTimeout(() => setAdded(null), 1500);
   }

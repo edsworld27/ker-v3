@@ -50,7 +50,16 @@ export default function AdminOrderDetailPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-5xl">
-      <Link href="/admin/orders" className="text-xs text-brand-cream/55 hover:text-brand-cream">← All orders</Link>
+      <div className="flex items-center justify-between">
+        <Link href="/admin/orders" className="text-xs text-brand-cream/55 hover:text-brand-cream">← All orders</Link>
+        <Link
+          href={`/admin/orders/${order.id}/receipt`}
+          target="_blank"
+          className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30"
+        >
+          Receipt / Invoice →
+        </Link>
+      </div>
 
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
