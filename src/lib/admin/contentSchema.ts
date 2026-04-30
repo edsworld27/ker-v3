@@ -157,12 +157,21 @@ export const PAGE_SCHEMAS: PageSchema[] = [
 
   // ── Our Story page ───────────────────────────────────────────────────────
   {
-    id: "our-story", label: "Our Story page", href: "/our-story", description: "Felicia's origin story header.",
-    sections: [{ id: "hero", label: "Hero", fields: [
-      { key: "our-story.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Our Story" },
-      { key: "our-story.hero.headline", label: "Headline", type: "text",     default: "A gift carried across generations" },
-      { key: "our-story.hero.intro",    label: "Intro",    type: "textarea", default: "Odo is the Twi word for love. Every bar is built on Ghanaian skincare wisdom passed from grandmother to daughter, generation to generation." },
-    ]}],
+    id: "our-story", label: "Our Story page", href: "/our-story", description: "Felicia's origin story.",
+    sections: [
+      { id: "hero", label: "Hero", fields: [
+        { key: "our-story.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Our Story" },
+        { key: "our-story.hero.headline", label: "Headline", type: "text",     default: "A gift carried across generations" },
+        { key: "our-story.hero.intro",    label: "Intro",    type: "textarea", default: "Odo is the Twi word for love. Every bar is built on Ghanaian skincare wisdom passed from grandmother to daughter, generation to generation." },
+      ]},
+      { id: "body", label: "Body", fields: [
+        { key: "our-story.body.html", label: "Body (HTML)", type: "code", hint: "Standard HTML — h2, p, ul/li, a, strong, em.", default: `<h2 class=\"font-display text-2xl text-brand-cream\">Felicia's vision</h2>
+<p>Felicia grew up watching her grandmother hand-press shea butter and cold-process black soap in a small kitchen in Accra. The recipes were never written down — they lived in the hands and memory of the women who made them. When she moved to the UK and could not find a soap that matched the integrity of what she grew up with, she made her own.</p>
+<p>Today, every Odo bar is still made in small batches in Accra. Every ingredient is sourced direct from named Ghanaian farmers — no middlemen, no synthetic shortcuts. The result is a soap that does not just clean. It honours.</p>
+<h2 class=\"font-display text-2xl text-brand-cream\">What we stand for</h2>
+<p>Pure ingredients. Honest labels. Fair pay for the women and farmers who make our products possible. Heritage, not trend.</p>` },
+      ]},
+    ],
   },
 
   // ── Our Philosophy page ──────────────────────────────────────────────────
@@ -192,12 +201,17 @@ export const PAGE_SCHEMAS: PageSchema[] = [
 
   // ── Ingredients page ─────────────────────────────────────────────────────
   {
-    id: "ingredients", label: "Ingredients page", href: "/ingredients", description: "Ingredient sourcing page header.",
-    sections: [{ id: "hero", label: "Hero", fields: [
-      { key: "ingredients.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Ingredients" },
-      { key: "ingredients.hero.headline", label: "Headline", type: "text",     default: "Every element has a name, a region, a story" },
-      { key: "ingredients.hero.intro",    label: "Intro",    type: "textarea", default: "We don't hide behind 'fragrance'. Tap any ingredient to see the co-operative that grows it, how it's processed, and why we use it." },
-    ]}],
+    id: "ingredients", label: "Ingredients page", href: "/ingredients", description: "Ingredient sourcing page.",
+    sections: [
+      { id: "hero", label: "Hero", fields: [
+        { key: "ingredients.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Ingredients" },
+        { key: "ingredients.hero.headline", label: "Headline", type: "text",     default: "Every element has a name, a region, a story" },
+        { key: "ingredients.hero.intro",    label: "Intro",    type: "textarea", default: "We don't hide behind 'fragrance'. Tap any ingredient to see the co-operative that grows it, how it's processed, and why we use it." },
+      ]},
+      { id: "body", label: "Body (after the ingredient grid)", fields: [
+        { key: "ingredients.body.afterGrid", label: "Closing paragraph", type: "textarea", default: "We never use parabens, phthalates, sulphates (SLS / SLES), synthetic fragrance, triclosan, or hidden preservatives. What you see on the label is what is in the bar." },
+      ]},
+    ],
   },
 
   // ── Sustainability page ──────────────────────────────────────────────────
@@ -301,6 +315,32 @@ export const PAGE_SCHEMAS: PageSchema[] = [
       { key: "redeem.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Gift Cards" },
       { key: "redeem.hero.headline", label: "Headline", type: "text",     default: "Check your balance" },
     ]}],
+  },
+
+  // ── Privacy page ─────────────────────────────────────────────────────────
+  {
+    id: "privacy", label: "Privacy policy page", href: "/privacy", description: "GDPR-friendly privacy policy.",
+    sections: [
+      { id: "hero", label: "Hero", fields: [
+        { key: "privacy.hero.eyebrow",  label: "Eyebrow",  type: "text",     default: "Privacy" },
+        { key: "privacy.hero.headline", label: "Headline", type: "text",     default: "Your data, treated with care" },
+        { key: "privacy.hero.intro",    label: "Intro",    type: "textarea", default: "We collect the minimum data needed to ship your order and improve our products. Nothing is sold to third parties — ever." },
+      ]},
+      { id: "body", label: "Body", fields: [
+        { key: "privacy.body.html", label: "Body (HTML)", type: "code", hint: "Standard HTML. Update the 'Last updated' line whenever the policy materially changes.", default: `<h2 class=\"font-display text-2xl text-brand-cream\">What we collect</h2>
+<ul>
+  <li>Order details (name, address, email, phone) to ship and contact you about your order</li>
+  <li>Payment information processed securely by Stripe and Klarna — we never see or store your card details</li>
+  <li>Anonymous analytics on which pages you visit, to improve the site</li>
+</ul>
+<h2 class=\"font-display text-2xl text-brand-cream\">Your rights</h2>
+<p>Under UK GDPR you have the right to access, correct, or delete the personal data we hold about you. Email <a href=\"mailto:privacy@luvandker.com\" class=\"text-brand-orange hover:underline\">privacy@luvandker.com</a> and we will respond within 30 days.</p>
+<h2 class=\"font-display text-2xl text-brand-cream\">Cookies</h2>
+<p>We use a small number of essential cookies to keep your cart working and a privacy-respecting analytics tool to understand anonymous site usage. We do not use advertising cookies.</p>
+<h2 class=\"font-display text-2xl text-brand-cream\">Last updated</h2>
+<p>April 2026. For any privacy questions not covered here, contact us at the email above.</p>` },
+      ]},
+    ],
   },
 ];
 

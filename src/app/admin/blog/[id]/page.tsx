@@ -51,6 +51,17 @@ export default function BlogEditor() {
   function unpublish() {
     unpublishPost(post!.id);
   }
+  function schedule(forIso: string) {
+    const ts = forIso ? new Date(forIso).getTime() : NaN;
+    if (!isFinite(ts) || ts <= Date.now()) {
+      alert("Pick a future date and time.");
+      return;
+    }
+    updatePost(post!.id, { status: "scheduled", scheduledFor: ts, publishedAt: undefined });
+  }
+  function clearSchedule() {
+    updatePost(post!.id, { status: "draft", scheduledFor: undefined });
+  }
   function remove() {
     if (!confirm(`Delete "${post!.title}"? This can't be undone.`)) return;
     deletePost(post!.id);
@@ -133,6 +144,41 @@ export default function BlogEditor() {
         />
       </div>
 
+      {/* Schedule panel */}
+      <details className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden group" open={post.status === "scheduled"}>
+        <summary className="cursor-pointer px-5 py-3 border-b border-white/5 bg-brand-black-soft/40 text-xs tracking-[0.22em] uppercase text-brand-cream/60 list-none flex items-center justify-between">
+          Schedule
+          {post.status === "scheduled" && post.scheduledFor && (
+            <span className="text-brand-amber normal-case tracking-normal text-[11px]">
+              Goes live {new Date(post.scheduledFor).toLocaleString()}
+            </span>
+          )}
+          <span className="text-brand-cream/40 group-open:rotate-90 transition-transform">›</span>
+        </summary>
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-brand-cream/55 leading-relaxed">
+            Pick a future date &amp; time to auto-publish. The post will start showing on /blog as soon as the time passes (no server cron needed — the public page filters on read).
+          </p>
+          <Field label="Publish at">
+            <input
+              type="datetime-local"
+              value={post.scheduledFor ? toLocalInput(post.scheduledFor) : ""}
+              onChange={e => schedule(e.target.value)}
+              min={toLocalInput(Date.now() + 60_000)}
+              className="bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
+            />
+          </Field>
+          {post.status === "scheduled" && (
+            <button
+              onClick={clearSchedule}
+              className="text-[11px] text-brand-cream/50 hover:text-brand-orange underline underline-offset-4"
+            >
+              Clear schedule (revert to draft)
+            </button>
+          )}
+        </div>
+      </details>
+
       {/* SEO panel */}
       <details className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden group" open={false}>
         <summary className="cursor-pointer px-5 py-3 border-b border-white/5 bg-brand-black-soft/40 text-xs tracking-[0.22em] uppercase text-brand-cream/60 list-none flex items-center justify-between">
@@ -184,16 +230,28 @@ export default function BlogEditor() {
       <div className="sticky bottom-0 -mx-6 sm:-mx-8 lg:-mx-10 px-6 sm:px-8 lg:px-10 py-4 bg-brand-black-soft/95 backdrop-blur border-t border-white/8 flex flex-wrap items-center justify-between gap-3">
         <button onClick={remove} className="text-xs text-brand-cream/40 hover:text-brand-orange">Delete post</button>
         <div className="flex items-center gap-2">
+          {post.status === "scheduled" && post.scheduledFor && (
+            <span className="text-[11px] text-brand-amber px-3 py-2">
+              ⏱ Scheduled · {new Date(post.scheduledFor).toLocaleString()}
+            </span>
+          )}
           <Link href={`/blog/${post.slug}`} target="_blank" className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream">Preview →</Link>
           {post.status === "published" ? (
             <button onClick={unpublish} className="text-xs px-4 py-2 rounded-lg border border-white/15 text-brand-cream/75 hover:text-brand-cream">Unpublish</button>
           ) : (
-            <button onClick={publish} className="text-xs px-5 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white font-semibold">Publish</button>
+            <button onClick={publish} className="text-xs px-5 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white font-semibold">Publish now</button>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+// Convert epoch ms to a "yyyy-MM-ddThh:mm" string for <input type="datetime-local">.
+function toLocalInput(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

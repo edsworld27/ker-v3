@@ -8,7 +8,7 @@ import { listPosts, createPost, deletePost, setFeatured, onBlogChange, type Blog
 export default function AdminBlogIndex() {
   const router = useRouter();
   const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
+  const [filter, setFilter] = useState<"all" | "published" | "draft" | "scheduled">("all");
 
   useEffect(() => {
     const refresh = () => setPosts(listPosts());
@@ -19,6 +19,7 @@ export default function AdminBlogIndex() {
   const filtered = filter === "all" ? posts : posts.filter(p => p.status === filter);
   const draftCount = posts.filter(p => p.status === "draft").length;
   const publishedCount = posts.filter(p => p.status === "published").length;
+  const scheduledCount = posts.filter(p => p.status === "scheduled").length;
 
   function newPost() {
     const p = createPost({ title: "Untitled draft" });
@@ -41,8 +42,8 @@ export default function AdminBlogIndex() {
         </div>
       </div>
 
-      <div className="flex gap-1 text-xs">
-        {(["all", "published", "draft"] as const).map(f => (
+      <div className="flex gap-1 text-xs flex-wrap">
+        {(["all", "published", "scheduled", "draft"] as const).map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -50,6 +51,7 @@ export default function AdminBlogIndex() {
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
             {f === "draft" && draftCount > 0 && <span className="ml-1.5 text-brand-amber font-semibold">{draftCount}</span>}
+            {f === "scheduled" && scheduledCount > 0 && <span className="ml-1.5 text-brand-purple-light font-semibold">{scheduledCount}</span>}
           </button>
         ))}
       </div>
