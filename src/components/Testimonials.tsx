@@ -1,6 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { REVIEWS } from "@/lib/reviews";
+import { useState, useEffect } from "react";
+import { REVIEWS, type Review } from "@/lib/reviews";
+import { getGlobalReviews, onReviewsChange } from "@/lib/admin/reviews";
+import { useContent } from "@/lib/useContent";
 
 interface IgStory {
   type: "story";
@@ -148,6 +153,36 @@ const SKYLINE: { tile: Tile; width: string; height: string; rotate: string; offs
 
 
 export default function Testimonials() {
+  const [extraReviews, setExtraReviews] = useState<Review[]>([]);
+  const eyebrow   = useContent("home.testimonials.eyebrow",   "Stories");
+  const headline1 = useContent("home.testimonials.headline1", "What people are");
+  const headline2 = useContent("home.testimonials.headline2", "actually saying");
+  const intro     = useContent("home.testimonials.intro",     "Real DMs. Real reposts. Real customers — men and women, mothers and fathers, dermatologists and daughters. We don't pay for testimonials and we don't curate them.");
+  const stat1Big  = useContent("home.testimonials.stat1Big",  "4.9");
+  const stat1Small= useContent("home.testimonials.stat1Small","Average rating");
+  const stat2Big  = useContent("home.testimonials.stat2Big",  "3,400+");
+  const stat2Small= useContent("home.testimonials.stat2Small","Happy customers");
+  const stat3Big  = useContent("home.testimonials.stat3Big",  "91%");
+  const stat3Small= useContent("home.testimonials.stat3Small","Buy again within 90 days");
+  const stat4Big  = useContent("home.testimonials.stat4Big",  "0");
+  const stat4Small= useContent("home.testimonials.stat4Small","Synthetic ingredients · ever");
+
+  useEffect(() => {
+    function load() {
+      const mapped: Review[] = getGlobalReviews().map(r => ({
+        quote: r.body,
+        name: r.name,
+        location: r.location,
+        stars: r.stars,
+      }));
+      setExtraReviews(mapped);
+    }
+    load();
+    return onReviewsChange(load);
+  }, []);
+
+  const allReviews = [...REVIEWS, ...extraReviews];
+
   return (
     <section className="w-full py-20 sm:py-24 lg:py-32 2xl:py-40 bg-brand-black-soft overflow-hidden">
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
@@ -156,26 +191,25 @@ export default function Testimonials() {
         <div className="flex flex-col items-center text-center mb-10 sm:mb-12">
           <div className="flex items-center gap-3 mb-5">
             <div className="adinkra-line w-8 sm:w-10" />
-            <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">Stories</span>
+            <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">{eyebrow}</span>
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-tight mb-5
             text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-            What people are <span className="gradient-text">actually saying</span>
+            {headline1} <span className="gradient-text">{headline2}</span>
           </h2>
           <p className="text-brand-cream/60 text-base sm:text-lg xl:text-xl leading-relaxed max-w-2xl">
-            Real DMs. Real reposts. Real customers — men and women, mothers and fathers, dermatologists and daughters.
-            We don&apos;t pay for testimonials and we don&apos;t curate them.
+            {intro}
           </p>
         </div>
 
         {/* Trust strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl bg-white/5 mb-14 sm:mb-16">
           {[
-            { big: "4.9", small: "Average rating" },
-            { big: "3,400+", small: "Happy customers" },
-            { big: "91%", small: "Buy again within 90 days" },
-            { big: "0", small: "Synthetic ingredients · ever" },
+            { big: stat1Big, small: stat1Small },
+            { big: stat2Big, small: stat2Small },
+            { big: stat3Big, small: stat3Small },
+            { big: stat4Big, small: stat4Small },
           ].map((s) => (
             <div key={s.small} className="bg-brand-black-card px-5 py-6 sm:py-7 flex flex-col items-center text-center">
               <span className="font-display text-3xl sm:text-4xl xl:text-5xl font-bold text-brand-amber leading-none mb-2">
@@ -198,11 +232,11 @@ export default function Testimonials() {
         {/* Break out of the max-width container so the marquee runs the full viewport width */}
         <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] space-y-5 xl:space-y-6">
           <ReviewMarquee
-            reviews={[...REVIEWS.slice(0, 5), ...REVIEWS.slice(5)]}
+            reviews={[...allReviews.slice(0, Math.ceil(allReviews.length / 2)), ...allReviews.slice(Math.ceil(allReviews.length / 2))]}
             direction="left"
           />
           <ReviewMarquee
-            reviews={[...REVIEWS.slice(4), ...REVIEWS.slice(0, 4)]}
+            reviews={[...allReviews.slice(Math.floor(allReviews.length / 2)), ...allReviews.slice(0, Math.floor(allReviews.length / 2))]}
             direction="right"
           />
         </div>
@@ -213,7 +247,7 @@ export default function Testimonials() {
             href="/reviews"
             className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-brand-amber/40 bg-brand-black-card text-brand-amber text-sm sm:text-base font-medium tracking-wide hover:bg-brand-amber hover:text-brand-black transition-all duration-300 group"
           >
-            Read all {REVIEWS.length} reviews
+            Read all {allReviews.length} reviews
             <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
           </Link>
           <p className="text-brand-cream/30 text-xs mt-3 tracking-wide">
@@ -230,7 +264,7 @@ function ReviewMarquee({
   reviews,
   direction,
 }: {
-  reviews: typeof REVIEWS;
+  reviews: Review[];
   direction: "left" | "right";
 }) {
   // Duplicate the list so the animation loops seamlessly
@@ -246,7 +280,7 @@ function ReviewMarquee({
   );
 }
 
-function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
+function ReviewCard({ review }: { review: Review }) {
   const { quote, name, location, stars } = review;
   return (
     <div className="shrink-0 w-[85vw] sm:w-[26rem] xl:w-[28rem] flex flex-col p-7 xl:p-8 rounded-2xl bg-brand-black-card border border-white/5 hover:border-brand-purple/30 transition-colors">

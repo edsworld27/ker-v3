@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
+import { useContent } from "@/lib/useContent";
 
 const PERKS = [
   {
@@ -37,6 +38,10 @@ const TIERS = [
 export default function ReferPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState<ReferralCode | null>(null);
+  const eyebrow   = useContent("refer.hero.eyebrow",   "Referral Programme");
+  const headline1 = useContent("refer.hero.headline1", "Share the glow.");
+  const headline2 = useContent("refer.hero.headline2", "Get rewarded.");
+  const intro     = useContent("refer.hero.intro",     "When you love something this much, sharing it should pay off. Share your unique discount code — when a friend uses it at checkout, you both get £10 off.");
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -69,15 +74,15 @@ export default function ReferPage() {
             <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
               <div className="flex items-center gap-3 mb-5">
                 <div className="adinkra-line w-8 sm:w-10" />
-                <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">Referral Programme</span>
+                <span className="text-xs tracking-[0.28em] uppercase text-brand-purple-light">{eyebrow}</span>
                 <div className="adinkra-line w-8 sm:w-10" />
               </div>
               <h1 className="font-display font-bold text-brand-cream leading-tight mb-5 text-4xl sm:text-5xl md:text-6xl xl:text-7xl">
-                Share the glow.<br />
-                <span className="gradient-text">Get rewarded.</span>
+                {headline1}<br />
+                <span className="gradient-text">{headline2}</span>
               </h1>
               <p className="text-brand-cream/60 text-base sm:text-lg leading-relaxed max-w-2xl mb-10">
-                When you love something this much, sharing it should pay off. Share your unique discount code — when a friend uses it at checkout, you both get £10 off.
+                {intro}
               </p>
 
               {/* CTA / code box */}

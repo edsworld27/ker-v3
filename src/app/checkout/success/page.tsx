@@ -26,6 +26,7 @@ function SuccessContent() {
     // the Stripe webhook would do this server-side; this client fallback
     // keeps the admin dashboard accurate while we're on localStorage.
     import("@/lib/admin/inventory").then(({ commitPendingSale }) => commitPendingSale());
+    import("@/lib/admin/orders").then(({ commitPendingOrder }) => commitPendingOrder(sessionId || undefined));
     // TODO: hit /api/orders?session=... to fetch the confirmed order details
     // once the webhook has written them to the DB.
   }, []);

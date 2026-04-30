@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { AUTH_EVENT, getSession, isAdmin, signOut, type Session } from "@/lib/auth";
+import { useContent } from "@/lib/useContent";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -31,6 +32,9 @@ const TOP_LINKS = [
 
 export default function Navbar() {
   const { count } = useCart();
+  const wordmark1 = useContent("navbar.wordmark1", "LUV");
+  const wordmark2 = useContent("navbar.wordmark2", "KER");
+  const subtitle  = useContent("navbar.subtitle",  "Odo by Felicia");
   const [scrolled,        setScrolled]        = useState(false);
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [aboutOpen,       setAboutOpen]       = useState(false);
@@ -95,10 +99,10 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/#story" scroll={true} className="flex flex-col leading-none shrink-0">
             <span className="font-display text-lg sm:text-xl 2xl:text-2xl font-bold tracking-wide text-brand-cream">
-              LUV <span className="text-brand-orange">&amp;</span> KER
+              {wordmark1} <span className="text-brand-orange">&amp;</span> {wordmark2}
             </span>
             <span className="text-[9px] sm:text-[10px] tracking-[0.25em] text-brand-cream/40 uppercase mt-0.5">
-              Odo by Felicia
+              {subtitle}
             </span>
           </Link>
 

@@ -147,6 +147,56 @@ export function attachTracking(id: string, tracking: Tracking) {
   write(s);
 }
 
+const PENDING_ORDER_KEY = "lk_pending_order_v1";
+
+interface PendingOrderData {
+  items: Array<{ id: string; name: string; variant?: string; quantity: number; price: number }>;
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+}
+
+export function stashPendingOrder(data: PendingOrderData) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(data));
+}
+
+export function commitPendingOrder(paymentIntent?: string): Order | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(PENDING_ORDER_KEY);
+  if (!raw) return null;
+  localStorage.removeItem(PENDING_ORDER_KEY);
+  try {
+    const data: PendingOrderData = JSON.parse(raw);
+    const order: Order = {
+      id: nextOrderId(),
+      createdAt: Date.now(),
+      customerEmail: "guest@checkout.com",
+      customerName: "Customer",
+      items: data.items.map(i => ({
+        productId: i.id,
+        name: i.name,
+        variant: i.variant,
+        quantity: i.quantity,
+        unitPrice: i.price,
+      })),
+      subtotal: data.subtotal,
+      discount: data.discountAmount,
+      shipping: 4.5,
+      tax: 0,
+      total: data.total + 4.5,
+      currency: "GBP",
+      status: "paid",
+      paymentIntent,
+    };
+    upsertOrder(order);
+    window.dispatchEvent(new Event("storage"));
+    return order;
+  } catch {
+    return null;
+  }
+}
+
 // Generate a fresh display id. Production replaces this with a DB sequence.
 export function nextOrderId(): string {
   const existing = Object.keys(read());

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { getProducts, onProductsChange, type Product } from "@/lib/products";
+import { useContent } from "@/lib/useContent";
 
 const FEATURED_SLUGS = ["black-soap", "odo-face", "nkrabea-shave"];
 
@@ -28,6 +29,9 @@ const PRODUCT_VISUALS: Record<string, { gradient: string; accent: string; symbol
 export default function FeaturedProducts() {
   const { addItem } = useCart();
   const [allProducts, setAllProducts] = useState<Product[]>(() => getProducts());
+  const eyebrow  = useContent("home.featured.eyebrow",  "Featured");
+  const headline = useContent("home.featured.headline", "Start your ritual.");
+  const tagline  = useContent("home.featured.tagline",  "Three products. One for every skin need.");
 
   useEffect(() => {
     setAllProducts(getProducts());
@@ -49,14 +53,14 @@ export default function FeaturedProducts() {
         <div className="flex flex-col items-center text-center mb-12 sm:mb-14">
           <div className="flex items-center gap-3 mb-5">
             <div className="adinkra-line w-8 sm:w-10" />
-            <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Featured</span>
+            <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
             <div className="adinkra-line w-8 sm:w-10" />
           </div>
           <h2 className="font-display font-bold text-brand-cream text-4xl sm:text-5xl xl:text-6xl mb-3">
-            Start your ritual.
+            {headline}
           </h2>
           <p className="text-brand-cream/50 text-base sm:text-lg max-w-sm mx-auto">
-            Three products. One for every skin need.
+            {tagline}
           </p>
         </div>
 

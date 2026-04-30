@@ -1,14 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import IngredientGrid from "@/components/IngredientGrid";
-
-export const metadata = {
-  title: "About — The Full Story | Luv & Ker",
-  description:
-    "The journey from a kitchen in Accra to your bathroom — Felicia's story, the chemical problem we built Odo without, our ingredients, sustainability commitments, and the culture at the heart of Luv & Ker.",
-};
+import { useContent } from "@/lib/useContent";
 
 const SECTIONS = [
   { id: "journey",        label: "The Journey" },
@@ -104,6 +101,10 @@ const STATS = [
 ];
 
 export default function AboutPage() {
+  const eyebrow   = useContent("about.hero.eyebrow",   "About Luv & Ker");
+  const headline1 = useContent("about.hero.headline1", "Everything we are,");
+  const headline2 = useContent("about.hero.headline2", "nothing we hide.");
+  const intro     = useContent("about.hero.intro",     "The journey from a kitchen in Accra to your bathroom. The chemicals we built Odo without. The farmers who grow what goes inside. The way we ship it. The culture that holds it all together.");
   return (
     <>
       <Navbar />
@@ -115,15 +116,14 @@ export default function AboutPage() {
           <div className="relative z-10 w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-16 sm:py-24 lg:py-32">
             <div className="flex items-center gap-3 mb-6">
               <div className="adinkra-line w-10" />
-              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">About Luv &amp; Ker</span>
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
             </div>
             <h1 className="font-display font-bold text-brand-cream leading-[1.05] mb-6 text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl">
-              Everything we are,<br />
-              <span className="italic gradient-text">nothing we hide.</span>
+              {headline1}<br />
+              <span className="italic gradient-text">{headline2}</span>
             </h1>
             <p className="text-brand-cream/65 text-base sm:text-xl leading-relaxed max-w-2xl mb-10">
-              The journey from a kitchen in Accra to your bathroom. The chemicals we built Odo without.
-              The farmers who grow what goes inside. The way we ship it. The culture that holds it all together.
+              {intro}
             </p>
             {/* Section nav pills */}
             <div className="flex flex-wrap gap-2 sm:gap-3">

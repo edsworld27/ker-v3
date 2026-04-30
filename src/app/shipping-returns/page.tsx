@@ -5,6 +5,7 @@ export const metadata = { title: "Shipping & Returns | Luv & Ker" };
 export default function Page() {
   return (
     <InfoPage
+      contentKey="shipping.hero"
       eyebrow="Shipping & Returns"
       title="Honest delivery, honest returns"
       intro="Everything you need to know about getting your Odo to your door — and back, if it isn't right."

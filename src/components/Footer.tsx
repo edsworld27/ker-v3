@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useContent } from "@/lib/useContent";
 
 const COLLECTION_LINKS = [
   { label: "Shop For Her · Odo",     href: "/products?range=odo",       colour: "text-brand-orange" },
@@ -56,6 +59,8 @@ const SOCIAL_LINKS = [
 ];
 
 export default function Footer() {
+  const tagline     = useContent("footer.tagline",     "Odo by Felicia");
+  const description = useContent("footer.description", "Pure. Sacred. Alive. Ghanaian heritage skincare for those who demand honesty from everything they put on their skin.");
   return (
     <footer className="w-full bg-brand-black border-t border-white/5">
       <div className="w-full max-w-7xl xl:max-w-screen-xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-14 sm:py-16 lg:py-20">
@@ -67,9 +72,9 @@ export default function Footer() {
             <Link href="/" className="font-display text-2xl sm:text-3xl font-bold text-brand-cream mb-1.5 inline-block">
               LUV <span className="text-brand-orange">&amp;</span> KER
             </Link>
-            <div className="text-[10px] tracking-[0.28em] text-brand-cream/30 uppercase mb-5">Odo by Felicia</div>
+            <div className="text-[10px] tracking-[0.28em] text-brand-cream/30 uppercase mb-5">{tagline}</div>
             <p className="text-sm xl:text-base text-brand-cream/40 leading-relaxed max-w-xs">
-              Pure. Sacred. Alive. Ghanaian heritage skincare for those who demand honesty from everything they put on their skin.
+              {description}
             </p>
           </div>
 

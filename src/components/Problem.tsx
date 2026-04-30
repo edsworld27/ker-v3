@@ -1,6 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useContent } from "@/lib/useContent";
 
 export default function Problem() {
+  const eyebrow   = useContent("home.problem.eyebrow",   "The Problem");
+  const headline1 = useContent("home.problem.headline1", "They called it");
+  const headline2 = useContent("home.problem.headline2", "care.");
+  const headline3 = useContent("home.problem.headline3", " Take it back.");
+  const body      = useContent("home.problem.body",      "Mass-market brands have spent decades loading our skin with sulphates, phthalates, and synthetic chemicals hidden behind the word “fragrance.” Raw, clean power for men. Divine, untouched skin for women. Odo strips it back to what our bodies actually deserve — and nothing they don't.");
+
   const issues = [
     {
       icon: "⚗️",
@@ -32,16 +41,14 @@ export default function Problem() {
         <div className="flex flex-col items-start text-left mb-14 sm:mb-18 lg:mb-20">
           <div className="flex items-center gap-3 mb-6">
             <div className="adinkra-line w-10" />
-            <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">The Problem</span>
+            <span className="text-xs tracking-[0.28em] uppercase text-brand-orange">{eyebrow}</span>
           </div>
           <h2 className="font-display font-bold text-brand-cream leading-[1.05] mb-7
             text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl w-full">
-            They called it <span className="italic gradient-text">care.</span> Take it back.
+            {headline1} <span className="italic gradient-text">{headline2}</span>{headline3}
           </h2>
           <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed">
-            Mass-market brands have spent decades loading our skin with sulphates, phthalates, and synthetic
-            chemicals hidden behind the word &ldquo;fragrance.&rdquo; Raw, clean power for men. Divine, untouched
-            skin for women. Odo strips it back to what our bodies actually deserve — and nothing they don&apos;t.
+            {body}
           </p>
         </div>
 

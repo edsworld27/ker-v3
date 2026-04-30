@@ -4,6 +4,8 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import ChatBot from "@/components/ChatBot";
 import PurpleSideScroller from "@/components/PurpleSideScroller";
+import SiteHead from "@/components/SiteHead";
+import PreviewBar from "@/components/PreviewBar";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -52,6 +54,8 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-brand-black text-brand-cream font-body antialiased">
         <CartProvider>
+          <PreviewBar />
+          <SiteHead />
           {children}
           <ChatBot />
           <PurpleSideScroller />
