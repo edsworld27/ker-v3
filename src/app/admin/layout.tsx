@@ -8,6 +8,7 @@ import { pendingOrdersCount } from "@/lib/admin/stats";
 import { lowStockCount } from "@/lib/admin/inventory";
 import { pendingDraftCount, onContentChange } from "@/lib/admin/content";
 import { openTicketCount, onTicketsChange } from "@/lib/admin/tickets";
+import { unpaidCommissionsTotal, onAffiliatesChange } from "@/lib/admin/marketing";
 
 interface NavItem { href: string; label: string; match: (p: string) => boolean }
 interface NavGroup { label: string; items: NavItem[] }
@@ -62,6 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [low, setLow] = useState(0);
   const [drafts, setDrafts] = useState(0);
   const [tickets, setTickets] = useState(0);
+  const [owed, setOwed] = useState(0);
 
   useEffect(() => {
     setSession(getSession());
@@ -72,16 +74,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setLow(lowStockCount());
       setDrafts(pendingDraftCount());
       setTickets(openTicketCount());
+      setOwed(unpaidCommissionsTotal());
     };
     refresh();
     window.addEventListener(AUTH_EVENT, refresh);
     window.addEventListener("storage", refresh);
     const off1 = onContentChange(refresh);
     const off2 = onTicketsChange(refresh);
+    const off3 = onAffiliatesChange(refresh);
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
-      off1(); off2();
+      off1(); off2(); off3();
     };
   }, [pathname]);
 
@@ -114,11 +118,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  function badgeFor(href: string): { count: number; tone: "orange" | "amber" } | null {
+  function badgeFor(href: string): { count: number | string; tone: "orange" | "amber" } | null {
     if (href === "/admin/orders" && pending > 0) return { count: pending, tone: "amber" };
     if (href === "/admin/inventory" && low > 0) return { count: low, tone: "orange" };
     if (href === "/admin/website" && drafts > 0) return { count: drafts, tone: "amber" };
     if (href === "/admin/support" && tickets > 0) return { count: tickets, tone: "orange" };
+    if (href === "/admin/marketing" && owed > 0) return { count: `£${owed.toFixed(0)}`, tone: "amber" };
     return null;
   }
 

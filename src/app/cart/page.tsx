@@ -18,8 +18,16 @@ export default function CartPage() {
 
   useEffect(() => {
     setSources(listSources());
+    // Restore prior selection so it survives a page bounce
+    const saved = localStorage.getItem("lk_cart_source");
+    if (saved) setSource(saved);
+    const savedDetail = localStorage.getItem("lk_cart_source_detail");
+    if (savedDetail) setSourceDetail(savedDetail);
     return onSourcesChange(() => setSources(listSources()));
   }, []);
+
+  useEffect(() => { if (source) localStorage.setItem("lk_cart_source", source); }, [source]);
+  useEffect(() => { if (sourceDetail) localStorage.setItem("lk_cart_source_detail", sourceDetail); }, [sourceDetail]);
 
   async function handleApplyDiscount(e: React.FormEvent) {
     e.preventDefault();

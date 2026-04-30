@@ -232,6 +232,13 @@ export function recordAffiliatePayout(id: string, amount: number) {
   const xs = readAffiliates().map(a => a.id === id ? { ...a, paidTotal: a.paidTotal + amount } : a);
   writeAffiliates(xs);
 }
+// Sum of unpaid commissions across all active affiliates — used for the
+// sidebar badge and overview KPI.
+export function unpaidCommissionsTotal(): number {
+  return readAffiliates()
+    .filter(a => !a.archived)
+    .reduce((s, a) => s + Math.max(0, a.earnedTotal - a.paidTotal), 0);
+}
 export function onAffiliatesChange(cb: () => void): () => void {
   const handler = () => cb();
   window.addEventListener(AFFILIATES_EVENT, handler);
