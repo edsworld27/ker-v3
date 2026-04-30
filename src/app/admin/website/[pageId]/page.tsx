@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getSchema, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
-import { getValue, setValue, clearValue, onContentChange } from "@/lib/admin/content";
+import { getSchema, GLOBAL_SETTINGS_SCHEMA, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
+import {
+  getDraftValue, getPublishedValue, hasDraft, setValue, clearValue,
+  publishKey, discardDraft, onContentChange, isPreviewMode, setPreviewMode,
+} from "@/lib/admin/content";
 import {
   listMedia, addMedia, fileToDataUrl, formatBytes, resolveMediaRef,
   onMediaChange, type MediaItem,
@@ -15,11 +18,13 @@ const MAX_BYTES = 1.5 * 1024 * 1024;
 export default function PageEditor() {
   const params = useParams();
   const pageId = (params?.pageId as string) ?? "";
-  const schema = getSchema(pageId);
+  const schema = pageId === "global" ? GLOBAL_SETTINGS_SCHEMA : getSchema(pageId);
 
   const [, setTick] = useState(0);
+  const [previewOn, setPreviewOn] = useState(false);
   useEffect(() => {
-    const refresh = () => setTick(t => t + 1);
+    setPreviewOn(isPreviewMode());
+    const refresh = () => { setTick(t => t + 1); setPreviewOn(isPreviewMode()); };
     const off1 = onContentChange(refresh);
     const off2 = onMediaChange(refresh);
     return () => { off1(); off2(); };
@@ -35,11 +40,22 @@ export default function PageEditor() {
   }
 
   const allKeys = schema.sections.flatMap(s => s.fields.map(f => f.key));
-  const editsCount = allKeys.filter(k => getValue(k) !== undefined).length;
+  const draftCount = allKeys.filter(k => hasDraft(k)).length;
+  const editsCount = allKeys.filter(k => getDraftValue(k) !== undefined || getPublishedValue(k) !== undefined).length;
 
   function resetAll() {
     if (!confirm(`Reset all ${editsCount} edit${editsCount === 1 ? "" : "s"} on this page back to defaults?`)) return;
     for (const k of allKeys) clearValue(k);
+  }
+
+  function publishAll() {
+    if (!confirm(`Publish ${draftCount} draft change${draftCount === 1 ? "" : "s"} on this page? Visitors will see them immediately.`)) return;
+    for (const k of allKeys) if (hasDraft(k)) publishKey(k);
+  }
+
+  function discardAll() {
+    if (!confirm(`Discard ${draftCount} unpublished draft change${draftCount === 1 ? "" : "s"}?`)) return;
+    for (const k of allKeys) if (hasDraft(k)) discardDraft(k);
   }
 
   return (
@@ -54,21 +70,49 @@ export default function PageEditor() {
             <p className="text-brand-cream/45 text-sm mt-1">{schema.description}</p>
           )}
           <p className="text-brand-cream/35 text-xs mt-2">
-            {editsCount > 0 && <span className="text-brand-orange">{editsCount} active edit{editsCount === 1 ? "" : "s"}</span>}
-            {editsCount > 0 && " · "}
+            {draftCount > 0 && <span className="text-brand-amber font-semibold">{draftCount} unpublished draft{draftCount === 1 ? "" : "s"}</span>}
+            {draftCount > 0 && " · "}
             <a href={schema.href} target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-brand-cream">
               View live →
             </a>
           </p>
         </div>
-        {editsCount > 0 && (
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={resetAll}
-            className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
+            onClick={() => { setPreviewMode(!previewOn); }}
+            className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+              previewOn
+                ? "border-brand-amber/40 bg-brand-amber/15 text-brand-amber"
+                : "border-white/10 text-brand-cream/55 hover:text-brand-cream hover:border-white/30"
+            }`}
           >
-            Reset all edits
+            {previewOn ? "Preview ON" : "Preview drafts"}
           </button>
-        )}
+          {draftCount > 0 && (
+            <>
+              <button
+                onClick={discardAll}
+                className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
+              >
+                Discard drafts
+              </button>
+              <button
+                onClick={publishAll}
+                className="text-xs px-3 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white font-semibold transition-colors"
+              >
+                Publish {draftCount}
+              </button>
+            </>
+          )}
+          {editsCount > 0 && (
+            <button
+              onClick={resetAll}
+              className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/40 hover:text-brand-cream/80 transition-colors"
+            >
+              Reset all
+            </button>
+          )}
+        </div>
       </div>
 
       {schema.sections.map(section => (
@@ -78,7 +122,7 @@ export default function PageEditor() {
   );
 }
 
-function SectionEditor({ section, pageSchema }: { section: PageSchema["sections"][number]; pageSchema: PageSchema }) {
+function SectionEditor({ section }: { section: PageSchema["sections"][number]; pageSchema: PageSchema }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
       <div className="px-5 py-3 border-b border-white/5 bg-brand-black-soft/40">
@@ -94,8 +138,9 @@ function SectionEditor({ section, pageSchema }: { section: PageSchema["sections"
 }
 
 function FieldEditor({ field }: { field: ContentField }) {
-  const stored = getValue(field.key);
+  const stored = getDraftValue(field.key);
   const isOverride = stored !== undefined;
+  const draftPending = hasDraft(field.key);
   const current = stored ?? field.default;
   const [draft, setDraft] = useState(current);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -103,7 +148,7 @@ function FieldEditor({ field }: { field: ContentField }) {
   useEffect(() => { setDraft(current); }, [current]);
 
   function save(next: string) {
-    if (next === field.default) {
+    if (next === field.default && getPublishedValue(field.key) === undefined) {
       clearValue(field.key);
     } else {
       setValue(field.key, next);
@@ -117,31 +162,45 @@ function FieldEditor({ field }: { field: ContentField }) {
     setDraft(field.default);
   }
 
+  function publish() {
+    publishKey(field.key);
+  }
+
+  function discard() {
+    discardDraft(field.key);
+    setDraft(getPublishedValue(field.key) ?? field.default);
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">
         <label className="text-xs font-medium text-brand-cream/80">
           {field.label}
-          {isOverride && <span className="ml-2 text-[10px] text-brand-orange">edited</span>}
-          {savedFlash && <span className="ml-2 text-[10px] text-brand-amber">saved</span>}
+          {isOverride && !draftPending && <span className="ml-2 text-[10px] text-brand-orange">edited</span>}
+          {draftPending && <span className="ml-2 text-[10px] text-brand-amber font-semibold">DRAFT</span>}
+          {savedFlash && <span className="ml-2 text-[10px] text-brand-cream/50">saved</span>}
         </label>
-        {isOverride && (
-          <button
-            onClick={reset}
-            className="text-[10px] text-brand-cream/40 hover:text-brand-cream underline underline-offset-2"
-          >
-            reset
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {draftPending && (
+            <>
+              <button onClick={publish} className="text-[10px] text-brand-orange hover:underline">publish</button>
+              <button onClick={discard} className="text-[10px] text-brand-cream/40 hover:text-brand-cream">discard</button>
+            </>
+          )}
+          {isOverride && !draftPending && (
+            <button onClick={reset} className="text-[10px] text-brand-cream/40 hover:text-brand-cream underline underline-offset-2">reset</button>
+          )}
+        </div>
       </div>
       {field.hint && <p className="text-[11px] text-brand-cream/35">{field.hint}</p>}
 
-      {field.type === "text" && (
+      {(field.type === "text" || field.type === "url") && (
         <input
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={() => save(draft)}
           onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          placeholder={field.type === "url" ? "https://…" : ""}
           className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/40"
         />
       )}
@@ -154,6 +213,30 @@ function FieldEditor({ field }: { field: ContentField }) {
           rows={4}
           className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/40 resize-y leading-relaxed"
         />
+      )}
+
+      {field.type === "code" && (
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={() => save(draft)}
+          rows={6}
+          spellCheck={false}
+          placeholder={field.hint?.includes("JSON-LD") ? '{ "@context": "https://schema.org", "@type": "WebPage", "name": "…" }' : ""}
+          className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2.5 text-xs text-brand-cream font-mono focus:outline-none focus:border-brand-orange/40 resize-y leading-relaxed"
+        />
+      )}
+
+      {field.type === "boolean" && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => save(draft === "true" ? "false" : "true")}
+            className={`relative w-11 h-6 rounded-full transition-colors ${draft === "true" ? "bg-brand-orange" : "bg-white/15"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${draft === "true" ? "translate-x-5" : ""}`} />
+          </button>
+          <span className="text-xs text-brand-cream/60">{draft === "true" ? "On" : "Off"}</span>
+        </div>
       )}
 
       {field.type === "image" && (

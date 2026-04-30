@@ -3,7 +3,7 @@
 // useContent(key, default). Keep keys stable — renaming breaks existing
 // overrides. Adding new keys is safe.
 
-export type FieldType = "text" | "textarea" | "image";
+export type FieldType = "text" | "textarea" | "image" | "code" | "url" | "boolean";
 
 export interface ContentField {
   key: string;
@@ -304,14 +304,131 @@ export const PAGE_SCHEMAS: PageSchema[] = [
   },
 ];
 
+// SEO / meta / schema / tracking section auto-injected onto every page schema
+// so editors don't have to be defined twice. Keys live under `seo.<pageId>.*`.
+function seoSection(pageId: string, defaults: { title?: string; description?: string } = {}): ContentSection {
+  return {
+    id: "seo",
+    label: "SEO, schema & head",
+    fields: [
+      { key: `seo.${pageId}.title`,        label: "Meta title",            type: "text",     default: defaults.title ?? "" , hint: "Browser tab + Google result title (50–60 chars ideal)." },
+      { key: `seo.${pageId}.description`,  label: "Meta description",      type: "textarea", default: defaults.description ?? "", hint: "Search snippet (140–160 chars)." },
+      { key: `seo.${pageId}.keywords`,     label: "Meta keywords",         type: "text",     default: "", hint: "Comma-separated. Most engines ignore but kept for completeness." },
+      { key: `seo.${pageId}.canonical`,    label: "Canonical URL",         type: "url",      default: "", hint: "Leave empty to use current URL." },
+      { key: `seo.${pageId}.robots`,       label: "Robots directive",      type: "text",     default: "index,follow", hint: "e.g. index,follow · noindex,nofollow" },
+      { key: `seo.${pageId}.ogTitle`,      label: "Open Graph title",      type: "text",     default: "" },
+      { key: `seo.${pageId}.ogDescription`,label: "Open Graph description",type: "textarea", default: "" },
+      { key: `seo.${pageId}.ogImage`,      label: "Social share image",    type: "image",    default: "" },
+      { key: `seo.${pageId}.twitterCard`,  label: "Twitter card type",     type: "text",     default: "summary_large_image" },
+      { key: `seo.${pageId}.jsonld`,       label: "JSON-LD schema",        type: "code",     default: "", hint: "Paste a full <script>-free JSON-LD object. Leave empty to skip." },
+      { key: `seo.${pageId}.headHtml`,     label: "Custom <head> HTML",    type: "code",     default: "", hint: "Page-specific tracking pixels, verification tags, link-rel hints." },
+      { key: `seo.${pageId}.bodyEndHtml`,  label: "Custom end-of-body HTML",type: "code",    default: "", hint: "Per-page scripts that should load after the page (e.g. chat widgets)." },
+    ],
+  };
+}
+
 export function getSchema(id: string): PageSchema | undefined {
-  return PAGE_SCHEMAS.find(p => p.id === id);
+  const base = PAGE_SCHEMAS.find(p => p.id === id);
+  if (!base) return undefined;
+  // Inject the SEO section if it's not already present (cheap idempotent merge).
+  if (base.sections.some(s => s.id === "seo")) return base;
+  return { ...base, sections: [...base.sections, seoSection(base.id)] };
 }
 
 export function getAllFields(): ContentField[] {
-  return PAGE_SCHEMAS.flatMap(p => p.sections.flatMap(s => s.fields));
+  return PAGE_SCHEMAS.flatMap(p => {
+    const withSeo = getSchema(p.id);
+    return withSeo ? withSeo.sections.flatMap(s => s.fields) : [];
+  });
 }
 
 export function getDefault(key: string): string | undefined {
   return getAllFields().find(f => f.key === key)?.default;
 }
+
+// Site-wide settings — analytics, head/body code, cookie banner, contact info.
+export const GLOBAL_SETTINGS_SCHEMA: PageSchema = {
+  id: "global",
+  label: "Global site settings",
+  href: "/",
+  description: "Site-wide tracking, analytics, contact details and cookie banner.",
+  sections: [
+    {
+      id: "site",
+      label: "Site identity",
+      fields: [
+        { key: "global.site.name",        label: "Site name",      type: "text", default: "Luv & Ker" },
+        { key: "global.site.titleSuffix", label: "Title suffix",   type: "text", default: " | Luv & Ker", hint: "Appended to every page title." },
+        { key: "global.site.defaultDescription", label: "Default meta description", type: "textarea", default: "Pure, natural, hormone-safe Ghanaian heritage soap. No parabens, no phthalates, no sulphates, no synthetic fragrance." },
+        { key: "global.site.defaultOgImage", label: "Default share image", type: "image", default: "" },
+        { key: "global.site.url",         label: "Canonical site URL", type: "url", default: "https://luvandker.com" },
+        { key: "global.site.locale",      label: "Locale",         type: "text", default: "en_GB" },
+      ],
+    },
+    {
+      id: "contact",
+      label: "Contact details",
+      fields: [
+        { key: "global.contact.email",   label: "Support email",   type: "text", default: "hello@luvandker.com" },
+        { key: "global.contact.press",   label: "Press email",     type: "text", default: "press@luvandker.com" },
+        { key: "global.contact.phone",   label: "Phone",           type: "text", default: "" },
+        { key: "global.contact.address", label: "Address",         type: "textarea", default: "Accra, Ghana · London, UK" },
+        { key: "global.contact.hours",   label: "Support hours",   type: "text", default: "Mon–Fri 09:00–18:00 GMT" },
+      ],
+    },
+    {
+      id: "social",
+      label: "Social links",
+      fields: [
+        { key: "global.social.instagram", label: "Instagram URL", type: "url", default: "https://instagram.com/luvandker" },
+        { key: "global.social.tiktok",    label: "TikTok URL",    type: "url", default: "" },
+        { key: "global.social.youtube",   label: "YouTube URL",   type: "url", default: "" },
+        { key: "global.social.facebook",  label: "Facebook URL",  type: "url", default: "" },
+        { key: "global.social.x",         label: "X / Twitter URL", type: "url", default: "" },
+      ],
+    },
+    {
+      id: "analytics",
+      label: "Analytics & tracking",
+      fields: [
+        { key: "global.analytics.enabled",  label: "Analytics enabled",   type: "boolean", default: "false", hint: "Master switch — turn off and no tracking script is injected." },
+        { key: "global.analytics.ga4",      label: "Google Analytics 4 ID", type: "text", default: "", hint: "Format: G-XXXXXXXXXX" },
+        { key: "global.analytics.gtm",      label: "Google Tag Manager ID", type: "text", default: "", hint: "Format: GTM-XXXXXXX" },
+        { key: "global.analytics.metaPixel",label: "Meta (Facebook) Pixel ID", type: "text", default: "" },
+        { key: "global.analytics.tiktokPixel", label: "TikTok Pixel ID", type: "text", default: "" },
+        { key: "global.analytics.hotjar",   label: "Hotjar Site ID",      type: "text", default: "" },
+        { key: "global.analytics.plausible",label: "Plausible domain",    type: "text", default: "", hint: "e.g. luvandker.com — leave empty to skip." },
+      ],
+    },
+    {
+      id: "code",
+      label: "Custom head & body code",
+      fields: [
+        { key: "global.code.headHtml",   label: "Site-wide <head> HTML", type: "code", default: "", hint: "Verification tags, fonts, preconnects." },
+        { key: "global.code.bodyStartHtml", label: "Body-open HTML",     type: "code", default: "", hint: "Runs immediately after <body> opens." },
+        { key: "global.code.bodyEndHtml",label: "Body-end HTML",         type: "code", default: "", hint: "Runs at end of <body>. Good for late-loading pixels." },
+      ],
+    },
+    {
+      id: "cookies",
+      label: "Cookie banner",
+      fields: [
+        { key: "global.cookies.enabled",  label: "Show cookie banner",  type: "boolean", default: "true" },
+        { key: "global.cookies.headline", label: "Banner headline",     type: "text", default: "Cookies & analytics" },
+        { key: "global.cookies.message",  label: "Banner message",      type: "textarea", default: "We use cookies to understand how the site is used and improve your experience. Tracking only loads when you accept." },
+        { key: "global.cookies.acceptLabel", label: "Accept button",    type: "text", default: "Accept" },
+        { key: "global.cookies.declineLabel", label: "Decline button",  type: "text", default: "Decline" },
+        { key: "global.cookies.policyHref", label: "Privacy policy URL", type: "url", default: "/privacy" },
+      ],
+    },
+    {
+      id: "schema",
+      label: "Site-wide structured data",
+      fields: [
+        { key: "global.schema.organization", label: "Organization JSON-LD", type: "code", default: "", hint: "Site-wide schema.org/Organization block." },
+        { key: "global.schema.website",      label: "WebSite JSON-LD",      type: "code", default: "", hint: "Site-wide schema.org/WebSite block (with SearchAction)." },
+      ],
+    },
+  ],
+};
+
