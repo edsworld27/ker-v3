@@ -48,12 +48,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div className="min-h-screen bg-brand-black" />;
   }
 
-  if (!session) {
+  // DEV BYPASS — remove before launch
+  const devBypass = true;
+
+  if (!devBypass && !session) {
     if (typeof window !== "undefined") router.replace("/account");
     return null;
   }
 
-  if (!isAdmin(session)) {
+  if (!devBypass && session && !isAdmin(session)) {
     return (
       <div className="min-h-screen bg-brand-black flex items-center justify-center px-6">
         <div className="max-w-md text-center">
