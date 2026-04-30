@@ -61,10 +61,11 @@ const STATS = [
 ];
 
 export default function Page() {
-  const eyebrow   = useContent("sustainability.hero.eyebrow",   "Sustainability");
-  const headline1 = useContent("sustainability.hero.headline1", "The earth in its");
-  const headline2 = useContent("sustainability.hero.headline2", "purest form");
-  const intro     = useContent("sustainability.hero.intro",     "Every decision at Luv & Ker — from how we buy raw shea butter to how we ship our bars — is made with the planet and the women of Ghana in mind. We were founded on a single conviction: that you cannot make something honest if any step in the supply chain is hidden.");
+  const eyebrow      = useContent("sustainability.hero.eyebrow",   "Sustainability");
+  const headline1    = useContent("sustainability.hero.headline1", "The earth in its");
+  const headline2    = useContent("sustainability.hero.headline2", "purest form");
+  const intro        = useContent("sustainability.hero.intro",     "Every decision at Luv & Ker — from how we buy raw shea butter to how we ship our bars — is made with the planet and the women of Ghana in mind. We were founded on a single conviction: that you cannot make something honest if any step in the supply chain is hidden.");
+  const bodyOverride = useContent("sustainability.body.override",  "");
   return (
     <>
       <Navbar />
@@ -105,6 +106,12 @@ export default function Page() {
             </div>
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full bg-brand-black-soft">
+            <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-14 sm:py-20 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* Stats strip */}
         <section className="w-full bg-brand-black-soft border-y border-white/5">
@@ -244,6 +251,8 @@ export default function Page() {
             </div>
           </div>
         </section>
+
+        </>)}
       </main>
       <Footer />
     </>

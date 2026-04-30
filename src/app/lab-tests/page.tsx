@@ -88,10 +88,11 @@ const RECENT_BATCHES = [
 ];
 
 export default function Page() {
-  const eyebrow   = useContent("lab-tests.hero.eyebrow",   "Lab Testing");
-  const headline1 = useContent("lab-tests.hero.headline1", "Lab tested,");
-  const headline2 = useContent("lab-tests.hero.headline2", "independently verified");
-  const intro     = useContent("lab-tests.hero.intro",     "We don't ask you to trust us. We've paid UKAS-accredited laboratories to independently test our Odo formulations for heavy metals, microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.");
+  const eyebrow      = useContent("lab-tests.hero.eyebrow",   "Lab Testing");
+  const headline1    = useContent("lab-tests.hero.headline1", "Lab tested,");
+  const headline2    = useContent("lab-tests.hero.headline2", "independently verified");
+  const intro        = useContent("lab-tests.hero.intro",     "We don't ask you to trust us. We've paid UKAS-accredited laboratories to independently test our Odo formulations for heavy metals, microbial contamination, allergens and endocrine disruptors. Every report is published — pass or fail.");
+  const bodyOverride = useContent("lab-tests.body.override",  "");
   return (
     <>
       <Navbar />
@@ -137,6 +138,12 @@ export default function Page() {
 
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full bg-brand-black-soft">
+            <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-14 sm:py-20 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* Stats strip */}
         <section className="w-full bg-brand-black-soft border-y border-white/5">
@@ -321,6 +328,8 @@ export default function Page() {
             </div>
           </div>
         </section>
+
+        </>)}
       </main>
       <Footer />
     </>

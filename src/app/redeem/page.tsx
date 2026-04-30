@@ -8,8 +8,12 @@ import { useContent } from "@/lib/useContent";
 
 export default function RedeemPage() {
   const [code, setCode] = useState("");
-  const eyebrow  = useContent("redeem.hero.eyebrow",  "Gift Cards");
-  const headline = useContent("redeem.hero.headline", "Check your balance");
+  const eyebrow     = useContent("redeem.hero.eyebrow",  "Gift Cards");
+  const headline    = useContent("redeem.hero.headline", "Check your balance");
+  const introHtml   = useContent("redeem.hero.intro",    `Enter the code from your Odo gift card. To spend the balance, head to <a href="/#shop" class="text-brand-orange hover:underline">the shop</a> and apply your code in the bag at checkout.`);
+  const placeholder = useContent("redeem.form.placeholder", "ODO-XXXX-XXXX-XXXX");
+  const ctaLabel    = useContent("redeem.form.cta",         "Check balance");
+  const notFound    = useContent("redeem.form.notFound",    "We couldn't find a gift card with that code. Check the format and try again.");
   const [card, setCard] = useState<GiftCard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +23,7 @@ export default function RedeemPage() {
     const found = getGiftCard(code);
     if (!found) {
       setCard(null);
-      setError("We couldn't find a gift card with that code. Check the format and try again.");
+      setError(notFound);
       return;
     }
     setCard(found);
@@ -38,24 +42,20 @@ export default function RedeemPage() {
             <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl leading-tight mb-5">
               {headline}
             </h1>
-            <p className="text-brand-cream/65 leading-relaxed mb-8">
-              Enter the code from your Odo gift card. To spend the balance, head to{" "}
-              <a href="/#shop" className="text-brand-orange hover:underline">the shop</a>{" "}
-              and apply your code in the bag at checkout.
-            </p>
+            <p className="text-brand-cream/65 leading-relaxed mb-8" dangerouslySetInnerHTML={{ __html: introHtml }} />
 
             <form onSubmit={handleCheck} className="flex flex-col sm:flex-row gap-3 mb-6">
               <input
                 value={code}
                 onChange={(e) => { setCode(e.target.value); setError(null); }}
-                placeholder="ODO-XXXX-XXXX-XXXX"
+                placeholder={placeholder}
                 className="flex-1 min-w-0 bg-brand-black-card border border-white/10 rounded-xl px-4 py-3.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-amber/40 transition-colors"
               />
               <button
                 type="submit"
                 className="px-7 py-3.5 rounded-xl bg-brand-orange hover:bg-brand-orange-light text-white text-sm font-semibold transition-colors"
               >
-                Check balance
+                {ctaLabel}
               </button>
             </form>
 

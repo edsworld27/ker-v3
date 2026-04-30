@@ -13,10 +13,11 @@ export default function ReviewsPage() {
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "rating">("recent");
   const [adminReviews, setAdminReviews] = useState<Review[]>([]);
-  const eyebrow   = useContent("reviews.hero.eyebrow",   "Verified reviews");
-  const headline1 = useContent("reviews.hero.headline1", "What people are");
-  const headline2 = useContent("reviews.hero.headline2", "actually saying");
-  const intro     = useContent("reviews.hero.intro",     "Real customers. Real results. We don't pay for testimonials and we don't curate them.");
+  const eyebrow      = useContent("reviews.hero.eyebrow",   "Verified reviews");
+  const headline1    = useContent("reviews.hero.headline1", "What people are");
+  const headline2    = useContent("reviews.hero.headline2", "actually saying");
+  const intro        = useContent("reviews.hero.intro",     "Real customers. Real results. We don't pay for testimonials and we don't curate them.");
+  const bodyOverride = useContent("reviews.body.override",  "");
 
   useEffect(() => {
     function load() {
@@ -88,7 +89,11 @@ export default function ReviewsPage() {
           </div>
         </section>
 
-        {/* Filters + reviews */}
+        {bodyOverride ? (
+          <section className="w-full py-12 sm:py-16">
+            <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (
         <section className="w-full py-12 sm:py-16">
           <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
 
@@ -229,6 +234,8 @@ export default function ReviewsPage() {
             </div>
           </div>
         </section>
+
+        )}
       </main>
       <Footer />
     </>

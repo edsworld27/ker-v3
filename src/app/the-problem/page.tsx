@@ -109,11 +109,12 @@ const SECTIONS = [
 ];
 
 export default function Page() {
-  const eyebrow   = useContent("the-problem.hero.eyebrow",   "The Problem");
-  const headline1 = useContent("the-problem.hero.headline1", "They told us beauty was");
-  const headline2 = useContent("the-problem.hero.headline2", "pain.");
-  const headline3 = useContent("the-problem.hero.headline3", "They lied.");
-  const intro     = useContent("the-problem.hero.intro",     "For centuries women have been sold the same story — that to be radiant, you must suffer. That to be soft, you must burn. That to glow, you must absorb a hundred chemicals you cannot pronounce.");
+  const eyebrow      = useContent("the-problem.hero.eyebrow",   "The Problem");
+  const headline1    = useContent("the-problem.hero.headline1", "They told us beauty was");
+  const headline2    = useContent("the-problem.hero.headline2", "pain.");
+  const headline3    = useContent("the-problem.hero.headline3", "They lied.");
+  const intro        = useContent("the-problem.hero.intro",     "For centuries women have been sold the same story — that to be radiant, you must suffer. That to be soft, you must burn. That to glow, you must absorb a hundred chemicals you cannot pronounce.");
+  const bodyOverride = useContent("the-problem.body.override",  "");
   return (
     <>
       <Navbar />
@@ -174,6 +175,12 @@ export default function Page() {
             </div>
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full bg-brand-black-soft">
+            <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-14 sm:py-20 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* Sections */}
         <section id="sections" className="w-full bg-brand-black-soft">
@@ -267,6 +274,8 @@ export default function Page() {
             </Link>
           </div>
         </section>
+
+        </>)}
       </main>
       <Footer />
     </>

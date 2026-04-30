@@ -101,10 +101,11 @@ const STATS = [
 ];
 
 export default function AboutPage() {
-  const eyebrow   = useContent("about.hero.eyebrow",   "About Luv & Ker");
-  const headline1 = useContent("about.hero.headline1", "Everything we are,");
-  const headline2 = useContent("about.hero.headline2", "nothing we hide.");
-  const intro     = useContent("about.hero.intro",     "The journey from a kitchen in Accra to your bathroom. The chemicals we built Odo without. The farmers who grow what goes inside. The way we ship it. The culture that holds it all together.");
+  const eyebrow      = useContent("about.hero.eyebrow",   "About Luv & Ker");
+  const headline1    = useContent("about.hero.headline1", "Everything we are,");
+  const headline2    = useContent("about.hero.headline2", "nothing we hide.");
+  const intro        = useContent("about.hero.intro",     "The journey from a kitchen in Accra to your bathroom. The chemicals we built Odo without. The farmers who grow what goes inside. The way we ship it. The culture that holds it all together.");
+  const bodyOverride = useContent("about.body.override",  "");
   return (
     <>
       <Navbar />
@@ -139,6 +140,12 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full bg-brand-black-soft">
+            <div className="w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-14 sm:py-20 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* ── THE JOURNEY ── */}
         <section id="journey" className="w-full bg-brand-black-soft scroll-mt-20">
@@ -522,6 +529,7 @@ export default function AboutPage() {
           </div>
         </section>
 
+        </>)}
       </main>
       <Footer />
     </>

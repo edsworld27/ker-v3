@@ -6,9 +6,20 @@ import { createTicket } from "@/lib/admin/tickets";
 import { useContent } from "@/lib/useContent";
 
 export default function Page() {
-  const supportEmail = useContent("global.contact.email", "hello@luvandker.com");
-  const pressEmail   = useContent("global.contact.press", "press@luvandker.com");
-  const instagram    = useContent("global.social.instagram", "https://instagram.com/luvandker");
+  const supportEmail    = useContent("global.contact.email",    "hello@luvandker.com");
+  const pressEmail      = useContent("global.contact.press",    "press@luvandker.com");
+  const instagram       = useContent("global.social.instagram", "https://instagram.com/luvandker");
+  const emailLabel      = useContent("contact.email.label",     "Email");
+  const emailNote       = useContent("contact.email.note",      "We reply within 24 hours, Mon–Fri");
+  const dmLabel         = useContent("contact.dm.label",        "DM us");
+  const dmHandle        = useContent("contact.dm.handle",       "@luvandker");
+  const dmNote          = useContent("contact.dm.note",         "Quickest for quick questions");
+  const formHeading     = useContent("contact.form.heading",    "Send us a message");
+  const formSuccess     = useContent("contact.form.success",    "Thanks — we've got it.");
+  const formSuccessNote = useContent("contact.form.successNote","Our team will reply within 24 hours, Mon–Fri.");
+  const formDisclaimer  = useContent("contact.form.disclaimer", "Goes straight to our support team.");
+  const pressHeading    = useContent("contact.press.heading",   "Press & partnerships");
+  const pressBody       = useContent("contact.press.body",      "For press enquiries, wholesale, or partnership requests, email us.");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,24 +57,24 @@ export default function Page() {
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 not-prose">
         <a href={`mailto:${supportEmail}`} className="block p-6 rounded-xl bg-brand-black-card border border-white/5 hover:border-brand-orange/30 transition-colors">
-          <p className="text-[10px] tracking-widest uppercase text-brand-cream/40 mb-2">Email</p>
+          <p className="text-[10px] tracking-widest uppercase text-brand-cream/40 mb-2">{emailLabel}</p>
           <p className="font-display text-lg text-brand-cream">{supportEmail}</p>
-          <p className="text-xs text-brand-cream/50 mt-1">We reply within 24 hours, Mon–Fri</p>
+          <p className="text-xs text-brand-cream/50 mt-1">{emailNote}</p>
         </a>
         <a href={instagram} target="_blank" rel="noopener noreferrer" className="block p-6 rounded-xl bg-brand-black-card border border-white/5 hover:border-brand-orange/30 transition-colors">
-          <p className="text-[10px] tracking-widest uppercase text-brand-cream/40 mb-2">DM us</p>
-          <p className="font-display text-lg text-brand-cream">@luvandker</p>
-          <p className="text-xs text-brand-cream/50 mt-1">Quickest for quick questions</p>
+          <p className="text-[10px] tracking-widest uppercase text-brand-cream/40 mb-2">{dmLabel}</p>
+          <p className="font-display text-lg text-brand-cream">{dmHandle}</p>
+          <p className="text-xs text-brand-cream/50 mt-1">{dmNote}</p>
         </a>
       </div>
 
-      <h2 className="font-display text-2xl text-brand-cream mt-10">Send us a message</h2>
+      <h2 className="font-display text-2xl text-brand-cream mt-10">{formHeading}</h2>
 
       {submitted ? (
         <div className="not-prose p-6 rounded-2xl border border-green-400/30 bg-green-400/5">
-          <p className="font-display text-lg text-brand-cream mb-2">Thanks — we&apos;ve got it.</p>
+          <p className="font-display text-lg text-brand-cream mb-2">{formSuccess}</p>
           <p className="text-sm text-brand-cream/65">
-            Reference <span className="font-mono text-brand-amber">{submitted.id}</span>. Our team will reply within 24 hours, Mon–Fri.
+            Reference <span className="font-mono text-brand-amber">{submitted.id}</span>. {formSuccessNote}
           </p>
           <button onClick={() => setSubmitted(null)} className="mt-4 text-xs text-brand-orange hover:underline">Send another message →</button>
         </div>
@@ -80,16 +91,15 @@ export default function Page() {
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message" rows={6} className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 resize-y leading-relaxed" />
           {error && <p className="text-xs text-brand-orange">{error}</p>}
           <div className="flex items-center justify-between">
-            <p className="text-[11px] text-brand-cream/40">Goes straight to our support team.</p>
+            <p className="text-[11px] text-brand-cream/40">{formDisclaimer}</p>
             <button type="submit" className="px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white text-sm font-semibold">Send message</button>
           </div>
         </form>
       )}
 
-      <h2 className="font-display text-2xl text-brand-cream">Press &amp; partnerships</h2>
+      <h2 className="font-display text-2xl text-brand-cream">{pressHeading}</h2>
       <p>
-        For press enquiries, wholesale, or partnership requests, email
-        {" "}<a href={`mailto:${pressEmail}`} className="text-brand-orange hover:underline">{pressEmail}</a>.
+        {pressBody}{" "}<a href={`mailto:${pressEmail}`} className="text-brand-orange hover:underline">{pressEmail}</a>.
       </p>
     </InfoPage>
   );

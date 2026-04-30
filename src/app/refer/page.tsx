@@ -38,10 +38,14 @@ const TIERS = [
 export default function ReferPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState<ReferralCode | null>(null);
-  const eyebrow   = useContent("refer.hero.eyebrow",   "Referral Programme");
-  const headline1 = useContent("refer.hero.headline1", "Share the glow.");
-  const headline2 = useContent("refer.hero.headline2", "Get rewarded.");
-  const intro     = useContent("refer.hero.intro",     "When you love something this much, sharing it should pay off. Share your unique discount code — when a friend uses it at checkout, you both get £10 off.");
+  const eyebrow     = useContent("refer.hero.eyebrow",   "Referral Programme");
+  const headline1   = useContent("refer.hero.headline1", "Share the glow.");
+  const headline2   = useContent("refer.hero.headline2", "Get rewarded.");
+  const intro       = useContent("refer.hero.intro",     "When you love something this much, sharing it should pay off. Share your unique discount code — when a friend uses it at checkout, you both get £10 off.");
+  const codePrompt  = useContent("refer.hero.codePrompt","Enter your email to get your unique discount code");
+  const codeCta     = useContent("refer.hero.codeCta",   "Get my code");
+  const shareNote   = useContent("refer.hero.shareNote", "Share this code. Your friend enters it at checkout and you both get £10 off.");
+  const bodyOverride = useContent("refer.body.override", "");
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -88,7 +92,7 @@ export default function ReferPage() {
               {/* CTA / code box */}
               {!code ? (
                 <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col gap-3">
-                  <p className="text-brand-cream/50 text-sm">Enter your email to get your unique discount code</p>
+                  <p className="text-brand-cream/50 text-sm">{codePrompt}</p>
                   <div className="flex gap-2">
                     <input
                       type="email"
@@ -102,15 +106,13 @@ export default function ReferPage() {
                       type="submit"
                       className="px-6 py-3 rounded-xl bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-medium transition-colors whitespace-nowrap"
                     >
-                      Get my code
+                      {codeCta}
                     </button>
                   </div>
                 </form>
               ) : (
                 <div className="w-full max-w-md flex flex-col gap-3">
-                  <p className="text-brand-cream/50 text-sm">
-                    Share this code. Your friend enters it at checkout and you both get £10 off.
-                  </p>
+                  <p className="text-brand-cream/50 text-sm">{shareNote}</p>
                   <div className="flex gap-2 p-1 bg-brand-black-card border border-white/10 rounded-xl">
                     <span className="flex-1 px-3 py-3 text-brand-amber font-display font-bold text-2xl tracking-[0.18em] text-center">
                       {code.code}
@@ -145,6 +147,12 @@ export default function ReferPage() {
             </div>
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full py-16 sm:py-20">
+            <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 prose prose-invert prose-brand max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* How it works */}
         <section className="w-full py-16 sm:py-20">
@@ -245,6 +253,7 @@ export default function ReferPage() {
           </div>
         </section>
 
+        </>)}
       </main>
       <Footer />
     </>

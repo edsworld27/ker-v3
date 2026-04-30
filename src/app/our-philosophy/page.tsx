@@ -109,12 +109,19 @@ const SECTIONS = [
 ];
 
 export default function Page() {
-  const eyebrow   = useContent("our-philosophy.hero.eyebrow",   "Luv & Ker");
-  const headline1 = useContent("our-philosophy.hero.headline1", "Our");
-  const headline2 = useContent("our-philosophy.hero.headline2", "philosophy");
-  const headline3 = useContent("our-philosophy.hero.headline3", "is simple.");
-  const headline4 = useContent("our-philosophy.hero.headline4", "Your skin deserves the truth.");
-  const intro     = useContent("our-philosophy.hero.intro",     "Luv & Ker was built on a single belief: that skincare should honour the body, not compromise it. Whether you reach for Odo — our women's range rooted in love — or Nkrabea, our men's range built on strength and destiny, the promise underneath is identical.");
+  const eyebrow           = useContent("our-philosophy.hero.eyebrow",           "Luv & Ker");
+  const headline1         = useContent("our-philosophy.hero.headline1",         "Our");
+  const headline2         = useContent("our-philosophy.hero.headline2",         "philosophy");
+  const headline3         = useContent("our-philosophy.hero.headline3",         "is simple.");
+  const headline4         = useContent("our-philosophy.hero.headline4",         "Your skin deserves the truth.");
+  const intro             = useContent("our-philosophy.hero.intro",             "Luv & Ker was built on a single belief: that skincare should honour the body, not compromise it. Whether you reach for Odo — our women's range rooted in love — or Nkrabea, our men's range built on strength and destiny, the promise underneath is identical.");
+  const intro2            = useContent("our-philosophy.hero.intro2",            "Every bar is made in Accra from ingredients that have names, regions, and stories. Our grandmothers’ grandmothers cared for their skin with shea butter and black soap long before the cosmetics industry was invented — and they did it without a single paraben, phthalate, or synthetic fragrance.");
+  const intro3            = useContent("our-philosophy.hero.intro3",            "What follows is an honest, source-cited look at the ingredients we built both ranges without — and the research that explains why.");
+  const calloutBody       = useContent("our-philosophy.hero.calloutBody",       "Studies estimate the average person absorbs over 130 synthetic chemicals through personal care products each day. Most have never been tested for long-term safety.");
+  const calloutAttrib     = useContent("our-philosophy.hero.calloutAttribution","Environmental Working Group (EWG)");
+  const ctaPrimary        = useContent("our-philosophy.hero.ctaPrimary",        "Read the breakdown");
+  const ctaSecondary      = useContent("our-philosophy.hero.ctaSecondary",      "Jump to sources");
+  const bodyOverride      = useContent("our-philosophy.body.override",          "");
   return (
     <>
       <Navbar />
@@ -133,18 +140,9 @@ export default function Page() {
               <span className="text-brand-cream/85 text-3xl sm:text-4xl md:text-5xl xl:text-6xl">{headline4}</span>
             </h1>
             <div className="space-y-5 text-brand-cream/70 text-base sm:text-lg xl:text-xl leading-[1.8] mb-8">
-              <p>
-                {intro}
-              </p>
-              <p>
-                Every bar is made in Accra from ingredients that have names, regions, and stories. Our grandmothers&apos;
-                grandmothers cared for their skin with shea butter and black soap long before the cosmetics industry
-                was invented — and they did it without a single paraben, phthalate, or synthetic fragrance.
-              </p>
-              <p className="text-brand-cream/85">
-                What follows is an honest, source-cited look at the ingredients we built both ranges without —
-                and the research that explains why.
-              </p>
+              <p>{intro}</p>
+              <p>{intro2}</p>
+              <p className="text-brand-cream/85">{intro3}</p>
             </div>
 
             {/* Range pills */}
@@ -162,12 +160,10 @@ export default function Page() {
               <div className="absolute inset-0 bg-gradient-to-br from-brand-purple-muted/60 to-brand-black-card" />
               <div className="relative z-10 px-6 sm:px-8 py-7 sm:py-8">
                 <p className="font-display text-base sm:text-lg lg:text-xl text-brand-cream/90 leading-relaxed">
-                  Studies estimate the average person absorbs over{" "}
-                  <span className="text-brand-orange font-bold">130 synthetic chemicals</span>{" "}
-                  through personal care products each day. Most have never been tested for long-term safety.
+                  {calloutBody}
                 </p>
                 <p className="text-[10px] sm:text-xs text-brand-cream/35 mt-3 tracking-widest uppercase">
-                  Environmental Working Group (EWG)
+                  {calloutAttrib}
                 </p>
               </div>
             </div>
@@ -176,17 +172,23 @@ export default function Page() {
                 href="#sections"
                 className="px-6 py-3 rounded-full bg-brand-orange hover:bg-brand-orange-light transition-colors text-sm font-semibold text-white"
               >
-                Read the breakdown
+                {ctaPrimary}
               </a>
               <a
                 href="#sources"
                 className="px-6 py-3 rounded-full border border-white/10 hover:border-white/30 text-brand-cream/70 hover:text-brand-cream transition-colors text-sm font-medium"
               >
-                Jump to sources
+                {ctaSecondary}
               </a>
             </div>
           </div>
         </section>
+
+        {bodyOverride ? (
+          <section className="w-full bg-brand-black-soft">
+            <div className="w-full max-w-4xl mx-auto px-6 sm:px-10 lg:px-12 py-14 sm:py-20 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyOverride }} />
+          </section>
+        ) : (<>
 
         {/* Sections */}
         <section id="sections" className="w-full bg-brand-black-soft">
@@ -288,6 +290,8 @@ export default function Page() {
             </div>
           </div>
         </section>
+
+        </>)}
       </main>
       <Footer />
     </>
