@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   listTeam, listRoles, inviteTeamMember, updateTeamMember, removeTeamMember,
   saveRole, createRole, deleteRole, onTeamChange,
   ALL_RESOURCES, ALL_ACTIONS,
-  type TeamMember, type Role, type Resource, type Action, type RolePermission,
+  type TeamMember, type Role, type Resource, type Action,
 } from "@/lib/admin/team";
+import {
+  listAllUsers, adminCreateUser, deleteUser, startImpersonation,
+  AUTH_EVENT, type User,
+} from "@/lib/auth";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -245,26 +250,139 @@ function RoleEditor({ role, onSave, onDelete, onCancel }: {
   );
 }
 
+// ── Create user modal ─────────────────────────────────────────────────────────
+
+function CreateUserModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail]   = useState("");
+  const [name, setName]     = useState("");
+  const [role, setRole]     = useState<"customer" | "admin">("customer");
+  const [tempPw, setTempPw] = useState("");
+  const [result, setResult] = useState<{ email: string; pass: string } | null>(null);
+  const [error, setError]   = useState("");
+
+  function generate() {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
+    setTempPw(Array.from(crypto.getRandomValues(new Uint8Array(12))).map((b) => chars[b % chars.length]).join(""));
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!tempPw || tempPw.length < 8) { setError("Temp password must be at least 8 characters."); return; }
+    const r = adminCreateUser({ email, name, role, tempPassword: tempPw });
+    if (!r.ok) { setError(r.error); return; }
+    setResult({ email, pass: tempPw });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md bg-brand-black-soft border border-white/10 rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+          <h2 className="font-display text-xl text-brand-cream">Create user account</h2>
+          <button onClick={onClose} className="text-brand-cream/40 hover:text-brand-cream text-xl">✕</button>
+        </div>
+
+        {result ? (
+          <div className="p-6 space-y-4">
+            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 space-y-2">
+              <p className="text-sm font-semibold text-green-400">Account created!</p>
+              <p className="text-xs text-brand-cream/60">Share these credentials with the user — they&apos;ll be forced to set their own password on first login.</p>
+            </div>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-2 font-mono text-sm">
+              <div className="flex justify-between gap-2">
+                <span className="text-brand-cream/40">Email</span>
+                <span className="text-brand-cream">{result.email}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-brand-cream/40">Temp password</span>
+                <span className="text-brand-amber font-bold">{result.pass}</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-brand-cream/30 text-center">Once they log in and set their own password, this temp password will stop working.</p>
+            <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold">Done</button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="p-5 space-y-4">
+            <F label="Full name">
+              <input required value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
+            </F>
+            <F label="Email address">
+              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
+            </F>
+            <F label="Account type">
+              <select value={role} onChange={(e) => setRole(e.target.value as "customer" | "admin")} className={INPUT}>
+                <option value="customer">Customer (storefront only)</option>
+                <option value="admin">Admin (full admin access)</option>
+              </select>
+            </F>
+            <F label="Temporary password">
+              <div className="flex gap-2">
+                <input required value={tempPw} onChange={(e) => setTempPw(e.target.value)} placeholder="Min 8 characters" className={INPUT} />
+                <button type="button" onClick={generate} className="shrink-0 px-3 py-2 text-xs bg-white/5 border border-white/10 rounded-xl text-brand-cream/60 hover:text-brand-cream hover:border-white/25">Generate</button>
+              </div>
+              <p className="text-[11px] text-brand-cream/30 mt-1">User must change this on first login.</p>
+            </F>
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-brand-cream/60 hover:text-brand-cream">Cancel</button>
+              <button type="submit" className="px-5 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold">Create account</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type Tab = "members" | "roles";
+type Tab = "users" | "members" | "roles";
 
 export default function AdminTeamPage() {
-  const [tab, setTab] = useState<Tab>("members");
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>("users");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [editMember, setEditMember] = useState<string | null>(null);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonateError, setImpersonateError] = useState("");
 
   useEffect(() => {
-    const refresh = () => { setMembers(listTeam()); setRoles(listRoles()); };
-    refresh();
-    return onTeamChange(refresh);
+    const refreshTeam = () => { setMembers(listTeam()); setRoles(listRoles()); };
+    const refreshUsers = () => setUsers(listAllUsers());
+    refreshTeam();
+    refreshUsers();
+    const offTeam = onTeamChange(refreshTeam);
+    const handleAuth = () => refreshUsers();
+    window.addEventListener(AUTH_EVENT, handleAuth);
+    window.addEventListener("storage", handleAuth);
+    return () => {
+      offTeam();
+      window.removeEventListener(AUTH_EVENT, handleAuth);
+      window.removeEventListener("storage", handleAuth);
+    };
   }, []);
 
   function roleFor(roleId: string): Role | undefined {
     return roles.find((r) => r.id === roleId);
+  }
+
+  function handleImpersonate(email: string) {
+    setImpersonating(email);
+    setImpersonateError("");
+    const result = startImpersonation(email);
+    if (!result.ok) {
+      setImpersonating(null);
+      setImpersonateError(result.error);
+      return;
+    }
+    // Navigate to storefront or admin depending on user's role
+    const user = users.find((u) => u.email === email);
+    router.push(user?.role === "admin" ? "/admin" : "/");
   }
 
   return (
@@ -273,16 +391,18 @@ export default function AdminTeamPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">People</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Team &amp; roles</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Team &amp; users</h1>
           <p className="text-brand-cream/45 text-sm mt-1">
-            Invite team members and define what each role can see and do.
+            Manage site users, admin team members, roles, and permissions.
           </p>
         </div>
+        {tab === "users" && (
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold hover:bg-brand-orange-dark">
+            + Create user
+          </button>
+        )}
         {tab === "members" && (
-          <button
-            onClick={() => setShowInvite(true)}
-            className="px-4 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold hover:bg-brand-orange-dark"
-          >
+          <button onClick={() => setShowInvite(true)} className="px-4 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold hover:bg-brand-orange-dark">
             + Invite member
           </button>
         )}
@@ -296,20 +416,92 @@ export default function AdminTeamPage() {
         )}
       </div>
 
+      {impersonateError && (
+        <div className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">{impersonateError}</div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/8">
-        {(["members", "roles"] as Tab[]).map((t) => (
+      <div className="flex gap-1 border-b border-white/8 overflow-x-auto no-scrollbar">
+        {([
+          { id: "users",   label: `Users (${users.length})` },
+          { id: "members", label: `Team (${members.length})` },
+          { id: "roles",   label: `Roles (${roles.length})` },
+        ] as Array<{ id: Tab; label: string }>).map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
-              tab === t ? "border-brand-orange text-brand-cream" : "border-transparent text-brand-cream/50 hover:text-brand-cream/80"
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              tab === t.id ? "border-brand-orange text-brand-cream" : "border-transparent text-brand-cream/50 hover:text-brand-cream/80"
             }`}
           >
-            {t} {t === "members" ? `(${members.length})` : `(${roles.length})`}
+            {t.label}
           </button>
         ))}
       </div>
+
+      {/* Users tab */}
+      {tab === "users" && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-white/8 p-4 bg-brand-amber/5 text-xs text-brand-cream/50 space-y-1">
+            <p className="font-medium text-brand-cream/70">About user impersonation</p>
+            <p>Click <strong className="text-brand-cream/80">Impersonate</strong> to sign in as any user — you&apos;ll see exactly what they see. An amber bar at the top always shows who you&apos;re impersonating, and <strong className="text-brand-cream/80">switching back</strong> instantly restores your admin session without needing their password.</p>
+          </div>
+
+          {users.length === 0 && (
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
+              <p className="text-brand-cream/40 text-sm">No user accounts yet.</p>
+              <button onClick={() => setShowCreate(true)} className="mt-3 text-brand-orange text-sm hover:underline">Create first user →</button>
+            </div>
+          )}
+
+          {users.map((u) => (
+            <div key={u.email} className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white/[0.02] border border-white/8 hover:border-white/15">
+              {/* Avatar */}
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${u.role === "admin" ? "bg-brand-orange" : "bg-brand-purple"}`}>
+                {u.name.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-brand-cream truncate">{u.name}</p>
+                  {u.mustChangePassword && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-amber/20 text-brand-amber">must change pw</span>
+                  )}
+                </div>
+                <p className="text-xs text-brand-cream/40 truncate">{u.email}</p>
+              </div>
+
+              {/* Role badge */}
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                u.role === "admin" ? "bg-brand-orange/20 text-brand-orange" : "bg-brand-purple/30 text-brand-purple-light"
+              }`}>
+                {u.role}
+              </span>
+
+              {/* Provider */}
+              <span className="text-[10px] text-brand-cream/25 font-mono shrink-0 hidden sm:block">{u.provider}</span>
+
+              {/* Actions */}
+              <div className="flex gap-2 items-center shrink-0">
+                <button
+                  onClick={() => handleImpersonate(u.email)}
+                  disabled={impersonating === u.email}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-50 font-medium transition-colors"
+                >
+                  {impersonating === u.email ? "Loading…" : "Impersonate"}
+                </button>
+                <button
+                  onClick={() => { if (confirm(`Delete account for ${u.email}?`)) { deleteUser(u.email); setUsers(listAllUsers()); } }}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Members tab */}
       {tab === "members" && (
@@ -340,7 +532,15 @@ export default function AdminTeamPage() {
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[m.status]}`}>
                   {m.status}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleImpersonate(m.email)}
+                    disabled={impersonating === m.email}
+                    className="text-xs px-2.5 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-50 font-medium transition-colors"
+                    title="Switch to this user's view"
+                  >
+                    {impersonating === m.email ? "…" : "View as"}
+                  </button>
                   {editMember === m.id ? (
                     <div className="flex items-center gap-2">
                       <select
@@ -406,6 +606,7 @@ export default function AdminTeamPage() {
       )}
 
       {/* Modals */}
+      {showCreate && <CreateUserModal onClose={() => { setShowCreate(false); setUsers(listAllUsers()); }} />}
       {showInvite && <InviteModal roles={roles} onClose={() => setShowInvite(false)} />}
       {editRole && (
         <RoleEditor
@@ -423,7 +624,18 @@ export default function AdminTeamPage() {
   );
 }
 
+const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/50";
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs text-brand-cream/50 mb-1.5">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs text-brand-cream/50 mb-1.5">{label}</label>

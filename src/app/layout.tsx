@@ -8,6 +8,8 @@ import SiteHead from "@/components/SiteHead";
 import PreviewBar from "@/components/PreviewBar";
 import ThemeInjector from "@/components/ThemeInjector";
 import ABTestRunner from "@/components/ABTestRunner";
+import ImpersonationBar from "@/components/ImpersonationBar";
+import ForcePasswordChange from "@/components/ForcePasswordChange";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -56,6 +58,8 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-brand-black text-brand-cream font-body antialiased">
         <CartProvider>
+          <ImpersonationBar />
+          <ForcePasswordChange />
           <ThemeInjector />
           <ABTestRunner />
           <PreviewBar />
