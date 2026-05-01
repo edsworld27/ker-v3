@@ -1,12 +1,15 @@
 "use client";
 
 // /admin/sites/[siteId]/pages — list + create pages for the visual editor.
+// Supports starter templates (homepage / about / contact / shop / cart /
+// checkout) so a fresh site is one click away from a working layout.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { EditorPage } from "@/portal/server/types";
 import { listPages, createPage, deletePage } from "@/lib/admin/editorPages";
+import { PAGE_TEMPLATES, type PageTemplate } from "@/components/editor/pageTemplates";
 
 export default function SitePagesIndex() {
   const params = useParams<{ siteId: string }>();
@@ -16,8 +19,9 @@ export default function SitePagesIndex() {
   const [pages, setPages] = useState<EditorPage[]>([]);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [slug, setSlug] = useState("/");
-  const [title, setTitle] = useState("");
+  const [template, setTemplate] = useState<PageTemplate>(PAGE_TEMPLATES[0]);
+  const [slug, setSlug] = useState(PAGE_TEMPLATES[0].defaultSlug);
+  const [title, setTitle] = useState(PAGE_TEMPLATES[0].defaultTitle);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
@@ -27,12 +31,22 @@ export default function SitePagesIndex() {
 
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [siteId]);
 
+  function pickTemplate(t: PageTemplate) {
+    setTemplate(t);
+    setSlug(t.defaultSlug);
+    setTitle(t.defaultTitle);
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setBusy(true); setError(null);
     try {
-      const page = await createPage(siteId, { slug: slug.trim(), title: title.trim() });
+      const page = await createPage(siteId, {
+        slug: slug.trim(),
+        title: title.trim(),
+        blocks: template.build(),
+      });
       if (!page) { setError("Could not create page"); return; }
       router.push(`/admin/sites/${siteId}/editor/${page.id}`);
     } catch (e) {
@@ -60,19 +74,39 @@ export default function SitePagesIndex() {
       </header>
 
       {creating && (
-        <form onSubmit={handleCreate} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+        <form onSubmit={handleCreate} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+          <div>
+            <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-2">Template</p>
+            <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {PAGE_TEMPLATES.map(t => {
+                const active = t.id === template.id;
+                return (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => pickTemplate(t)}
+                    className={`text-left rounded-xl border p-3 transition-colors ${active ? "border-brand-orange/60 bg-brand-orange/10" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                  >
+                    <p className="text-base mb-1">{t.icon}</p>
+                    <p className="text-[12px] font-semibold text-brand-cream">{t.label}</p>
+                    <p className="text-[10px] text-brand-cream/55 leading-relaxed mt-0.5">{t.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block">
               <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">Title</span>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="About us" required className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/50" />
+              <input value={title} onChange={e => setTitle(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/50" />
             </label>
             <label className="block">
               <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">URL path</span>
-              <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="/about" required className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-brand-cream font-mono focus:outline-none focus:border-brand-orange/50" />
+              <input value={slug} onChange={e => setSlug(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-brand-cream font-mono focus:outline-none focus:border-brand-orange/50" />
             </label>
           </div>
           <button type="submit" disabled={busy || !title || !slug} className="w-full px-3 py-2 rounded-lg bg-brand-orange text-white text-[12px] font-semibold disabled:opacity-50">
-            {busy ? "Creating…" : "Create + open editor"}
+            {busy ? "Creating…" : `Create ${template.label.toLowerCase()} + open editor`}
           </button>
         </form>
       )}
@@ -81,7 +115,10 @@ export default function SitePagesIndex() {
 
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] divide-y divide-white/5">
         {pages.length === 0 ? (
-          <div className="p-6 text-center text-[12px] text-brand-cream/45">No pages yet. Create one to start designing.</div>
+          <div className="p-8 text-center">
+            <p className="text-[14px] text-brand-cream/65 mb-2">No pages yet</p>
+            <p className="text-[11px] text-brand-cream/45 max-w-sm mx-auto leading-relaxed">Create your first page from a template above. Default starts include a homepage, about, contact, full e-commerce shop + cart + checkout flow.</p>
+          </div>
         ) : pages.map(p => (
           <div key={p.id} className="flex items-center gap-3 p-3 hover:bg-white/[0.02]">
             <div className="flex-1 min-w-0">

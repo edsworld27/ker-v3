@@ -34,8 +34,21 @@ export default function EditorPage() {
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Undo/redo history. We snapshot the blocks tree on every mutation
+  // (capped at 50 entries). Pasting historical state via setBlocks +
+  // immediate save is fine because the save endpoint is idempotent.
+  const undoStack = useRef<Block[][]>([]);
+  const redoStack = useRef<Block[][]>([]);
+  const HISTORY_CAP = 50;
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1800);
+  }
 
   // Load
   useEffect(() => {
@@ -46,6 +59,8 @@ export default function EditorPage() {
       if (!p) { setError("Page not found"); return; }
       setPage(p);
       setBlocks(p.blocks);
+      undoStack.current = [];
+      redoStack.current = [];
     })();
     return () => { cancelled = true; };
   }, [siteId, pageId]);
@@ -65,11 +80,70 @@ export default function EditorPage() {
     }, SAVE_DEBOUNCE_MS);
   }, [siteId, pageId]);
 
-  // Centralised tree mutation: applies a function and triggers save.
-  const mutate = useCallback((next: Block[]) => {
+  // Centralised tree mutation: applies a function, pushes to undo,
+  // clears redo (a fresh edit invalidates the redo branch), and triggers
+  // save. Skip is used when applying an undo/redo so we don't push the
+  // history snapshot back onto its own stack.
+  const mutate = useCallback((next: Block[], opts?: { skipHistory?: boolean }) => {
+    if (!opts?.skipHistory) {
+      undoStack.current.push(blocks);
+      if (undoStack.current.length > HISTORY_CAP) undoStack.current.shift();
+      redoStack.current = [];
+    }
     setBlocks(next);
     scheduleSave(next);
-  }, [scheduleSave]);
+  }, [blocks, scheduleSave]);
+
+  function handleUndo() {
+    const prev = undoStack.current.pop();
+    if (!prev) return;
+    redoStack.current.push(blocks);
+    setBlocks(prev);
+    scheduleSave(prev);
+    showToast("Undone");
+  }
+
+  function handleRedo() {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current.push(blocks);
+    setBlocks(next);
+    scheduleSave(next);
+    showToast("Redone");
+  }
+
+  // Keyboard shortcuts: ⌘Z / ⌘⇧Z (undo/redo), Backspace+Delete (remove
+  // selected), ⌘D (duplicate). All scoped to the editor — bail out when
+  // an input/textarea is focused so typing isn't hijacked.
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isEditing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if (isEditing) return;
+      const cmd = e.metaKey || e.ctrlKey;
+      if (cmd && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) handleRedo();
+        else handleUndo();
+        return;
+      }
+      if (cmd && e.key.toLowerCase() === "d" && selectedId) {
+        e.preventDefault();
+        mutate(duplicateBlock(blocks, selectedId));
+        showToast("Duplicated");
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault();
+        mutate(removeBlock(blocks, selectedId));
+        setSelectedId(null);
+        showToast("Deleted");
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, selectedId]);
 
   function handleDropOnCanvas(type: BlockType) {
     mutate([...blocks, createBlock(type)]);
@@ -109,7 +183,10 @@ export default function EditorPage() {
     setBusy("publish"); setError(null);
     try {
       const next = await publishPage(siteId, pageId);
-      if (next) setPage(next);
+      if (next) {
+        setPage(next);
+        showToast("Published");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally { setBusy(null); }
@@ -123,6 +200,9 @@ export default function EditorPage() {
       if (next) {
         setPage(next);
         setBlocks(next.blocks);
+        undoStack.current = [];
+        redoStack.current = [];
+        showToast("Reverted");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -162,6 +242,18 @@ export default function EditorPage() {
         />
         <span className="text-[11px] text-brand-cream/45 font-mono">{page?.slug}</span>
         <span className="ml-auto" />
+        <button
+          onClick={handleUndo}
+          disabled={undoStack.current.length === 0}
+          title="Undo (⌘Z)"
+          className="text-[16px] w-7 h-7 rounded text-brand-cream/55 hover:text-brand-cream hover:bg-white/5 disabled:opacity-25"
+        >↶</button>
+        <button
+          onClick={handleRedo}
+          disabled={redoStack.current.length === 0}
+          title="Redo (⌘⇧Z)"
+          className="text-[16px] w-7 h-7 rounded text-brand-cream/55 hover:text-brand-cream hover:bg-white/5 disabled:opacity-25 mr-2"
+        >↷</button>
         <DeviceSwitcher device={device} setDevice={setDevice} />
         <span className="text-[11px] text-brand-cream/45 mx-3">
           {saving ? "Saving…" : savedAt ? "Saved" : page?.status === "published" ? "Published" : "Draft"}
@@ -204,6 +296,11 @@ export default function EditorPage() {
 
       {error && (
         <div className="absolute bottom-4 right-4 max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-400">{error}</div>
+      )}
+      {toast && (
+        <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-brand-cream text-brand-black text-[12px] font-medium shadow-lg animate-fade-in">
+          {toast}
+        </div>
       )}
     </div>
   );
