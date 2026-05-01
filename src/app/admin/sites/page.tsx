@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   listSites, createSite, updateSite, deleteSite, setPrimarySite,
   addDomain, removeDomain, setPrimaryDomain, getActiveSiteId,
@@ -44,6 +44,36 @@ interface AdminTrackingConfig {
   trackers: Tracker[];
   updatedAt: number;
 }
+
+// Content overrides — mirrors src/portal/server/types.ts.
+type OverrideType = "text" | "html" | "image-src" | "href";
+
+interface ContentOverride {
+  value: string;
+  type: OverrideType;
+  updatedAt: number;
+}
+
+interface DiscoveredKey {
+  firstSeen: number;
+  lastSeen: number;
+  seenOn: string[];
+  type?: OverrideType;
+}
+
+interface AdminContentState {
+  siteId: string;
+  overrides: Record<string, ContentOverride>;
+  discovered: Record<string, DiscoveredKey>;
+  updatedAt: number;
+}
+
+const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
+  "text":      "Text",
+  "html":      "HTML",
+  "image-src": "Image src",
+  "href":      "Link href",
+};
 
 const PROVIDER_OPTIONS: { id: TrackerProvider; label: string; placeholder: string; defaultCategory: ConsentCategory }[] = [
   { id: "ga4",          label: "Google Analytics 4", placeholder: "G-XXXXXXXXXX",  defaultCategory: "analytics" },
@@ -368,6 +398,9 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
 
           {/* Tracking & analytics — central config served to the loader */}
           <TrackingBlock siteId={site.id} />
+
+          {/* Content overrides — instrumented regions on the host site */}
+          <ContentOverridesBlock siteId={site.id} />
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -728,6 +761,244 @@ function TrackerRow({ tracker, onPatch, onDelete }: {
           ×
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Content overrides ─────────────────────────────────────────────────────
+//
+// Displays every key the loader has auto-discovered on the host site
+// (via [data-portal-edit] in the markup), plus any keys the admin has
+// added manually. Saves the override map to /api/portal/content/[siteId]
+// with a 750ms debounce so the admin can keep typing.
+
+function ContentOverridesBlock({ siteId }: { siteId: string }) {
+  const [state, setState] = useState<AdminContentState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newType, setNewType] = useState<OverrideType>("text");
+  const stateRef = useRef<AdminContentState | null>(null);
+  stateRef.current = state;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}?admin=1`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminContentState;
+        if (!cancelled) setState(data);
+      } catch {} finally { if (!cancelled) setLoading(false); }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Debounced save: 750ms after the last edit. Driven by the dirty flag so
+  // the initial fetch doesn't trigger a write.
+  useEffect(() => {
+    if (!dirty || !state) return;
+    const id = setTimeout(async () => {
+      setSaving(true);
+      const overrides = Object.entries(state.overrides).map(([key, o]) => ({
+        key, value: o.value, type: o.type,
+      }));
+      try {
+        const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ overrides }),
+        });
+        if (res.ok) { setSavedAt(Date.now()); setDirty(false); }
+      } catch {} finally { setSaving(false); }
+    }, 750);
+    return () => clearTimeout(id);
+  }, [dirty, state, siteId]);
+
+  function patchOverride(key: string, patch: Partial<ContentOverride>) {
+    setState(prev => {
+      if (!prev) return prev;
+      const existing = prev.overrides[key] ?? { value: "", type: "text" as OverrideType, updatedAt: 0 };
+      return {
+        ...prev,
+        overrides: { ...prev.overrides, [key]: { ...existing, ...patch, updatedAt: Date.now() } },
+      };
+    });
+    setDirty(true);
+  }
+
+  function clearOverride(key: string) {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev.overrides };
+      delete next[key];
+      return { ...prev, overrides: next };
+    });
+    setDirty(true);
+  }
+
+  function addManual() {
+    const k = newKey.trim();
+    if (!k || !state) return;
+    if (state.overrides[k]) return;       // already exists
+    patchOverride(k, { value: "", type: newType });
+    setNewKey("");
+    setNewType("text");
+    setAdding(false);
+  }
+
+  // Union of every key the admin should see: any discovered + any with an
+  // override value. Sorted alphabetically.
+  const allKeys = state
+    ? Array.from(new Set([
+        ...Object.keys(state.discovered),
+        ...Object.keys(state.overrides),
+      ])).sort()
+    : [];
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Content overrides</p>
+        <Tip text='Mark editable regions on your site with data-portal-edit="hero.headline" (and optionally data-portal-type="text|html|image-src|href"). The loader scans every page and auto-discovers keys, then applies whatever value you set here. Changes propagate within ~15 seconds.' />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : `${allKeys.length} ${allKeys.length === 1 ? "key" : "keys"}`}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-3">
+        {!loading && allKeys.length === 0 && !adding && (
+          <p className="text-xs text-brand-cream/40 leading-relaxed px-1">
+            No editable regions discovered yet. Add <code className="font-mono text-brand-cream/65">data-portal-edit=&quot;your.key&quot;</code> attributes
+            to the markup on <strong className="text-brand-cream">{siteId}</strong>; they&apos;ll appear here automatically once the page loads with the tag installed.
+          </p>
+        )}
+
+        {allKeys.map(key => {
+          const o = state?.overrides[key];
+          const d = state?.discovered[key];
+          const type: OverrideType = o?.type ?? d?.type ?? "text";
+          const value = o?.value ?? "";
+          return (
+            <OverrideRow
+              key={key}
+              keyName={key}
+              type={type}
+              value={value}
+              discovered={d}
+              hasOverride={!!o}
+              onChangeType={t => patchOverride(key, { type: t })}
+              onChangeValue={v => patchOverride(key, { value: v })}
+              onClear={() => clearOverride(key)}
+            />
+          );
+        })}
+
+        {adding ? (
+          <div className="rounded-lg border border-brand-orange/30 bg-brand-orange/5 p-3 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-brand-cream/55">Add key</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={newKey}
+                onChange={e => setNewKey(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addManual(); } }}
+                placeholder="hero.headline"
+                className={INPUT + " font-mono text-xs flex-1 min-w-[160px]"}
+                autoFocus
+              />
+              <select
+                value={newType}
+                onChange={e => setNewType(e.target.value as OverrideType)}
+                className={INPUT + " text-xs sm:w-32"}
+              >
+                {(Object.keys(OVERRIDE_TYPE_LABEL) as OverrideType[]).map(t => (
+                  <option key={t} value={t}>{OVERRIDE_TYPE_LABEL[t]}</option>
+                ))}
+              </select>
+              <button onClick={addManual} disabled={!newKey.trim()} className="text-xs px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-40 shrink-0">
+                Add
+              </button>
+              <button onClick={() => { setAdding(false); setNewKey(""); }} className="text-[11px] px-2 py-2 text-brand-cream/55 hover:text-brand-cream">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30"
+          >
+            + Add key manually
+          </button>
+        )}
+
+        <p className="text-[10px] text-brand-cream/30">
+          Host sites apply overrides via <code className="font-mono">window.__portal.applyOverrides()</code> automatically (a MutationObserver re-runs on SPA route changes). Call <code className="font-mono">window.__portal.refresh()</code> to bypass the 15-second cache.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function OverrideRow({ keyName, type, value, discovered, hasOverride, onChangeType, onChangeValue, onClear }: {
+  keyName: string;
+  type: OverrideType;
+  value: string;
+  discovered: DiscoveredKey | undefined;
+  hasOverride: boolean;
+  onChangeType: (t: OverrideType) => void;
+  onChangeValue: (v: string) => void;
+  onClear: () => void;
+}) {
+  const isMultiline = type === "text" || type === "html";
+  const seenLabel = discovered?.seenOn?.length
+    ? `seen on ${discovered.seenOn.slice(0, 3).join(", ")}${discovered.seenOn.length > 3 ? "…" : ""}`
+    : "manually added";
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="font-mono text-xs text-brand-cream bg-white/5 px-2 py-1 rounded border border-white/10 flex-1 min-w-0 truncate" title={keyName}>
+          {keyName}
+        </code>
+        <select
+          value={type}
+          onChange={e => onChangeType(e.target.value as OverrideType)}
+          className={INPUT + " text-xs py-1.5 sm:w-32"}
+        >
+          {(Object.keys(OVERRIDE_TYPE_LABEL) as OverrideType[]).map(t => (
+            <option key={t} value={t}>{OVERRIDE_TYPE_LABEL[t]}</option>
+          ))}
+        </select>
+        {hasOverride && (
+          <button onClick={onClear} className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-red-400 shrink-0" title="Clear this override">
+            Clear
+          </button>
+        )}
+      </div>
+      {isMultiline ? (
+        <textarea
+          value={value}
+          onChange={e => onChangeValue(e.target.value)}
+          placeholder={hasOverride ? "" : "(empty — host markup wins)"}
+          rows={2}
+          className={INPUT + " font-mono text-xs"}
+        />
+      ) : (
+        <input
+          value={value}
+          onChange={e => onChangeValue(e.target.value)}
+          placeholder={type === "image-src" ? "https://… or /path/to.jpg" : "https://…"}
+          className={INPUT + " font-mono text-xs"}
+        />
+      )}
+      <p className="text-[10px] text-brand-cream/30 truncate" title={seenLabel}>{seenLabel}</p>
     </div>
   );
 }

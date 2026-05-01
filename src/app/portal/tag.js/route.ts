@@ -6,22 +6,30 @@ import { NextRequest } from "next/server";
 //   <script src="https://YOUR-PORTAL/portal/tag.js" data-site="luvandker" defer></script>
 //
 // On boot the loader:
-//   1. Heartbeats back to /api/portal/heartbeat (Phase A)
+//   1. Heartbeats back to /api/portal/heartbeat with the keys it scanned
+//      from `[data-portal-edit]` so the portal auto-discovers what's
+//      editable (Phase A + C).
 //   2. Fetches /api/portal/config/<siteId> and injects every enabled
 //      tracker module (Phase B — GA4, GTM, Meta Pixel, TikTok Pixel,
-//      Hotjar, Clarity, Plausible)
-//   3. Honours requireConsent: marketing/analytics modules wait for a
+//      Hotjar, Clarity, Plausible).
+//   3. Fetches /api/portal/content/<siteId> and rewrites the matching
+//      DOM nodes with admin-configured values (Phase C). A
+//      MutationObserver re-applies on subsequent renders so SPA route
+//      changes don't lose edits.
+//   4. Honours requireConsent: marketing/analytics modules wait for a
 //      consent.grant() call before injecting; functional modules load
-//      immediately
+//      immediately.
 //
-// The loader exposes window.__portal so the host site can drive consent:
+// The loader exposes window.__portal so the host site can drive things:
 //
 //   window.__portal.consent.grant();              // load gated trackers
 //   window.__portal.consent.deny();               // remember denial
 //   window.__portal.beat("custom-event");         // ad-hoc heartbeat
+//   window.__portal.applyOverrides();             // force re-apply
+//   window.__portal.refresh();                    // re-fetch + re-apply
 //
-// One <script> in <head> covers tracking + connectivity for every Phase
-// B+ feature, so callers paste it once.
+// One <script> in <head> covers tracking + connectivity + content
+// overrides — callers paste it once and never touch it again.
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +43,26 @@ export async function GET(req: NextRequest) {
     if (!siteId) { (window.console||{}).warn && console.warn("[portal] missing data-site"); return; }
     var portal = ${JSON.stringify(portalOrigin)};
     var heartbeatUrl = portal + "/api/portal/heartbeat";
-    var configUrl    = portal + "/api/portal/config/" + encodeURIComponent(siteId);
+    var configUrl    = portal + "/api/portal/config/"  + encodeURIComponent(siteId);
+    var contentUrl   = portal + "/api/portal/content/" + encodeURIComponent(siteId);
+
+    // ── DOM scan ─────────────────────────────────────────────────────
+    // Collect every [data-portal-edit] key on the page, with its declared
+    // type. Used both for heartbeat-driven auto-discovery and for the
+    // override application pass below.
+    function scanKeys() {
+      var els = document.querySelectorAll("[data-portal-edit]");
+      var seen = Object.create(null);
+      var out = [];
+      for (var i = 0; i < els.length; i++) {
+        var key = els[i].getAttribute("data-portal-edit");
+        if (!key || seen[key]) continue;
+        seen[key] = true;
+        var type = els[i].getAttribute("data-portal-type") || "text";
+        out.push({ key: key, type: type });
+      }
+      return out;
+    }
 
     // ── Heartbeat ────────────────────────────────────────────────────
     function payload(event) {
@@ -43,8 +70,10 @@ export async function GET(req: NextRequest) {
         siteId: siteId,
         event: event,
         url: location.href,
+        path: location.pathname,
         title: document.title,
         referrer: document.referrer || undefined,
+        discoveredKeys: scanKeys(),
         ts: Date.now()
       });
     }
@@ -154,7 +183,34 @@ export async function GET(req: NextRequest) {
       } catch (e) {}
     }
 
-    // ── Fetch and apply config ───────────────────────────────────────
+    // ── Content overrides ────────────────────────────────────────────
+    // The override map: { "<key>": { value, type } }. Updated when the
+    // content endpoint resolves and replayed by applyOverrides().
+    var overrides = Object.create(null);
+
+    function applyTo(el) {
+      var key = el.getAttribute("data-portal-edit");
+      if (!key) return;
+      var rule = overrides[key];
+      if (!rule) return;
+      // Host-declared type wins — instrumented sites know what they exposed.
+      var hostType = el.getAttribute("data-portal-type") || rule.type || "text";
+      try {
+        switch (hostType) {
+          case "html":      el.innerHTML = rule.value; break;
+          case "image-src": el.setAttribute("src", rule.value); break;
+          case "href":      el.setAttribute("href", rule.value); break;
+          default:          el.textContent = rule.value; break;
+        }
+        el.setAttribute("data-portal-applied", "1");
+      } catch (e) {}
+    }
+    function applyOverrides() {
+      var els = document.querySelectorAll("[data-portal-edit]");
+      for (var i = 0; i < els.length; i++) applyTo(els[i]);
+    }
+
+    // ── Fetch and apply config + content (in parallel) ───────────────
     var needsConsent = false;
     fetch(configUrl, { mode: "cors", credentials: "omit", cache: "default" })
       .then(function(r) { return r.ok ? r.json() : null; })
@@ -168,15 +224,56 @@ export async function GET(req: NextRequest) {
       })
       .catch(function(){});
 
+    fetch(contentUrl, { mode: "cors", credentials: "omit", cache: "default" })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(map) {
+        if (!map || typeof map !== "object") return;
+        overrides = map;
+        applyOverrides();
+      })
+      .catch(function(){});
+
+    // Re-apply on subsequent DOM additions (SPA route changes, hydration
+    // mismatches, etc.). Coalesce bursts so a render storm doesn't loop.
+    var reapplyTimer = null;
+    if (typeof MutationObserver !== "undefined") {
+      var obs = new MutationObserver(function(records) {
+        var hit = false;
+        for (var i = 0; i < records.length; i++) {
+          if (records[i].addedNodes && records[i].addedNodes.length) { hit = true; break; }
+        }
+        if (!hit || reapplyTimer) return;
+        reapplyTimer = setTimeout(function() {
+          reapplyTimer = null;
+          applyOverrides();
+        }, 50);
+      });
+      try { obs.observe(document.documentElement, { childList: true, subtree: true }); }
+      catch (e) {}
+    }
+
+    function refresh() {
+      fetch(contentUrl, { mode: "cors", credentials: "omit", cache: "no-store" })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(map) {
+          if (!map || typeof map !== "object") return;
+          overrides = map;
+          applyOverrides();
+        })
+        .catch(function(){});
+    }
+
     // ── Public API ───────────────────────────────────────────────────
     window.__portal = window.__portal || {};
     window.__portal.siteId = siteId;
     window.__portal.portal = portal;
     window.__portal.beat = beat;
     window.__portal.consent = consent;
-    window.__portal.version = 2;
+    window.__portal.applyOverrides = applyOverrides;
+    window.__portal.refresh = refresh;
+    window.__portal.version = 3;
 
-    if (window.console && console.log) console.log("[portal] tag v2 ready (site=" + siteId + ")");
+    if (window.console && console.log) console.log("[portal] tag v3 ready (site=" + siteId + ")");
   } catch (e) { /* tag must never throw onto host site */ }
 })();`;
 

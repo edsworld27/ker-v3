@@ -12,17 +12,17 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
-import type { Heartbeat } from "./types";
-import type { SiteTrackingConfig } from "./types";
+import type { Heartbeat, SiteTrackingConfig, SiteContentState } from "./types";
 
 const DATA_FILE = resolve(process.cwd(), ".data", "portal-state.json");
 
 interface PortalState {
   heartbeats: Record<string, Heartbeat>;
   configs: Record<string, SiteTrackingConfig>;
+  content: Record<string, SiteContentState>;
 }
 
-const empty = (): PortalState => ({ heartbeats: {}, configs: {} });
+const empty = (): PortalState => ({ heartbeats: {}, configs: {}, content: {} });
 
 let cache: PortalState | null = null;
 let writable = true;          // flips false on first write failure
@@ -34,7 +34,11 @@ function load(): PortalState {
     if (existsSync(DATA_FILE)) {
       const raw = readFileSync(DATA_FILE, "utf-8");
       const parsed = JSON.parse(raw) as Partial<PortalState>;
-      cache = { heartbeats: parsed.heartbeats ?? {}, configs: parsed.configs ?? {} };
+      cache = {
+        heartbeats: parsed.heartbeats ?? {},
+        configs: parsed.configs ?? {},
+        content: parsed.content ?? {},
+      };
     } else {
       cache = empty();
     }

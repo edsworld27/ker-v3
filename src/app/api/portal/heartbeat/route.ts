@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { record } from "@/portal/server/heartbeats";
+import { recordDiscovered, type IncomingDiscovery } from "@/portal/server/content";
+import type { OverrideType } from "@/portal/server/types";
 
 // POST /api/portal/heartbeat
 // Ingests a heartbeat from an external site running /portal/tag.js. Open to
@@ -32,6 +34,8 @@ export async function POST(req: NextRequest) {
 
   const beat = body as Partial<{
     siteId: string; event: string; url: string; title: string; referrer: string;
+    discoveredKeys: Array<{ key: string; type?: OverrideType }>;
+    path: string;
   }>;
 
   if (!beat.siteId || typeof beat.siteId !== "string") {
@@ -47,8 +51,27 @@ export async function POST(req: NextRequest) {
     userAgent: req.headers.get("user-agent") ?? undefined,
   });
 
+  // Capture any keys the tag scanned out of the page DOM. The heartbeat is
+  // already a per-pageload event so this gives us a free auto-discovery
+  // pass without a second request.
+  if (Array.isArray(beat.discoveredKeys) && beat.discoveredKeys.length) {
+    const path = typeof beat.path === "string" && beat.path
+      ? beat.path
+      : safePath(beat.url);
+    const keys: IncomingDiscovery[] = beat.discoveredKeys
+      .filter(k => k && typeof k.key === "string")
+      .map(k => ({ key: k.key, type: typeof k.type === "string" ? k.type : undefined }));
+    if (keys.length) recordDiscovered(beat.siteId, path, keys);
+  }
+
   return NextResponse.json(
     { ok: true, lastSeenAt: recorded.lastSeenAt, beats: recorded.beats },
     { headers: corsHeaders },
   );
+}
+
+function safePath(url: string | undefined): string {
+  if (!url) return "/";
+  try { return new URL(url).pathname || "/"; }
+  catch { return "/"; }
 }

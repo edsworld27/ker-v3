@@ -73,3 +73,44 @@ export const PROVIDER_VALUE_PLACEHOLDER: Record<TrackerProvider, string> = {
   "clarity":      "abcdef1234",
   "plausible":    "yourdomain.com",
 };
+
+// ─── Content overrides ─────────────────────────────────────────────────────
+//
+// Host sites mark editable nodes with `data-portal-edit="<key>"` (and
+// optionally `data-portal-type` to choose how the override is applied).
+// The tag scans the DOM, reports discovered keys to the portal, fetches
+// the override map and rewrites matching nodes. Auto-discovery means
+// admins see what's editable without configuring anything up front.
+
+export type OverrideType = "text" | "html" | "image-src" | "href";
+
+export interface ContentOverride {
+  value: string;
+  type: OverrideType;
+  updatedAt: number;
+}
+
+export interface DiscoveredKey {
+  firstSeen: number;
+  lastSeen: number;
+  seenOn: string[];      // pathnames where this key has been observed (capped)
+  type?: OverrideType;   // last reported type (host-declared)
+}
+
+export interface SiteContentState {
+  siteId: string;
+  overrides: Record<string, ContentOverride>;
+  discovered: Record<string, DiscoveredKey>;
+  updatedAt: number;
+}
+
+export const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
+  "text":      "Text",
+  "html":      "HTML",
+  "image-src": "Image src",
+  "href":      "Link href",
+};
+
+// Cap how many distinct paths we remember per discovered key. Keeps the
+// state file small even for sites with thousands of pages.
+export const DISCOVERED_PATH_CAP = 8;
