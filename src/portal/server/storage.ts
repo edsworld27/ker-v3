@@ -12,7 +12,10 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
-import type { Heartbeat, SiteTrackingConfig, SiteContentState } from "./types";
+import type {
+  Heartbeat, SiteTrackingConfig, SiteContentState,
+  SiteManifestSchema, Embed,
+} from "./types";
 
 const DATA_FILE = resolve(process.cwd(), ".data", "portal-state.json");
 
@@ -20,9 +23,14 @@ interface PortalState {
   heartbeats: Record<string, Heartbeat>;
   configs: Record<string, SiteTrackingConfig>;
   content: Record<string, SiteContentState>;
+  schemas: Record<string, SiteManifestSchema>;     // D-1 manifest store
+  embeds: Record<string, Embed[]>;                 // D-5 embed registry
 }
 
-const empty = (): PortalState => ({ heartbeats: {}, configs: {}, content: {} });
+const empty = (): PortalState => ({
+  heartbeats: {}, configs: {}, content: {},
+  schemas: {}, embeds: {},
+});
 
 let cache: PortalState | null = null;
 let writable = true;          // flips false on first write failure
@@ -38,6 +46,8 @@ function load(): PortalState {
         heartbeats: parsed.heartbeats ?? {},
         configs: parsed.configs ?? {},
         content: parsed.content ?? {},
+        schemas: parsed.schemas ?? {},
+        embeds: parsed.embeds ?? {},
       };
     } else {
       cache = empty();

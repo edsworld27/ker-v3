@@ -114,3 +114,95 @@ export const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
 // Cap how many distinct paths we remember per discovered key. Keeps the
 // state file small even for sites with thousands of pages.
 export const DISCOVERED_PATH_CAP = 8;
+
+// ─── Manifest schema (D-1) ─────────────────────────────────────────────────
+//
+// Host sites declare every editable region in a single portal.config.ts
+// file at the repo root (see definePortal in @/portal/client). The schema
+// is uploaded to the portal so the admin editor can render a structured,
+// section-grouped UI instead of a flat key list.
+
+export interface ManifestField {
+  type: OverrideType;
+  default: string;
+  description?: string;          // tooltip in the admin editor
+  multiline?: boolean;           // hint to render a textarea
+}
+
+// Section-grouped: { hero: { headline: { ... }, subtitle: { ... } } }.
+// The admin reader flattens to dot keys (`hero.headline`) which match the
+// existing override store from Phase C.
+export interface ManifestSchema {
+  [section: string]: {
+    [key: string]: ManifestField;
+  };
+}
+
+export interface SiteManifestSchema {
+  siteId: string;
+  schema: ManifestSchema;
+  uploadedAt: number;
+  uploadedFrom?: string;         // e.g. CLI version or repo URL
+}
+
+// ─── Embeds (D-5) ───────────────────────────────────────────────────────────
+//
+// Per-site registry of embeddable widgets — chatbots, calendars, video,
+// custom HTML. Host sites render `<PortalEmbed id="support-chat" />` and
+// the loader picks the right provider snippet at runtime.
+
+export type EmbedProvider =
+  | "crisp"
+  | "intercom"
+  | "tidio"
+  | "calendly"
+  | "cal-com"
+  | "youtube"
+  | "vimeo"
+  | "custom-html";
+
+export type EmbedPosition =
+  | "popup-bottom-right"
+  | "popup-bottom-left"
+  | "inline"
+  | "bottom-bar";
+
+export interface Embed {
+  id: string;                    // human-readable, e.g. "support-chat"
+  provider: EmbedProvider;
+  enabled: boolean;
+  // Provider-specific primary identifier — Crisp website id, Intercom app
+  // id, Calendly URL, YouTube video id, raw HTML for custom-html, etc.
+  value: string;
+  position?: EmbedPosition;
+  consentCategory?: ConsentCategory;
+  settings?: Record<string, unknown>;   // provider-specific extras
+  label?: string;
+}
+
+// ─── Portal-wide settings (D-4 prep) ───────────────────────────────────────
+//
+// Admin-controlled connection details: GitHub repo + auth (used by D-3
+// PR promotion), database backend (D-4 storage swap), deployment URLs.
+// Lives in localStorage on the admin side; sensitive fields are not
+// persisted server-side until we have proper auth.
+
+export type DatabaseBackend = "file" | "kv" | "postgres";
+
+export interface PortalSettings {
+  github: {
+    repoUrl: string;
+    defaultBranch: string;
+    appId?: string;
+    installationId?: string;
+    pat?: string;                // fallback Personal Access Token
+  };
+  database: {
+    backend: DatabaseBackend;
+    kvUrl?: string;
+    postgresUrl?: string;
+  };
+  deployment: {
+    previewBaseUrl?: string;
+  };
+}
