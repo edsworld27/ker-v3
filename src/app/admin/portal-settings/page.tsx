@@ -25,14 +25,41 @@ const BACKENDS: Array<{ id: DatabaseBackend; label: string; sub: string }> = [
   { id: "postgres", label: "Postgres", sub: "Self-hosted or managed PG" },
 ];
 
+interface BackendInfoResponse {
+  ok: boolean;
+  kind: DatabaseBackend | "memory";
+  persistent: boolean;
+  description: string;
+  envVar: string;
+  writable: boolean;
+}
+
 export default function AdminPortalSettingsPage() {
   const [settings, setSettings] = useState<PortalSettings>(DEFAULT_SETTINGS);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
 
   useEffect(() => {
     setSettings(getSettings());
     return onSettingsChange(() => setSettings(getSettings()));
+  }, []);
+
+  // Probe the server's actual backend on mount; refresh once per minute
+  // since the writable flag can flip if a deploy hits a read-only disk.
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch("/api/portal/storage-info", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as BackendInfoResponse;
+        if (!cancelled) setBackendInfo(data);
+      } catch { /* offline — show last known */ }
+    }
+    pull();
+    const id = setInterval(pull, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   function patch(p: PortalSettingsPatch) {
@@ -101,8 +128,10 @@ export default function AdminPortalSettingsPage() {
       </Card>
 
       {/* ── DATABASE ──────────────────────────────────────────────────────── */}
-      <Card title="Database" tip="Where the portal stores its own state (heartbeats, content overrides, embed registry, etc.). The actual swap activates in D-4 — today the file backend is in use regardless of this setting.">
-        <Field label="Backend" tip="File is local-only and resets between deploys on read-only hosts. KV recommended for Vercel deployments. Postgres for self-hosted.">
+      <Card title="Database" tip="Where the portal stores its own state (heartbeats, content overrides, embed registry, etc.). The actual backend choice is server-side via the PORTAL_BACKEND env var; this UI lets you record your intent + supply credentials.">
+        <BackendStatusRow info={backendInfo} intended={settings.database.backend} />
+
+        <Field label="Backend" tip="File is local-only and resets between deploys on read-only hosts. KV recommended for Vercel deployments. Postgres for self-hosted. The actual choice is set on the server via PORTAL_BACKEND.">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {BACKENDS.map(b => {
               const active = settings.database.backend === b.id;
@@ -145,9 +174,16 @@ export default function AdminPortalSettingsPage() {
           />
         )}
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/55 leading-relaxed">
-          <strong className="text-brand-cream/75">Note:</strong>{" "}
-          Storage swap activates in D-4. Today the file backend is in use regardless of this setting.
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/55 leading-relaxed space-y-1">
+          <p>
+            <strong className="text-brand-cream/75">Server-side selection.</strong>{" "}
+            The active backend is decided by <code className="font-mono text-brand-cream/85">PORTAL_BACKEND</code>{" "}
+            on the server, not by this UI. Set it at deploy time:
+          </p>
+          <pre className="font-mono text-[10px] text-brand-cream/65 bg-brand-black/40 border border-white/5 rounded px-2 py-1.5 overflow-x-auto">PORTAL_BACKEND=file{"\n"}# or PORTAL_BACKEND=memory  (no persistence, ephemeral){"\n"}# or PORTAL_BACKEND=kv      (Upstash REST — slot in v1, not yet wired)</pre>
+          <p className="text-brand-cream/45">
+            File survives <code className="font-mono">next dev</code> restarts and most VMs. Vercel and other read-only hosts need <code className="font-mono">memory</code> or <code className="font-mono">kv</code>.
+          </p>
         </div>
       </Card>
 
@@ -256,5 +292,49 @@ function SavedIndicator({ at }: { at: number | null }) {
     >
       Saved
     </span>
+  );
+}
+
+// Live read-out of which backend is actually serving requests right now,
+// versus the backend the admin has *intended* via this UI. The two can
+// diverge whenever PORTAL_BACKEND isn't set to match — surfacing the
+// difference avoids the "I changed it but nothing happened" trap.
+function BackendStatusRow({ info, intended }: {
+  info: BackendInfoResponse | null;
+  intended: DatabaseBackend;
+}) {
+  if (!info) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/45">
+        Probing active backend…
+      </div>
+    );
+  }
+  const matches = info.kind === intended;
+  const dot = info.persistent && info.writable
+    ? "bg-green-400"
+    : info.persistent
+      ? "bg-brand-amber"
+      : "bg-white/30";
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/65 leading-relaxed">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+        <span className="text-brand-cream/85 font-semibold">Active backend:</span>
+        <code className="font-mono text-brand-cream bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+          {info.kind}
+        </code>
+        <span className="text-brand-cream/45">
+          {info.persistent ? "persistent" : "ephemeral"}
+          {info.persistent && !info.writable ? " · read-only filesystem" : ""}
+        </span>
+        {!matches && (
+          <span className="ml-auto text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-brand-amber/15 text-brand-amber border border-brand-amber/30">
+            Differs from intended ({intended})
+          </span>
+        )}
+      </div>
+      <p className="text-brand-cream/45 mt-1">{info.description}</p>
+    </div>
   );
 }

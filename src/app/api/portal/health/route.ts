@@ -24,6 +24,7 @@ export async function GET() {
       settings: true,             // /admin/portal-settings (GitHub + DB backend + deployment, D-4-prep)
       workflow: true,             // draft/publish/preview/history on content overrides (D-2)
       promote: true,              // POST /api/portal/promote/[siteId] opens a PR (D-3)
+      backendSelector: true,      // PORTAL_BACKEND env switches storage; /api/portal/storage-info reports active (D-4)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
