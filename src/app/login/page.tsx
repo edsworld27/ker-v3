@@ -114,33 +114,53 @@ function LoginInner() {
   }
 
   if (!hydrated) {
-    return <div className="min-h-screen bg-brand-black" />;
+    return <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #06121f 0%, #0a0e1a 100%)" }} />;
   }
 
   const showDevButton = mode === "dev" || mode === "off";
 
   return (
-    <div className="min-h-screen bg-brand-black text-brand-cream font-body antialiased flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 font-body antialiased"
+      style={{
+        background: "linear-gradient(135deg, #06121f 0%, #0a0e1a 50%, #0f1828 100%)",
+        color: "#e6f1ff",
+      }}
+    >
       <div className="w-full max-w-sm">
         {/* Back button — top-left of the card */}
         <button
           onClick={handleBack}
-          className="mb-4 inline-flex items-center gap-2 text-[12px] text-brand-cream/60 hover:text-brand-cream transition-colors"
+          className="mb-4 inline-flex items-center gap-2 text-[12px] text-cyan-200/70 hover:text-cyan-100 transition-colors"
           type="button"
         >
           <span aria-hidden="true">←</span>
           <span>Back</span>
         </button>
 
-        <div className="rounded-2xl border border-white/10 bg-brand-black-soft p-6 shadow-2xl">
-          <p className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-2">Aqua portal</p>
-          <h1 className="font-display text-2xl text-brand-cream mb-1">Admin sign-in</h1>
-          <p className="text-[12px] text-brand-cream/55 mb-5">
+        <div
+          className="rounded-2xl p-6 shadow-2xl"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(56,189,248,0.18)",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(56,189,248,0.08)",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span
+              className="w-7 h-7 rounded-lg shrink-0"
+              style={{ background: "linear-gradient(135deg, #06b6d4 0%, #0ea5e9 50%, #6366f1 100%)" }}
+              aria-hidden="true"
+            />
+            <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-300">Aqua portal</p>
+          </div>
+          <h1 className="font-display text-2xl mb-1" style={{ color: "#fff" }}>Admin sign-in</h1>
+          <p className="text-[12px] text-cyan-100/55 mb-5">
             {mode === "strict"
               ? "Sign in to manage your portal."
               : mode === "dev"
-                ? "Sign in or use Dev mode for one-click access."
-                : "Security is off — click Dev mode to enter."}
+                ? "Sign in, or hit Dev bypass below for one-click admin access."
+                : "Security is off — click Dev bypass to enter."}
           </p>
 
           {mode !== "off" && (
@@ -152,7 +172,8 @@ function LoginInner() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-white/30"
+                className="w-full bg-white/5 border border-cyan-300/10 rounded-xl px-3 py-2.5 text-sm placeholder:text-cyan-100/30 focus:outline-none focus:border-cyan-300/40"
+                style={{ color: "#e6f1ff" }}
               />
               <input
                 type="password"
@@ -161,13 +182,15 @@ function LoginInner() {
                 placeholder="Password"
                 autoComplete="current-password"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-white/30"
+                className="w-full bg-white/5 border border-cyan-300/10 rounded-xl px-3 py-2.5 text-sm placeholder:text-cyan-100/30 focus:outline-none focus:border-cyan-300/40"
+                style={{ color: "#e6f1ff" }}
               />
               {error && <p className="text-[11px] text-red-400">{error}</p>}
               <button
                 type="submit"
                 disabled={busy || !email || !password}
-                className="w-full px-3 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)", color: "#fff" }}
               >
                 {busy ? "Signing in…" : "Sign in"}
               </button>
@@ -177,37 +200,40 @@ function LoginInner() {
           {showDevButton && (
             <>
               {mode !== "off" && (
-                <div className="my-4 flex items-center gap-3 text-[10px] tracking-[0.22em] uppercase text-brand-cream/30">
-                  <span className="flex-1 h-px bg-white/10" />
+                <div className="my-4 flex items-center gap-3 text-[10px] tracking-[0.22em] uppercase text-cyan-100/35">
+                  <span className="flex-1 h-px bg-cyan-300/15" />
                   <span>or</span>
-                  <span className="flex-1 h-px bg-white/10" />
+                  <span className="flex-1 h-px bg-cyan-300/15" />
                 </div>
               )}
               <button
                 type="button"
                 onClick={handleDevSignIn}
                 disabled={busy}
-                className="w-full px-3 py-2.5 rounded-xl border border-brand-amber/40 bg-brand-amber/10 text-brand-amber text-sm font-semibold disabled:opacity-40 hover:bg-brand-amber/20 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-3 py-3 rounded-xl text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                style={{
+                  background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                  color: "#1a1a1a",
+                  boxShadow: "0 8px 24px rgba(251,191,36,0.25)",
+                }}
               >
                 <span aria-hidden="true">⚡</span>
-                <span>{busy ? "Entering…" : "Dev mode — instant sign-in"}</span>
+                <span>{busy ? "Entering…" : "Dev bypass — open portal"}</span>
               </button>
               {mode === "off" && error && (
                 <p className="mt-3 text-[11px] text-red-400">{error}</p>
               )}
-              <p className="mt-3 text-[10px] text-brand-cream/40 text-center">
-                {mode === "off"
-                  ? "Set NEXT_PUBLIC_PORTAL_SECURITY=strict to require credentials."
-                  : "Visible because NEXT_PUBLIC_PORTAL_SECURITY isn't set to strict."}
+              <p className="mt-2 text-[10px] text-cyan-100/40 text-center">
+                One-click admin access for development. Set <code className="font-mono">NEXT_PUBLIC_PORTAL_SECURITY=true</code> in production to disable.
               </p>
             </>
           )}
 
-          <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-brand-cream/45">
-            <Link href="/account" className="hover:text-brand-cream transition-colors">
+          <div className="mt-5 pt-4 border-t border-cyan-300/10 flex items-center justify-between text-[11px] text-cyan-100/45">
+            <Link href="/account" className="hover:text-cyan-100 transition-colors">
               Customer sign-in →
             </Link>
-            <Link href="/" className="hover:text-brand-cream transition-colors">
+            <Link href="/" className="hover:text-cyan-100 transition-colors">
               Site →
             </Link>
           </div>
@@ -220,7 +246,7 @@ function LoginInner() {
 export default function PortalAdminLoginPage() {
   // useSearchParams() requires a Suspense boundary for static export safety.
   return (
-    <Suspense fallback={<div className="min-h-screen bg-brand-black" />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "linear-gradient(135deg, #06121f 0%, #0a0e1a 100%)" }} />}>
       <LoginInner />
     </Suspense>
   );
