@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mintPreviewToken } from "@/portal/server/preview";
+import { ensureHydrated } from "@/portal/server/storage";
 
 // POST /api/portal/content/[siteId]/preview-token
 // Mints a short-lived signed token the host site can use to fetch the
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 const MAX_TTL_MS = 60 * 60 * 1000;          // 1 hour ceiling
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: { ttlMs?: number } = {};
   try { body = await req.json(); } catch { /* empty body is fine */ }

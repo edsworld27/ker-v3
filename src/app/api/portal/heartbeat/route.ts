@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { record } from "@/portal/server/heartbeats";
 import { recordDiscovered, type IncomingDiscovery } from "@/portal/server/content";
+import { ensureHydrated } from "@/portal/server/storage";
 import type { OverrideType } from "@/portal/server/types";
 
 // POST /api/portal/heartbeat
@@ -22,6 +23,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  await ensureHydrated();
   // sendBeacon posts as text/plain (we choose that to avoid a preflight) so
   // we always read the body as text and JSON.parse it ourselves.
   let body: unknown;

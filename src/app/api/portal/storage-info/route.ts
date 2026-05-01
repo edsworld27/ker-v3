@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBackendInfo } from "@/portal/server/storage";
+import { ensureHydrated, getBackendInfo } from "@/portal/server/storage";
 
 // GET /api/portal/storage-info
 // Returns metadata about the active storage backend so the admin
@@ -11,5 +11,6 @@ import { getBackendInfo } from "@/portal/server/storage";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  await ensureHydrated();
   return NextResponse.json({ ok: true, ...getBackendInfo() });
 }

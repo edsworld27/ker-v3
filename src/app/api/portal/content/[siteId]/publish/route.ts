@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publishDraft, hasUnpublishedChanges } from "@/portal/server/content";
+import { ensureHydrated } from "@/portal/server/storage";
 
 // POST /api/portal/content/[siteId]/publish
 // Promotes draft → published, snapshots the previous published state
@@ -8,6 +9,7 @@ import { publishDraft, hasUnpublishedChanges } from "@/portal/server/content";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: { message?: string; publishedBy?: string } = {};
   try { body = await req.json(); } catch { /* empty body is fine */ }

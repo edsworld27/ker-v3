@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { discardDraft } from "@/portal/server/content";
+import { ensureHydrated } from "@/portal/server/storage";
 
 // POST /api/portal/content/[siteId]/discard
 // Throws away the current draft, resetting it to the published state.
@@ -7,6 +8,7 @@ import { discardDraft } from "@/portal/server/content";
 export const dynamic = "force-dynamic";
 
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   const saved = discardDraft(siteId);
   return NextResponse.json({ ok: true, content: saved });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPublicConfig, setConfig, getConfig } from "@/portal/server/tracking";
+import { ensureHydrated } from "@/portal/server/storage";
 import type { Tracker } from "@/portal/server/types";
 
 // GET  /api/portal/config/[siteId]   — public, CORS-open. Returns the
@@ -24,6 +25,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   // ?admin=1 returns the full config (used by the admin UI). The default
   // is the loader projection — narrower payload, only enabled trackers.
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
 // Admin-side save. Accepts the FULL config (so the admin can replace
 // the tracker list atomically). No CORS headers — same-origin only.
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: unknown;
   try {

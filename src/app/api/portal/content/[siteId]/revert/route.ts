@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revertToSnapshot } from "@/portal/server/content";
+import { ensureHydrated } from "@/portal/server/storage";
 
 // POST /api/portal/content/[siteId]/revert
 // Body: { snapshotId: string, message?: string, publishedBy?: string }
@@ -10,6 +11,7 @@ import { revertToSnapshot } from "@/portal/server/content";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: { snapshotId?: string; message?: string; publishedBy?: string };
   try { body = await req.json(); }

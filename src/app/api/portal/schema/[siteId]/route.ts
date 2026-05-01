@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getSchema, setSchema,
 } from "@/portal/server/schema";
+import { ensureHydrated } from "@/portal/server/storage";
 import type {
   ManifestField, ManifestSchema, OverrideType,
 } from "@/portal/server/types";
@@ -34,6 +35,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   const wantsAdmin = new URL(req.url).searchParams.get("admin") === "1";
   const stored = getSchema(siteId);
@@ -88,6 +90,7 @@ function validateSchema(input: unknown): { ok: true; schema: ManifestSchema } | 
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: PostBody;
   try { body = await req.json() as PostBody; }

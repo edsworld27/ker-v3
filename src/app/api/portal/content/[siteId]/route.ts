@@ -4,6 +4,7 @@ import {
   type SetOverrideInput,
 } from "@/portal/server/content";
 import { verifyPreviewToken } from "@/portal/server/preview";
+import { ensureHydrated } from "@/portal/server/storage";
 import type { OverrideType } from "@/portal/server/types";
 
 // GET /api/portal/content/[siteId]
@@ -36,6 +37,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   const url = new URL(req.url);
   const wantsAdmin = url.searchParams.get("admin") === "1";
@@ -62,6 +64,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: unknown;
   try { body = await req.json(); }

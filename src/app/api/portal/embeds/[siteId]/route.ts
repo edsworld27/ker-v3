@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEmbeds, setEmbeds, getPublicEmbeds } from "@/portal/server/embeds";
+import { ensureHydrated } from "@/portal/server/storage";
 import type { Embed, EmbedProvider, EmbedPosition, ConsentCategory } from "@/portal/server/types";
 
 // GET  /api/portal/embeds/[siteId]   — public, CORS-open. Returns the
@@ -36,6 +37,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   // ?admin=1 returns the full Embed[] (used by the admin UI). The default
   // is the narrow projection consumed by <PortalEmbed/>.
@@ -47,6 +49,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
 // Admin save. Accepts the full embeds array so the admin can replace the
 // list atomically. No CORS — same-origin only.
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: unknown;
   try {

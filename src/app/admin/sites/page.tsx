@@ -7,7 +7,12 @@ import {
   onSitesChange, normaliseDomain, type Site,
 } from "@/lib/admin/sites";
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
-import { getSettings as getPortalSettings, onSettingsChange as onPortalSettingsChange } from "@/lib/admin/portalSettings";
+import {
+  loadSettings as loadPortalSettings,
+  getSettings as getPortalSettings,
+  onSettingsChange as onPortalSettingsChange,
+  hasSecret,
+} from "@/lib/admin/portalSettings";
 import Tip from "@/components/admin/Tip";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
@@ -1100,13 +1105,18 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
   const [promotedPr, setPromotedPr] = useState<{ url: string; number: number } | null>(null);
   const [portalSettings, setPortalSettings] = useState(() => getPortalSettings());
 
-  // Keep settings in sync with the portal-settings page edits.
+  // Cloud-side settings: load on mount + subscribe to changes from the
+  // portal-settings page. The PAT itself never reaches the client (the
+  // GET projection redacts it to a sentinel) — we just need to know
+  // whether one is configured to enable/disable the Promote button.
   useEffect(() => {
+    let cancelled = false;
+    loadPortalSettings().then(s => { if (!cancelled) setPortalSettings(s); });
     const off = onPortalSettingsChange(() => setPortalSettings(getPortalSettings()));
-    return off;
+    return () => { cancelled = true; off(); };
   }, []);
 
-  const githubReady = !!portalSettings.github.repoUrl && !!portalSettings.github.pat;
+  const githubReady = !!portalSettings.github.repoUrl && hasSecret(portalSettings.github.pat);
   const hasPublished = state ? Object.keys(state.published).length > 0 : false;
 
   const unpublishedKeys = state ? diffOverrideKeys(state.published, state.draft) : [];
@@ -1194,15 +1204,12 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
     const message = prompt("Optional commit/PR note:", "") ?? undefined;
     setBusy("promote"); setError(null); setPromotedPr(null);
     try {
+      // Server reads repo URL + PAT from the cloud-side settings store —
+      // no credentials in the request body anymore.
       const res = await fetch(`/api/portal/promote/${encodeURIComponent(siteId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoUrl: portalSettings.github.repoUrl,
-          baseBranch: portalSettings.github.defaultBranch,
-          pat: portalSettings.github.pat,
-          message,
-        }),
+        body: JSON.stringify({ message }),
       });
       const data = await res.json() as { ok: boolean; prUrl?: string; prNumber?: number; error?: string };
       if (!data.ok || !data.prUrl) {

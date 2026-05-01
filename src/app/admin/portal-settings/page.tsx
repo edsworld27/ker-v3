@@ -3,15 +3,16 @@
 // Portal-wide settings: GitHub repo + auth (used by D-3 PR promotion),
 // database backend selection (D-4 storage swap), deployment URLs.
 //
-// Stored in localStorage via @/lib/admin/portalSettings. Sensitive fields
-// (PAT, KV URL, Postgres URL) are rendered as type=password with a
-// Show/Hide eye toggle.
-//
-// Mirrors the Card / Field / Tip / INPUT idiom from /admin/customise.
+// Cloud-architected: state lives server-side via /api/portal/settings.
+// Sensitive fields (PAT, KV URL, Postgres URL) NEVER come back from GET —
+// the server replaces them with the SECRET_PLACEHOLDER sentinel so the
+// UI can show "saved" without ever reading the value back. Empty input =
+// secret cleared; the placeholder string in the input means leave-as-is.
 
 import { useEffect, useRef, useState } from "react";
 import {
-  getSettings, saveSettings, resetSettings, onSettingsChange, DEFAULT_SETTINGS,
+  loadSettings, saveSettings, resetSettings, onSettingsChange, DEFAULT_SETTINGS,
+  hasSecret, SECRET_PLACEHOLDER,
   type PortalSettingsPatch,
 } from "@/lib/admin/portalSettings";
 import type { PortalSettings, DatabaseBackend } from "@/portal/server/types";
@@ -35,14 +36,21 @@ interface BackendInfoResponse {
 }
 
 export default function AdminPortalSettingsPage() {
-  const [settings, setSettings] = useState<PortalSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<PortalSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
 
   useEffect(() => {
-    setSettings(getSettings());
-    return onSettingsChange(() => setSettings(getSettings()));
+    let cancelled = false;
+    loadSettings()
+      .then(s => { if (!cancelled) setSettings(s); })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    const off = onSettingsChange(() => loadSettings().then(s => { if (!cancelled) setSettings(s); }));
+    return () => { cancelled = true; off(); };
   }, []);
 
   // Probe the server's actual backend on mount; refresh once per minute
@@ -62,13 +70,29 @@ export default function AdminPortalSettingsPage() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  function patch(p: PortalSettingsPatch) {
-    const next = saveSettings(p);
-    setSettings(next);
-    setSavedAt(Date.now());
-    if (fadeTimer.current) clearTimeout(fadeTimer.current);
-    fadeTimer.current = setTimeout(() => setSavedAt(null), 2000);
+  async function patch(p: PortalSettingsPatch) {
+    setError(null);
+    try {
+      const next = await saveSettings(p);
+      setSettings(next);
+      setSavedAt(Date.now());
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+      fadeTimer.current = setTimeout(() => setSavedAt(null), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="p-6 sm:p-8 lg:p-10 max-w-5xl">
+        <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Admin panel</p>
+        <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Portal settings</h1>
+        <p className="text-brand-cream/45 text-sm mt-3">Loading settings from the cloud store…</p>
+      </div>
+    );
+  }
+  const live = settings ?? DEFAULT_SETTINGS;
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
@@ -88,7 +112,7 @@ export default function AdminPortalSettingsPage() {
       <Card title="GitHub" tip="Where the admin will open pull requests when you promote draft content. The GitHub App route is preferred — installation tokens are scoped to the repo and rotate automatically. Personal Access Tokens are a fallback for development.">
         <Field label="Repository URL" tip="The repo this portal manages content for, e.g. https://github.com/owner/repo.">
           <input
-            value={settings.github.repoUrl}
+            value={live.github.repoUrl}
             onChange={e => patch({ github: { repoUrl: e.target.value } })}
             placeholder="https://github.com/owner/repo"
             className={INPUT + " font-mono text-xs"}
@@ -96,7 +120,7 @@ export default function AdminPortalSettingsPage() {
         </Field>
         <Field label="Default branch" tip="The branch new pull requests target (typically 'main').">
           <input
-            value={settings.github.defaultBranch}
+            value={live.github.defaultBranch}
             onChange={e => patch({ github: { defaultBranch: e.target.value } })}
             placeholder="main"
             className={INPUT}
@@ -104,7 +128,7 @@ export default function AdminPortalSettingsPage() {
         </Field>
         <Field label="GitHub App ID (optional)" tip="Preferred over a Personal Access Token. Install your GitHub App on the repo and paste its App ID + Installation ID.">
           <input
-            value={settings.github.appId ?? ""}
+            value={live.github.appId ?? ""}
             onChange={e => patch({ github: { appId: e.target.value } })}
             placeholder="123456"
             className={INPUT}
@@ -112,7 +136,7 @@ export default function AdminPortalSettingsPage() {
         </Field>
         <Field label="Installation ID" tip="Found in the GitHub App's installation page URL.">
           <input
-            value={settings.github.installationId ?? ""}
+            value={live.github.installationId ?? ""}
             onChange={e => patch({ github: { installationId: e.target.value } })}
             placeholder="12345678"
             className={INPUT}
@@ -121,7 +145,7 @@ export default function AdminPortalSettingsPage() {
         <SensitiveField
           label="Personal Access Token (fallback)"
           tip="PATs are full-permission and storing them in browser localStorage is a development convenience only. Prefer a GitHub App in production."
-          value={settings.github.pat ?? ""}
+          value={live.github.pat ?? ""}
           onChange={v => patch({ github: { pat: v } })}
           placeholder="ghp_…"
         />
@@ -129,12 +153,12 @@ export default function AdminPortalSettingsPage() {
 
       {/* ── DATABASE ──────────────────────────────────────────────────────── */}
       <Card title="Database" tip="Where the portal stores its own state (heartbeats, content overrides, embed registry, etc.). The actual backend choice is server-side via the PORTAL_BACKEND env var; this UI lets you record your intent + supply credentials.">
-        <BackendStatusRow info={backendInfo} intended={settings.database.backend} />
+        <BackendStatusRow info={backendInfo} intended={live.database.backend} />
 
         <Field label="Backend" tip="File is local-only and resets between deploys on read-only hosts. KV recommended for Vercel deployments. Postgres for self-hosted. The actual choice is set on the server via PORTAL_BACKEND.">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {BACKENDS.map(b => {
-              const active = settings.database.backend === b.id;
+              const active = live.database.backend === b.id;
               return (
                 <button
                   key={b.id}
@@ -154,21 +178,21 @@ export default function AdminPortalSettingsPage() {
           </div>
         </Field>
 
-        {settings.database.backend === "kv" && (
+        {live.database.backend === "kv" && (
           <SensitiveField
             label="KV connection URL"
             tip="Your Vercel KV REST URL (or Upstash Redis URL). Pulled from your hosting dashboard."
-            value={settings.database.kvUrl ?? ""}
+            value={live.database.kvUrl ?? ""}
             onChange={v => patch({ database: { kvUrl: v } })}
             placeholder="https://…upstash.io or rediss://…"
           />
         )}
 
-        {settings.database.backend === "postgres" && (
+        {live.database.backend === "postgres" && (
           <SensitiveField
             label="Postgres connection URL"
             tip="A standard postgresql:// connection string. Use a pooled URL for serverless."
-            value={settings.database.postgresUrl ?? ""}
+            value={live.database.postgresUrl ?? ""}
             onChange={v => patch({ database: { postgresUrl: v } })}
             placeholder="postgresql://user:pass@host/db"
           />
@@ -191,7 +215,7 @@ export default function AdminPortalSettingsPage() {
       <Card title="Deployment" tip="Where the host site is deployed. Used by the workflow phase to build signed preview links to draft content.">
         <Field label="Preview base URL" tip="Signed preview links to draft content will be hosted under this URL. Optional — only needed if you want share links for review.">
           <input
-            value={settings.deployment.previewBaseUrl ?? ""}
+            value={live.deployment.previewBaseUrl ?? ""}
             onChange={e => patch({ deployment: { previewBaseUrl: e.target.value } })}
             placeholder="https://your-site.com"
             className={INPUT + " font-mono text-xs"}
@@ -199,16 +223,25 @@ export default function AdminPortalSettingsPage() {
         </Field>
       </Card>
 
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400">
+          {error}
+        </div>
+      )}
+
       {/* ── RESET ─────────────────────────────────────────────────────────── */}
       <div>
         <button
-          onClick={() => {
-            if (confirm("Reset all portal settings to defaults? This will clear GitHub credentials, the chosen backend, and any preview URL.")) {
-              resetSettings();
-              setSettings(getSettings());
+          onClick={async () => {
+            if (!confirm("Reset all portal settings to defaults? This will clear GitHub credentials, the chosen backend, and any preview URL.")) return;
+            try {
+              const next = await resetSettings();
+              setSettings(next);
               setSavedAt(Date.now());
               if (fadeTimer.current) clearTimeout(fadeTimer.current);
               fadeTimer.current = setTimeout(() => setSavedAt(null), 2000);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e));
             }
           }}
           className="text-xs text-brand-cream/45 hover:text-brand-orange"
@@ -246,37 +279,104 @@ function Field({ label, tip, children }: { label: string; tip?: string; children
   );
 }
 
-// Password-style field with a Show/Hide toggle. Used for PAT, KV URL, Postgres URL.
+// Password-style field with a Show/Hide toggle. Used for PAT, KV URL,
+// Postgres URL. Aware of the SECRET_PLACEHOLDER sentinel — when GET
+// returns it, we display "•••••• saved" and the input is empty until
+// the admin clicks Edit. Saving an empty input clears the secret;
+// clicking Cancel restores the placeholder so no save happens.
 function SensitiveField({
   label, tip, value, onChange, placeholder,
 }: {
   label: string;
   tip?: string;
-  value: string;
+  value: string;             // either "", SECRET_PLACEHOLDER, or a fresh edit
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const isStoredSecret = hasSecret(value);
+  const [editing, setEditing] = useState(false);
   const [show, setShow] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  // When the stored secret is updated outside this component (reset, etc.)
+  // pull out of edit mode so the placeholder shows again.
+  useEffect(() => { if (isStoredSecret) { setEditing(false); setDraft(""); } }, [isStoredSecret]);
+
+  if (isStoredSecret && !editing) {
+    return (
+      <Field label={label} tip={tip}>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 font-mono text-xs text-brand-cream/65 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+            ••••••••&nbsp;<span className="text-green-400">saved</span>
+          </code>
+          <button
+            type="button"
+            onClick={() => { setEditing(true); setDraft(""); }}
+            className="text-[11px] px-3 py-2 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="text-[11px] px-3 py-2 rounded-lg border border-red-500/25 text-red-400/70 hover:text-red-400 hover:border-red-500/50"
+            title="Remove the saved secret"
+          >
+            Clear
+          </button>
+        </div>
+      </Field>
+    );
+  }
+
+  // Active edit state — fresh input. Local draft so we can save on commit
+  // rather than every keystroke (the actual secret is sensitive).
+  const display = editing ? draft : (isStoredSecret ? "" : value);
+
+  function commit() {
+    if (display === "" && isStoredSecret) {
+      // Refused: empty field with secret saved. Use Clear to remove.
+      setEditing(false); setDraft("");
+      return;
+    }
+    onChange(display);
+    setEditing(false); setDraft("");
+  }
+  function cancel() { setEditing(false); setDraft(""); }
+
   return (
     <Field label={label} tip={tip}>
       <div className="relative">
         <input
           type={show ? "text" : "password"}
-          value={value}
-          onChange={e => onChange(e.target.value)}
+          value={display}
+          onChange={e => { setDraft(e.target.value); if (!editing) setEditing(true); }}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commit(); } if (e.key === "Escape") cancel(); }}
+          onBlur={commit}
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}
-          className={INPUT + " pr-20 font-mono text-xs"}
+          className={INPUT + " pr-28 font-mono text-xs"}
         />
-        <button
-          type="button"
-          onClick={() => setShow(s => !s)}
-          aria-label={show ? "Hide value" : "Show value"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-wider px-2 py-1 rounded-md text-brand-cream/55 hover:text-brand-cream hover:bg-white/5"
-        >
-          {show ? "Hide" : "Show"}
-        </button>
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {editing && (
+            <button
+              type="button"
+              onClick={cancel}
+              className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-md text-brand-cream/55 hover:text-brand-cream hover:bg-white/5"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShow(s => !s)}
+            aria-label={show ? "Hide value" : "Show value"}
+            className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-md text-brand-cream/55 hover:text-brand-cream hover:bg-white/5"
+          >
+            {show ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
     </Field>
   );

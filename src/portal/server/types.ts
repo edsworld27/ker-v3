@@ -232,6 +232,12 @@ export interface PortalSettings {
   };
 }
 
+// Patch type: each top-level section may be supplied partially. Callers
+// can send { github: { repoUrl: "…" } } and keep defaultBranch untouched.
+export type PortalSettingsPatch = {
+  [K in keyof PortalSettings]?: Partial<PortalSettings[K]>;
+};
+
 // ─── Embed provider metadata ───────────────────────────────────────────────
 //
 // Maps used by the admin UI and the runtime renderer. Kept colocated with
