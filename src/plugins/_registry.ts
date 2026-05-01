@@ -31,6 +31,7 @@ import repo from "./repo";
 import analytics from "./analytics";
 import email from "./email";
 import i18n from "./i18n";
+import subscriptions from "./subscriptions";
 
 // First-party plugins. Order is presentation-only (marketplace
 // rendering); install dependencies are enforced by the runtime.
@@ -38,6 +39,7 @@ const PLUGINS: AquaPlugin[] = [
   brand,
   website,
   ecommerce,
+  subscriptions,
   blog,
   email,
   forms,
