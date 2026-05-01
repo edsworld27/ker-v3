@@ -45,6 +45,12 @@ export default function EditorOutliner({
 }: Props) {
   const [pagesOpen, setPagesOpen]     = useState(true);
   const [funnelsOpen, setFunnelsOpen] = useState(true);
+  const [query, setQuery] = useState("");
+
+  const q = query.trim().toLowerCase();
+  const filterMatch = (haystack: string) => !q || haystack.toLowerCase().includes(q);
+  const filteredPages   = pages.filter(p => filterMatch(p.title) || filterMatch(p.slug));
+  const filteredFunnels = funnels.filter(f => filterMatch(f.name) || filterMatch(f.description ?? ""));
 
   return (
     <aside className="w-64 shrink-0 border-r border-white/5 bg-brand-black-soft hidden md:flex flex-col overflow-hidden">
@@ -63,19 +69,38 @@ export default function EditorOutliner({
         </button>
       </header>
 
+      <div className="px-3 py-2 border-b border-white/5">
+        <div className="relative">
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search…"
+            className="w-full bg-white/5 border border-white/10 rounded-md pl-7 pr-2 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+          />
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-brand-cream/45">⌕</span>
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded text-brand-cream/55 hover:text-brand-cream hover:bg-white/5 flex items-center justify-center text-[12px]"
+            >×</button>
+          )}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto py-2">
         <Section
           label="Pages"
-          count={pages.length}
-          open={pagesOpen}
+          count={filteredPages.length}
+          open={pagesOpen || !!q}
           onToggle={() => setPagesOpen(o => !o)}
           onAdd={onCreatePage}
           addTitle="New page"
         >
-          {pages.length === 0 && (
-            <Empty hint="Click + to add a page" />
+          {filteredPages.length === 0 && (
+            <Empty hint={q ? "No pages match" : "Click + to add a page"} />
           )}
-          {pages.map(p => (
+          {filteredPages.map(p => (
             <Row
               key={p.id}
               active={target.kind === "page" && target.id === p.id}
@@ -94,16 +119,16 @@ export default function EditorOutliner({
 
         <Section
           label="Funnels"
-          count={funnels.length}
-          open={funnelsOpen}
+          count={filteredFunnels.length}
+          open={funnelsOpen || !!q}
           onToggle={() => setFunnelsOpen(o => !o)}
           onAdd={onCreateFunnel}
           addTitle="New funnel"
         >
-          {funnels.length === 0 && (
-            <Empty hint="Click + to add a funnel" />
+          {filteredFunnels.length === 0 && (
+            <Empty hint={q ? "No funnels match" : "Click + to add a funnel"} />
           )}
-          {funnels.map(f => (
+          {filteredFunnels.map(f => (
             <Row
               key={f.id}
               active={target.kind === "funnel" && target.id === f.id}
@@ -121,7 +146,7 @@ export default function EditorOutliner({
       </div>
 
       <footer className="shrink-0 px-4 py-2 border-t border-white/5 text-[10px] text-brand-cream/35">
-        Drag from the left, edit on the right.
+        ⌘S to publish · ⌘Z to undo
       </footer>
     </aside>
   );

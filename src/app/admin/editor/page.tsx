@@ -21,6 +21,7 @@ import EditorTopBar, { type EditorMode } from "./EditorTopBar";
 import EditorPropertiesSidebar, { type SelectedElement } from "./EditorPropertiesSidebar";
 import EditorOutliner, { type EditorTarget } from "./EditorOutliner";
 import EditorFunnelStage from "./EditorFunnelStage";
+import EditorBlockStage from "./EditorBlockStage";
 import {
   loadDeviceState, saveDeviceState, getDevicePreset, effectiveViewport,
   type DeviceState,
@@ -67,6 +68,12 @@ function VisualEditorPageInner() {
   const [pageSettingsId, setPageSettingsId] = useState<string | null>(null);
   const [siteSettingsOpen, setSiteSettingsOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // History controls registered by EditorBlockStage so the topbar's
+  // ↶/↷ buttons can drive its internal undo/redo stacks.
+  const historyApiRef = useRef<{
+    undo: () => void; redo: () => void;
+    canUndo: () => boolean; canRedo: () => boolean;
+  } | null>(null);
 
   const loadPages = useCallback(async (siteId: string): Promise<PageEntry[]> => {
     const editorPages = await listEditorPages(siteId, true);
@@ -125,19 +132,15 @@ function VisualEditorPageInner() {
 
   // The URL we render inside the iframe in Live mode. ?portal_edit=1
   // activates PortalEditOverlay; mode=view turns it off without reload.
+  // Block mode now renders inline via EditorBlockStage (no iframe).
   const iframeSrc = useMemo(() => {
     if (!currentPage) return "about:blank";
-    if (mode === "block") {
-      // Block builder lives at /admin/sites/<siteId>/editor/<pageId>.
-      if (!site || currentPage.source !== "editor") return "about:blank";
-      return `/admin/sites/${encodeURIComponent(site.id)}/editor/${encodeURIComponent(currentPage.id)}`;
-    }
     const params = new URLSearchParams();
     if (edit === "edit") params.set("portal_edit", "1");
     params.set("editor_host", "1");
     const qs = params.toString();
     return `${currentPage.slug}${qs ? `?${qs}` : ""}`;
-  }, [currentPage, edit, mode, site]);
+  }, [currentPage, edit]);
 
   // Listen to messages from the embedded overlay.
   useEffect(() => {
@@ -168,6 +171,22 @@ function VisualEditorPageInner() {
   // Reset selected when the target / mode changes — its keys won't be in the new doc.
   // (Use scalar deps so a fresh `target` object reference doesn't refire each render.)
   useEffect(() => { setSelected(null); }, [target.kind, target.id, mode]);
+
+  // Cmd/Ctrl + S → open the publish modal. Bail when an input/textarea is
+  // focused so the operator can still use the browser's text save shortcuts.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable)) return;
+      const cmd = e.metaKey || e.ctrlKey;
+      if (cmd && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setPublishOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function reloadIframe() {
     setIframeReady(false);
@@ -250,6 +269,8 @@ function VisualEditorPageInner() {
         onPublish={() => setPublishOpen(true)}
         targetKind={target.kind}
         funnelLabel={currentFunnel?.name}
+        onUndo={mode === "block" ? () => historyApiRef.current?.undo() : undefined}
+        onRedo={mode === "block" ? () => historyApiRef.current?.redo() : undefined}
       />
 
       {isPageTarget && mode === "live" && (
@@ -272,10 +293,12 @@ function VisualEditorPageInner() {
           onSiteSettings={() => setSiteSettingsOpen(true)}
         />
 
-        {/* Stage */}
-        <div className="flex-1 min-w-0 overflow-auto bg-[#050505] flex items-start justify-center p-6">
-          {target.kind === "funnel" ? (
-            currentFunnel ? (
+        {/* Stage selection: funnel → centred funnel editor; block (editor
+            page) → inline three-pane block stage with own library + props;
+            live / code → centred iframe / textarea + right properties. */}
+        {target.kind === "funnel" ? (
+          <div className="flex-1 min-w-0 overflow-auto bg-[#050505] flex items-start justify-center p-6">
+            {currentFunnel ? (
               <EditorFunnelStage
                 funnel={currentFunnel}
                 onChange={next => setFunnels(fs => fs.map(f => f.id === next.id ? next : f))}
@@ -286,71 +309,85 @@ function VisualEditorPageInner() {
               />
             ) : (
               <div className="text-center text-[12px] text-brand-cream/45 mt-12">Funnel not found.</div>
-            )
-          ) : mode === "code" ? (
-            <CodeStage
-              site={site}
-              page={currentPage}
-              onSavedChange={n => setUnsaved(n)}
-            />
-          ) : !currentPage ? (
-            <div className="text-center text-[12px] text-brand-cream/45 mt-12 max-w-md">
-              <p>No pages on this site yet.</p>
-              <p className="mt-2">
-                Click <strong>+</strong> in the left rail to create one, or open{" "}
-                <Link href="/admin/sites" className="text-cyan-300 hover:text-cyan-200">/admin/sites</Link>.
-              </p>
-            </div>
-          ) : mode === "block" && currentPage.source !== "editor" ? (
-            <div className="text-center text-[12px] text-brand-cream/45 mt-12 max-w-md">
-              <p>Block editing is only available for editor-managed pages.</p>
-              <p className="mt-2 text-brand-cream/35">
-                The storefront home is rendered from source. Switch to{" "}
-                <button onClick={() => setMode("live")} className="text-cyan-300 hover:text-cyan-200 underline">Live</button>{" "}
-                to edit it inline.
-              </p>
-            </div>
-          ) : (
-            <div
-              style={{
-                width: isResponsive ? "100%" : viewport.width,
-                maxWidth: "100%",
-                transform: mode === "live" ? `scale(${deviceState.zoom})` : undefined,
-                transformOrigin: "top center",
-              }}
-            >
-              <iframe
-                key={`${mode}-${reloadKey}`}
-                ref={iframeRef}
-                src={iframeSrc}
-                title={currentPage.title}
-                sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-modals allow-clipboard-write"
-                onLoad={() => setIframeReady(true)}
-                style={{
-                  width: "100%",
-                  height: mode === "live"
-                    ? (isResponsive ? "calc(100vh - 220px)" : viewport.height)
-                    : "calc(100vh - 120px)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 12,
-                  background: "#0a0a0a",
-                  display: "block",
-                }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Right properties sidebar — only useful in Live mode where the
-            overlay is sending select events back. */}
-        {isPageTarget && mode === "live" && (
-          <EditorPropertiesSidebar
-            selected={selected}
-            onClose={() => setSelected(null)}
-            onPatch={patchSelected}
-            onSave={saveSelected}
-            onRevert={revertSelected}
+            )}
+          </div>
+        ) : isPageTarget && mode === "block" && currentPage?.source === "editor" && site ? (
+          <EditorBlockStage
+            siteId={site.id}
+            pageId={currentPage.id}
+            device={deviceState}
+            onSavingChange={s => setUnsaved(s ? 1 : 0)}
+            registerHistory={api => { historyApiRef.current = api; }}
           />
+        ) : (
+          <>
+            <div className="flex-1 min-w-0 overflow-auto bg-[#050505] flex items-start justify-center p-6">
+              {mode === "code" ? (
+                <CodeStage
+                  site={site}
+                  page={currentPage}
+                  onSavedChange={n => setUnsaved(n)}
+                />
+              ) : !currentPage ? (
+                <div className="text-center text-[12px] text-brand-cream/45 mt-12 max-w-md">
+                  <p>No pages on this site yet.</p>
+                  <p className="mt-2">
+                    Click <strong>+</strong> in the left rail to create one, or open{" "}
+                    <Link href="/admin/sites" className="text-cyan-300 hover:text-cyan-200">/admin/sites</Link>.
+                  </p>
+                </div>
+              ) : mode === "block" && currentPage.source !== "editor" ? (
+                <div className="text-center text-[12px] text-brand-cream/45 mt-12 max-w-md">
+                  <p>Block editing is only available for editor-managed pages.</p>
+                  <p className="mt-2 text-brand-cream/35">
+                    The storefront home is rendered from source. Switch to{" "}
+                    <button onClick={() => setMode("live")} className="text-cyan-300 hover:text-cyan-200 underline">Live</button>{" "}
+                    to edit it inline.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    width: isResponsive ? "100%" : viewport.width,
+                    maxWidth: "100%",
+                    transform: mode === "live" ? `scale(${deviceState.zoom})` : undefined,
+                    transformOrigin: "top center",
+                  }}
+                >
+                  <iframe
+                    key={`${mode}-${reloadKey}`}
+                    ref={iframeRef}
+                    src={iframeSrc}
+                    title={currentPage.title}
+                    sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-modals allow-clipboard-write"
+                    onLoad={() => setIframeReady(true)}
+                    style={{
+                      width: "100%",
+                      height: mode === "live"
+                        ? (isResponsive ? "calc(100vh - 220px)" : viewport.height)
+                        : "calc(100vh - 120px)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      background: "#0a0a0a",
+                      display: "block",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right properties sidebar — Live mode only (Block has its own,
+                Code has none). */}
+            {isPageTarget && mode === "live" && (
+              <EditorPropertiesSidebar
+                selected={selected}
+                onClose={() => setSelected(null)}
+                onPatch={patchSelected}
+                onSave={saveSelected}
+                onRevert={revertSelected}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -552,6 +589,11 @@ function CodeStage({
 //      overrides + pages + per-site config into a GitHub PR
 // On success the operator sees the PR URL and can click through.
 
+interface PublishPreview {
+  changedContentKeys: string[];
+  changedPages: Array<{ id: string; slug: string; title: string }>;
+}
+
 function PublishModal({
   site, activePageId, onClose,
 }: {
@@ -564,6 +606,41 @@ function PublishModal({
   const [step, setStep] = useState<string>("");
   const [result, setResult] = useState<PromoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PublishPreview | null>(null);
+
+  // Preload a diff summary so the operator can see what's about to ship.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // Content overrides — diff draft vs published from the admin shape.
+      const contentRes = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}?admin=1`, { cache: "no-store" });
+      const contentJson = contentRes.ok ? await contentRes.json() as {
+        draft?: Record<string, { value: string; type: string }>;
+        published?: Record<string, { value: string; type: string }>;
+      } : { draft: {}, published: {} };
+      const draft     = contentJson.draft ?? {};
+      const published = contentJson.published ?? {};
+      const all = new Set<string>([...Object.keys(draft), ...Object.keys(published)]);
+      const changed: string[] = [];
+      for (const k of all) {
+        const a = draft[k];
+        const b = published[k];
+        if (!a && b) { changed.push(k); continue; }
+        if (a && !b) { changed.push(k); continue; }
+        if (a && b && (a.value !== b.value || a.type !== b.type)) changed.push(k);
+      }
+
+      // Editor pages — fetch all and diff blocks vs publishedBlocks.
+      const pagesAll = await listEditorPages(site.id, true);
+      const changedPages = pagesAll
+        .filter(p => JSON.stringify(p.blocks) !== JSON.stringify(p.publishedBlocks ?? []))
+        .map(p => ({ id: p.id, slug: p.slug, title: p.title || p.slug }));
+
+      if (cancelled) return;
+      setPreview({ changedContentKeys: changed.sort(), changedPages });
+    })();
+    return () => { cancelled = true; };
+  }, [site.id]);
 
   async function run() {
     setPhase("running");
@@ -624,12 +701,49 @@ function PublishModal({
         {phase === "idle" && (
           <>
             <h2 className="font-display text-xl text-brand-cream">Ship {site.name} to GitHub</h2>
-            <p className="text-[12px] text-brand-cream/65 leading-relaxed">
-              Promotes any draft content edits + the active page to <strong>published</strong>,
-              then opens a pull request against your configured repo with{" "}
+
+            {preview === null ? (
+              <p className="text-[12px] text-brand-cream/45">Reading current state…</p>
+            ) : preview.changedContentKeys.length === 0 && preview.changedPages.length === 0 ? (
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-[12px] text-brand-cream/65">
+                No unpublished changes. Re-shipping anyway will refresh the
+                committed snapshot files (timestamp updates).
+              </div>
+            ) : (
+              <div className="rounded-lg border border-cyan-400/15 bg-cyan-500/5 p-3 space-y-2">
+                <p className="text-[11px] tracking-wider uppercase text-cyan-300">Will publish</p>
+                {preview.changedContentKeys.length > 0 && (
+                  <details className="text-[12px] text-brand-cream/85">
+                    <summary className="cursor-pointer hover:text-brand-cream">
+                      {preview.changedContentKeys.length} content edit{preview.changedContentKeys.length === 1 ? "" : "s"}
+                    </summary>
+                    <ul className="mt-1 ml-3 space-y-0.5 font-mono text-[10px] text-brand-cream/65 max-h-32 overflow-y-auto">
+                      {preview.changedContentKeys.slice(0, 50).map(k => <li key={k}>· {k}</li>)}
+                      {preview.changedContentKeys.length > 50 && <li>… +{preview.changedContentKeys.length - 50} more</li>}
+                    </ul>
+                  </details>
+                )}
+                {preview.changedPages.length > 0 && (
+                  <details className="text-[12px] text-brand-cream/85">
+                    <summary className="cursor-pointer hover:text-brand-cream">
+                      {preview.changedPages.length} page{preview.changedPages.length === 1 ? "" : "s"} with new blocks
+                    </summary>
+                    <ul className="mt-1 ml-3 space-y-0.5 text-[11px] text-brand-cream/65">
+                      {preview.changedPages.map(p => (
+                        <li key={p.id}>· <span className="text-brand-cream/85">{p.title}</span> <span className="font-mono text-brand-cream/45">{p.slug}</span></li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+
+            <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+              Opens a pull request with{" "}
               <code className="font-mono text-brand-cream/85">portal.overrides.json</code>,{" "}
               <code className="font-mono text-brand-cream/85">portal.pages.json</code>, and{" "}
               <code className="font-mono text-brand-cream/85">portal.site.json</code>.
+              Merge to deploy.
             </p>
             <label className="block">
               <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Commit note (optional)</span>
@@ -647,7 +761,8 @@ function PublishModal({
               </button>
               <button
                 onClick={() => void run()}
-                className="px-3 py-1.5 rounded-md text-[11px] font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20"
+                disabled={preview === null}
+                className="px-3 py-1.5 rounded-md text-[11px] font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20 disabled:opacity-40"
               >
                 Publish →
               </button>
