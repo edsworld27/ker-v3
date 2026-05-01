@@ -20,7 +20,7 @@ interface PropertiesPanelProps {
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
 export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove }: PropertiesPanelProps) {
-  const [tab, setTab] = useState<"props" | "styles">("props");
+  const [tab, setTab] = useState<"props" | "styles" | "code">("props");
 
   if (!block) {
     return (
@@ -55,23 +55,69 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
         <p className="text-[10px] font-mono text-brand-cream/35 mt-0.5">{block.id}</p>
       </div>
       <div className="flex border-b border-white/8">
-        <button onClick={() => setTab("props")} className={`flex-1 py-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase ${tab === "props" ? "text-brand-orange border-b-2 border-brand-orange" : "text-brand-cream/55 hover:text-brand-cream"}`}>Props</button>
-        <button onClick={() => setTab("styles")} className={`flex-1 py-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase ${tab === "styles" ? "text-brand-orange border-b-2 border-brand-orange" : "text-brand-cream/55 hover:text-brand-cream"}`}>Styles</button>
+        <button onClick={() => setTab("props")}  className={tabClass(tab === "props")}>Props</button>
+        <button onClick={() => setTab("styles")} className={tabClass(tab === "styles")}>Styles</button>
+        <button onClick={() => setTab("code")}   className={tabClass(tab === "code")}>Code</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {tab === "props"
-          ? (def?.fields ?? []).map(field => <PropFieldRow key={field.key} field={field} value={block.props[field.key]} onChange={v => setProp(field.key, v)} />)
-          : <StyleEditor styles={block.styles ?? {}} onChange={setStyle} />
-        }
+        {tab === "props" && (def?.fields ?? []).map(field => <PropFieldRow key={field.key} field={field} value={block.props[field.key]} onChange={v => setProp(field.key, v)} />)}
         {tab === "props" && (def?.fields.length ?? 0) === 0 && (
           <p className="text-[11px] text-brand-cream/45 leading-relaxed">No editable props for this block. Use the Styles tab to tweak appearance.</p>
         )}
+        {tab === "styles" && <StyleEditor styles={block.styles ?? {}} onChange={setStyle} />}
+        {tab === "code" && <BlockCodeEditor block={block} onPatch={onPatch} />}
       </div>
       <div className="p-3 border-t border-white/8 flex gap-2">
         <button onClick={onDuplicate} className="flex-1 py-1.5 px-2 rounded-lg border border-white/10 hover:bg-white/5 text-[11px] text-brand-cream/70 hover:text-brand-cream">Duplicate</button>
         <button onClick={onRemove} className="flex-1 py-1.5 px-2 rounded-lg border border-red-500/20 text-red-400/80 hover:bg-red-500/10 hover:text-red-400 text-[11px]">Delete</button>
       </div>
     </aside>
+  );
+}
+
+function tabClass(active: boolean) {
+  return `flex-1 py-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase ${active ? "text-brand-orange border-b-2 border-brand-orange" : "text-brand-cream/55 hover:text-brand-cream"}`;
+}
+
+// Direct JSON editor for the selected block. Useful when the visual
+// controls don't expose a knob you need (custom CSS, exotic props, etc.).
+// Saves on blur if the JSON parses; surfaces the parse error otherwise.
+function BlockCodeEditor({ block, onPatch }: { block: Block; onPatch: (patch: Partial<Block>) => void }) {
+  const initial = JSON.stringify({ props: block.props, styles: block.styles ?? {} }, null, 2);
+  const [text, setText] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+
+  function commit() {
+    try {
+      const parsed = JSON.parse(text) as { props?: Record<string, unknown>; styles?: BlockStyles };
+      onPatch({
+        props: parsed.props ?? block.props,
+        styles: parsed.styles ?? block.styles,
+      });
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] text-brand-cream/45 leading-relaxed">
+        Edit this block&apos;s props + styles as JSON. Saves on blur. Children + id + type are read-only.
+      </p>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onBlur={commit}
+        spellCheck={false}
+        className="w-full h-80 bg-black/40 border border-white/10 rounded-lg p-2 text-[11px] text-brand-cream font-mono leading-relaxed focus:outline-none focus:border-brand-orange/50"
+      />
+      {error && <p className="text-[11px] text-red-400">JSON: {error}</p>}
+      <div className="flex items-center justify-between text-[10px] text-brand-cream/45">
+        <span className="font-mono">id: {block.id}</span>
+        <span>type: {block.type}</span>
+      </div>
+    </div>
   );
 }
 

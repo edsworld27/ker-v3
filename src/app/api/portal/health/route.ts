@@ -52,6 +52,10 @@ export async function GET() {
       scrollAnimations: true,     // P-2 — fade-in / slide / zoom on scroll via IntersectionObserver
       responsiveStyles: true,     // P-2 — mobile/tablet style overrides + scoped @media css per block
       productSearch: true,        // P-2 — /api/portal/products?q=… + ProductSearchBlock
+      inlineInsert: true,         // P-3 — between-block "+" quick-add picker on the canvas
+      siteCustomCode: true,       // P-3 — Site.customHead/customBody injected via SiteHead
+      pageCustomCode: true,       // P-3 — EditorPage.customHead/customFoot rendered by PortalPageRenderer
+      codeView: true,             // P-3 — Visual ↔ Code toggle + per-block JSON editor
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

@@ -101,6 +101,24 @@ export default function SiteHead() {
   const globalBodyStart = valOr("global.code.bodyStartHtml");
   const globalBodyEnd = valOr("global.code.bodyEndHtml");
 
+  // Per-site custom code injected from the Site record (P-3). Read via
+  // window.__site set by SiteResolver. Lets admins drop GA / Meta Pixel
+  // / hotjar / custom CSS into a single tenant without touching the
+  // global CMS values.
+  const [siteCustomHead, setSiteCustomHead] = useState("");
+  const [siteCustomBody, setSiteCustomBody] = useState("");
+  useEffect(() => {
+    function read() {
+      const s = typeof window !== "undefined" ? window.__site : undefined;
+      setSiteCustomHead(s?.customHead ?? "");
+      setSiteCustomBody(s?.customBody ?? "");
+    }
+    read();
+    const id = window.setInterval(read, 1000); // re-poll briefly so SiteResolver hydration is picked up
+    window.setTimeout(() => window.clearInterval(id), 4000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Analytics IDs.
   const analyticsOn = boolVal("global.analytics.enabled", false);
   const ga4 = valOr("global.analytics.ga4");
@@ -137,9 +155,9 @@ export default function SiteHead() {
     <>
       {/* Global custom <head> HTML — rendered as a portal-less inert div
           whose innerHTML is reflected into <head> via effect. */}
-      <HtmlInjector target="head" html={[globalHead, pageHead].filter(Boolean).join("\n")} />
+      <HtmlInjector target="head" html={[globalHead, siteCustomHead, pageHead].filter(Boolean).join("\n")} />
       <HtmlInjector target="body-start" html={globalBodyStart} />
-      <HtmlInjector target="body-end" html={[globalBodyEnd, pageBodyEnd].filter(Boolean).join("\n")} />
+      <HtmlInjector target="body-end" html={[globalBodyEnd, siteCustomBody, pageBodyEnd].filter(Boolean).join("\n")} />
 
       {/* JSON-LD */}
       {pageJsonLd && <JsonLd raw={pageJsonLd} />}

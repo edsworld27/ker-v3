@@ -663,6 +663,11 @@ export interface EditorPage {
   // Last-published snapshot. Lets the runtime serve the published version
   // even while the admin edits a draft, and lets the editor revert.
   publishedBlocks?: Block[];
+  // Per-page custom code injected at the top + bottom of the rendered
+  // tree (P-3). Lets the admin wire one-off scripts/styles to a single
+  // page without polluting the global head.
+  customHead?: string;
+  customFoot?: string;
 }
 
 // ─── Asset library (P-2) ───────────────────────────────────────────────────

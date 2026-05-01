@@ -30,6 +30,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
       blocks,
       status: page.status,
       updatedAt: page.updatedAt,
+      customHead: page.customHead,
+      customFoot: page.customFoot,
     },
   });
 }

@@ -37,6 +37,12 @@ export interface Site {
   status: "draft" | "live";
   createdAt: number;
   orgId?: string;                  // G-2: which org owns this site (undefined → primary)
+  // Custom head/body code (P-3). Injected by SiteHead on every page so
+  // admins can wire GA, Meta Pixel, hotjar, custom CSS, custom JS, etc.
+  // without touching the codebase. The customHead string is dropped into
+  // the document <head>; customBody at the end of <body>.
+  customHead?: string;             // P-3: arbitrary HTML injected into <head>
+  customBody?: string;             // P-3: arbitrary HTML injected at the end of <body>
 }
 
 export const DEFAULT_PRIMARY_SITE: Site = {
