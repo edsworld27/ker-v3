@@ -767,6 +767,9 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Embeds — chatbots, calendars, video, custom HTML */}
           <EmbedsBlock siteId={site.id} />
 
+          {/* Chatbot — per-site provider + custom-GPT prompt + theming (T1 #3) */}
+          <ChatbotBlock siteId={site.id} />
+
           {/* Embed appearance — per-site customisation for the portal sign-in widget */}
           <EmbedAppearanceBlock siteId={site.id} />
 
@@ -2839,6 +2842,229 @@ function EmbedAppearanceBlock({ siteId }: { siteId: string }) {
 
         <p className="text-[10px] text-brand-cream/30">
           The embed loader caches theme JSON ~30s. New host pages pick up changes within that window; tabs already open re-paint the floating button on next load.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chatbot per-site config (T1 #3) ───────────────────────────────────────
+//
+// Mirrors src/portal/server/types.ts. Inlined here so this client page
+// stays free of server-only imports (matches the Heartbeat / Tracker /
+// AdminEmbed pattern above).
+
+type AdminChatbotProvider = "portal-builtin" | "crisp" | "intercom" | "tidio" | "custom-gpt";
+
+interface AdminChatbotConfig {
+  provider: AdminChatbotProvider;
+  enabled: boolean;
+  value?: string;
+  welcomeMessage?: string;
+  systemPrompt?: string;
+  position?: "bottom-right" | "bottom-left";
+  accentColor?: string;
+}
+
+const CHATBOT_PROVIDER_OPTIONS: { id: AdminChatbotProvider; label: string; hint: string; thirdParty: boolean }[] = [
+  { id: "portal-builtin", label: "Portal built-in",      hint: "FAQ + order tracking + ticket escalation. Default.", thirdParty: false },
+  { id: "custom-gpt",     label: "Custom GPT-style",     hint: "Same renderer as built-in, but with your own welcome message + system prompt.", thirdParty: false },
+  { id: "crisp",          label: "Crisp Chat",           hint: "Configure in Embeds above instead.", thirdParty: true },
+  { id: "intercom",       label: "Intercom",             hint: "Configure in Embeds above instead.", thirdParty: true },
+  { id: "tidio",          label: "Tidio",                hint: "Configure in Embeds above instead.", thirdParty: true },
+];
+
+const DEFAULT_CHATBOT_CONFIG: AdminChatbotConfig = {
+  provider: "portal-builtin",
+  enabled: true,
+};
+
+function ChatbotBlock({ siteId }: { siteId: string }) {
+  const [config, setConfig] = useState<AdminChatbotConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  // Load on mount.
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/chatbot/${encodeURIComponent(siteId)}`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminChatbotConfig;
+        if (!cancelled) setConfig({ ...DEFAULT_CHATBOT_CONFIG, ...data });
+      } catch { /* leave null — UI shows error state */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    void pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Debounced save: 600ms after the last edit. Driven by `dirty` so the
+  // initial fetch doesn't trigger a write.
+  useEffect(() => {
+    if (!dirty || !config) return;
+    const id = setTimeout(async () => {
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/portal/chatbot/${encodeURIComponent(siteId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        });
+        if (res.ok) { setSavedAt(Date.now()); setDirty(false); }
+      } catch { /* keep optimistic state, retry on next edit */ }
+      finally { setSaving(false); }
+    }, 600);
+    return () => clearTimeout(id);
+  }, [dirty, config, siteId]);
+
+  function patch(p: Partial<AdminChatbotConfig>) {
+    setConfig(prev => ({ ...(prev ?? DEFAULT_CHATBOT_CONFIG), ...p }));
+    setDirty(true);
+  }
+
+  const c = config ?? DEFAULT_CHATBOT_CONFIG;
+  const accent = c.accentColor || "#FF6B35";
+  const isThirdParty = c.provider === "crisp" || c.provider === "intercom" || c.provider === "tidio";
+  const isBuiltIn = c.provider === "portal-builtin" || c.provider === "custom-gpt";
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Chatbot</p>
+        <Tip text="Per-site chatbot config. The storefront's built-in bot (FAQ + order tracking) is the default; switch to custom GPT-style to supply your own welcome message + system prompt, or pick a 3rd-party provider (configure that in Embeds above)." />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : c.enabled ? "active" : "disabled"}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-3">
+        {/* Enabled toggle */}
+        <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 flex items-start gap-3">
+          <button
+            onClick={() => patch({ enabled: !c.enabled })}
+            className={`mt-0.5 w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+              c.enabled ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"
+            }`}
+            aria-pressed={!!c.enabled}
+            title={c.enabled ? "Enabled — click to pause" : "Disabled — click to enable"}
+          >
+            <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-brand-cream">Enable chatbot on this site</p>
+            <p className="text-[11px] text-brand-cream/45 leading-relaxed mt-0.5">
+              When off, the floating widget is hidden everywhere except <code className="font-mono">/admin</code>.
+            </p>
+          </div>
+        </div>
+
+        {/* Provider radio */}
+        <div>
+          <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Provider</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {CHATBOT_PROVIDER_OPTIONS.map(opt => {
+              const selected = c.provider === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => patch({ provider: opt.id })}
+                  className={`text-left rounded-lg border px-3 py-2.5 transition-colors ${
+                    selected
+                      ? "border-brand-orange/60 bg-brand-orange/10"
+                      : "border-white/10 bg-brand-black/30 hover:border-white/20"
+                  } ${opt.thirdParty ? "opacity-80" : ""}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`w-3 h-3 rounded-full border ${selected ? "bg-brand-orange border-brand-orange" : "border-white/30"} shrink-0`} />
+                    <span className="text-xs font-semibold text-brand-cream">{opt.label}</span>
+                    {opt.thirdParty && (
+                      <span className="ml-auto text-[9px] uppercase tracking-wider text-brand-amber/80">3rd party</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-brand-cream/45 mt-1 leading-relaxed">{opt.hint}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {isThirdParty && (
+          <div className="rounded-lg border border-brand-amber/25 bg-brand-amber/5 p-3 text-[11px] text-brand-amber/85 leading-relaxed">
+            The {c.provider} script is rendered through the Embeds card above (not here). Add an embed with provider <code className="font-mono">{c.provider}</code> to wire the script tag; this card just records which provider this site is using.
+          </div>
+        )}
+
+        {isBuiltIn && (
+          <>
+            <div>
+              <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Welcome message</label>
+              <textarea
+                value={c.welcomeMessage ?? ""}
+                onChange={e => patch({ welcomeMessage: e.target.value })}
+                placeholder='Default: "Hi, I&apos;m Odo — Luv & Ker&apos;s assistant…"'
+                rows={2}
+                className={INPUT + " min-h-[60px] resize-y"}
+              />
+              <p className="text-[10px] text-brand-cream/30 mt-1">First bot message every visitor sees when they open the chat.</p>
+            </div>
+
+            <div>
+              <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block flex items-center gap-1.5">
+                System prompt
+                <Tip text="Acts as the bot's persona / instructions. Used as a fallback response when none of the canned matchers (orders, gift cards, returns…) fire. The custom-GPT mode leans on this to keep the assistant on-brand." />
+              </label>
+              <textarea
+                value={c.systemPrompt ?? ""}
+                onChange={e => patch({ systemPrompt: e.target.value })}
+                placeholder='e.g. "You are Odo, the warm, knowledgeable assistant for Luv & Ker. Always answer in plain English. Never invent product claims."'
+                rows={4}
+                className={INPUT + " min-h-[100px] resize-y font-mono text-xs"}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Accent colour</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={accent}
+                onChange={e => patch({ accentColor: e.target.value })}
+                className="w-9 h-9 rounded-lg border border-white/15 cursor-pointer bg-transparent shrink-0"
+              />
+              <input
+                type="text"
+                value={c.accentColor ?? ""}
+                onChange={e => patch({ accentColor: e.target.value })}
+                placeholder="#FF6B35"
+                className={INPUT + " font-mono text-xs flex-1"}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Position</label>
+            <select
+              value={c.position ?? "bottom-right"}
+              onChange={e => patch({ position: e.target.value as AdminChatbotConfig["position"] })}
+              className={INPUT}
+            >
+              <option value="bottom-right">Bottom right (default)</option>
+              <option value="bottom-left">Bottom left</option>
+            </select>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-brand-cream/30">
+          Changes apply within ~30 seconds (the storefront caches the chatbot config for that long).
         </p>
       </div>
     </div>

@@ -333,6 +333,54 @@ export interface EmbedTheme {
   adminUrl?: string;             // override the default /admin URL
 }
 
+// ─── Chatbot per-site config (T1 #3) ───────────────────────────────────────
+//
+// Each tenant picks which chatbot drives the floating widget on their site.
+// "portal-builtin" is the local FAQ/order-status/discount bot in
+// src/components/ChatBot.tsx; "custom-gpt" is the same renderer with an
+// admin-supplied system prompt + welcome message; the third-party providers
+// (crisp/intercom/tidio) are configured through EmbedsBlock instead — we
+// only list them here so the admin sees the full menu and we can warn loudly
+// if both wires are crossed.
+//
+// All visual fields are optional — the bot falls back to its existing
+// brand-orange theme + bottom-right anchor when nothing is configured.
+export type ChatbotProvider =
+  | "portal-builtin"
+  | "crisp"
+  | "intercom"
+  | "tidio"
+  | "custom-gpt";
+
+export interface ChatbotConfig {
+  provider: ChatbotProvider;
+  enabled: boolean;
+  // For crisp/intercom/tidio: workspace/website/app id. Mirrors the
+  // matching Embed.value so admins who configure both see consistent
+  // identifiers.
+  value?: string;
+  // For portal-builtin / custom-gpt: configurable copy + LLM prompt.
+  welcomeMessage?: string;
+  systemPrompt?: string;
+  // Visual chrome shared by both built-in providers.
+  position?: "bottom-right" | "bottom-left";
+  accentColor?: string;          // hex, used for the launcher + user bubbles
+}
+
+export const CHATBOT_PROVIDER_LABELS: Record<ChatbotProvider, string> = {
+  "portal-builtin": "Portal built-in (Odo-style)",
+  "custom-gpt":     "Custom GPT-style",
+  "crisp":          "Crisp Chat",
+  "intercom":       "Intercom",
+  "tidio":          "Tidio",
+};
+
+// Providers that route through EmbedsBlock — listing them here keeps the
+// runtime ChatBot component honest about who owns the rendering path.
+export const CHATBOT_THIRD_PARTY_PROVIDERS: ReadonlyArray<ChatbotProvider> = [
+  "crisp", "intercom", "tidio",
+];
+
 // ─── Activity log (cloud-audit) ─────────────────────────────────────────────
 //
 // Mirror of the per-browser localStorage activity log. Server-side so
