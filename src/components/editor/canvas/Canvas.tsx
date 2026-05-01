@@ -13,13 +13,14 @@ interface CanvasProps {
   blocks: Block[];
   selectedId: string | null;
   device: "desktop" | "tablet" | "mobile";
+  themeId?: string;
   onSelect: (id: string) => void;
   onDropOnCanvas: (type: BlockType) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
 }
 
-export default function Canvas({ blocks, selectedId, device, onSelect, onDropOnCanvas, onDropBeside, onMoveBeside }: CanvasProps) {
+export default function Canvas({ blocks, selectedId, device, themeId, onSelect, onDropOnCanvas, onDropBeside, onMoveBeside }: CanvasProps) {
   const [hover, setHover] = useState<string | null>(null);
 
   const deviceWidth = device === "desktop" ? "100%" : device === "tablet" ? 768 : 375;
@@ -49,6 +50,7 @@ export default function Canvas({ blocks, selectedId, device, onSelect, onDropOnC
               selectedId={selectedId}
               hover={hover}
               setHover={setHover}
+              themeId={themeId}
               onSelect={onSelect}
               onDropBeside={onDropBeside}
               onMoveBeside={onMoveBeside}
@@ -167,12 +169,13 @@ function EmptyState({ onDropType }: { onDropType: (type: BlockType) => void }) {
 }
 
 function BlockTreeWithChrome({
-  blocks, selectedId, hover, setHover, onSelect, onDropBeside, onMoveBeside,
+  blocks, selectedId, hover, setHover, themeId, onSelect, onDropBeside, onMoveBeside,
 }: {
   blocks: Block[];
   selectedId: string | null;
   hover: string | null;
   setHover: (id: string | null) => void;
+  themeId?: string;
   onSelect: (id: string) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
@@ -186,6 +189,7 @@ function BlockTreeWithChrome({
           selectedId={selectedId}
           hover={hover}
           setHover={setHover}
+          themeId={themeId}
           onSelect={onSelect}
           onDropBeside={onDropBeside}
           onMoveBeside={onMoveBeside}
@@ -196,17 +200,21 @@ function BlockTreeWithChrome({
 }
 
 function BlockWrapper({
-  block, selectedId, hover, setHover, onSelect, onDropBeside, onMoveBeside,
+  block, selectedId, hover, setHover, themeId, onSelect, onDropBeside, onMoveBeside,
 }: {
   block: Block;
   selectedId: string | null;
   hover: string | null;
   setHover: (id: string | null) => void;
+  themeId?: string;
   onSelect: (id: string) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
 }) {
   const def = getBlockDefinition(block.type);
+  // Layer themeStyles into the block when a non-default theme is active.
+  const overlay = themeId ? block.themeStyles?.[themeId] : undefined;
+  const effectiveBlock = overlay ? { ...block, styles: { ...(block.styles ?? {}), ...overlay } } : block;
   const selected = block.id === selectedId;
   const hovered = block.id === hover;
 
@@ -282,12 +290,12 @@ function BlockWrapper({
 
       {/* Render the block + recurse into children with chrome */}
       {def
-        ? <def.Component block={block} editorMode renderChildren={children =>
+        ? <def.Component block={effectiveBlock} editorMode renderChildren={children =>
             children
-              ? <>{children.map(c => <BlockWrapper key={c.id} block={c} selectedId={selectedId} hover={hover} setHover={setHover} onSelect={onSelect} onDropBeside={onDropBeside} onMoveBeside={onMoveBeside} />)}</>
+              ? <>{children.map(c => <BlockWrapper key={c.id} block={c} selectedId={selectedId} hover={hover} setHover={setHover} themeId={themeId} onSelect={onSelect} onDropBeside={onDropBeside} onMoveBeside={onMoveBeside} />)}</>
               : null
           } />
-        : <BlockRenderer blocks={[block]} editorMode />
+        : <BlockRenderer blocks={[block]} editorMode themeId={themeId} />
       }
     </div>
   );

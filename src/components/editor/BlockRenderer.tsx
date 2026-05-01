@@ -13,18 +13,25 @@ import { overridesToCssText } from "./blockStyles";
 export interface BlockRendererProps {
   blocks: Block[] | undefined;
   editorMode?: boolean;
+  themeId?: string;
 }
 
-export default function BlockRenderer({ blocks, editorMode = false }: BlockRendererProps) {
+export default function BlockRenderer({ blocks, editorMode = false, themeId }: BlockRendererProps) {
   if (!blocks || blocks.length === 0) return null;
   return (
     <>
-      {blocks.map(block => <BlockNode key={block.id} block={block} editorMode={editorMode} />)}
+      {blocks.map(block => <BlockNode key={block.id} block={block} editorMode={editorMode} themeId={themeId} />)}
     </>
   );
 }
 
-function BlockNode({ block, editorMode }: { block: Block; editorMode: boolean }) {
+function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: boolean; themeId?: string }) {
+  // Layer themeStyles on top of base styles when a theme is active.
+  // Per-theme overrides win; everything else falls through.
+  const themeOverlay = themeId ? block.themeStyles?.[themeId] : undefined;
+  if (themeOverlay) {
+    block = { ...block, styles: { ...(block.styles ?? {}), ...themeOverlay } };
+  }
   const def = getBlockDefinition(block.type);
   if (!def) {
     // Unknown block type — render a visible warning in editor mode so
@@ -43,7 +50,7 @@ function BlockNode({ block, editorMode }: { block: Block; editorMode: boolean })
     <Component
       block={block}
       editorMode={editorMode}
-      renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} />}
+      renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} themeId={themeId} />}
     />
   );
   // A11y wrapper — applies admin-set ARIA attributes to a transparent

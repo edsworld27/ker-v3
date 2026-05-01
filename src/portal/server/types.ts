@@ -666,6 +666,9 @@ export interface Block {
   children?: Block[];          // present for container/section/row/column/grid blocks
   a11y?: BlockA11y;            // SEO-A1: accessibility attributes
   seo?: BlockSeo;              // SEO-A1: per-block schema fragment (json-ld piece)
+  // Per-theme style overrides (T-1). Only the deltas — `styles` is the
+  // base, themeStyles[id] is layered on top when that theme is active.
+  themeStyles?: Record<string, BlockStyles>;
 }
 
 // Accessibility attributes applied to the block's outer DOM element.
@@ -706,6 +709,10 @@ export interface EditorPage {
   // page without polluting the global head.
   customHead?: string;
   customFoot?: string;
+  // Theme this page renders in. Empty = inherit the site's default
+  // theme. Set to a theme id when the admin wants this page (or
+  // section of pages, e.g. /landing) to use Light or Dark explicitly.
+  themeId?: string;
   // Full SEO panel (SEO-A1). All optional — sensible defaults derived
   // from `title`/`description`. Sitemap reads `excludeFromSitemap` +
   // `priority` + `changefreq`; robots reads `noindex`/`nofollow`.
@@ -751,4 +758,49 @@ export interface PortalAsset {
   width?: number;               // optional, set when client measures
   height?: number;
   alt?: string;
+}
+
+// ─── Themes (T-1) ──────────────────────────────────────────────────────────
+//
+// Per-site palette + typography + token tables. Pages reference a theme
+// by id; PortalPageRenderer injects the resolved tokens as CSS variables
+// at the page root, and `blockStylesToCss` falls back to those vars when
+// a block doesn't set a hard value. Switching themes never touches block
+// data — just the variable values — so a single page tree can render
+// in light, dark, or any custom palette without per-page edits.
+//
+// Block styles can still be overridden per-theme via `Block.themeStyles`
+// when the global tokens aren't enough (e.g. a hero needs a different
+// background image in dark mode). All optional; default behaviour is
+// theme-agnostic.
+
+export interface ThemeTokens {
+  // Palette
+  primary?: string;             // brand accent (CTA buttons, links)
+  surface?: string;             // page background
+  surfaceAlt?: string;          // section + card background
+  ink?: string;                 // body text
+  inkSoft?: string;             // muted text
+  border?: string;              // divider colour
+  shadow?: string;              // box-shadow value (full css)
+  // Typography
+  fontHeading?: string;         // CSS font-family
+  fontBody?: string;
+  fontMono?: string;
+  // Sizing
+  radius?: string;              // border-radius (e.g. "12px")
+  spacingUnit?: string;         // base spacing (e.g. "8px")
+  // Free-form CSS — applied in <style> verbatim. For animations,
+  // utility classes, or whatever the tokens above can't express.
+  customCss?: string;
+}
+
+export interface ThemeRecord {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  appearance?: "light" | "dark" | "auto";
+  tokens: ThemeTokens;
+  createdAt: number;
+  updatedAt: number;
 }

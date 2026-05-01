@@ -13,6 +13,15 @@ import { parseRepoUrl } from "@/portal/server/github";
 
 export const dynamic = "force-dynamic";
 
+function friendlyGhError(status: number, raw?: string): string {
+  if (status === 401) return "GitHub rejected the credentials. Re-issue the PAT in /admin/portal-settings.";
+  if (status === 403) return "GitHub denied access. Check PAT scopes (needs `repo` for private).";
+  if (status === 404) return "Repo or file path not found. Verify the URL + branch in /admin/portal-settings.";
+  if (status === 409) return "Conflict — another commit changed this file. Reload + retry.";
+  if (status === 422) return `GitHub validation error: ${raw ? raw.slice(0, 200) : "check the path + branch"}.`;
+  return `GitHub ${status}`;
+}
+
 export async function GET(req: NextRequest) {
   await ensureHydrated();
   const settings = getSettings();
@@ -35,7 +44,7 @@ export async function GET(req: NextRequest) {
     },
     cache: "no-store",
   });
-  if (!res.ok) return NextResponse.json({ ok: false, error: `github ${res.status}` }, { status: res.status });
+  if (!res.ok) return NextResponse.json({ ok: false, error: friendlyGhError(res.status) }, { status: res.status });
   const data = await res.json() as { content?: string; sha?: string; encoding?: string; size?: number; type?: string };
   if (data.type !== "file") return NextResponse.json({ ok: false, error: "not a file" }, { status: 400 });
   const content = data.content && data.encoding === "base64"
@@ -90,7 +99,7 @@ export async function PUT(req: NextRequest) {
       sha,
     }),
   });
-  if (!res.ok) return NextResponse.json({ ok: false, error: `github ${res.status}: ${await res.text()}` }, { status: res.status });
+  if (!res.ok) return NextResponse.json({ ok: false, error: friendlyGhError(res.status, await res.text()) }, { status: res.status });
   const data = await res.json() as { content?: { sha?: string; html_url?: string }; commit?: { sha?: string; html_url?: string } };
   return NextResponse.json({
     ok: true,

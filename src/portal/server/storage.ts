@@ -23,6 +23,7 @@ import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
   EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage, PortalAsset,
+  ThemeRecord,
 } from "./types";
 
 interface PortalState {
@@ -40,6 +41,7 @@ interface PortalState {
   users: Record<string, ServerUser>;        // G-5 server-side user store
   pages: Record<string, Record<string, EditorPage>>; // V-A visual editor: siteId → pageId → page
   assets: Record<string, PortalAsset>;               // P-2 asset library: assetId → asset
+  themes: Record<string, Record<string, ThemeRecord>>; // T-1 themes: siteId → themeId → theme
 }
 
 const empty = (): PortalState => ({
@@ -53,6 +55,7 @@ const empty = (): PortalState => ({
   users: {},
   pages: {},
   assets: {},
+  themes: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -414,6 +417,7 @@ function parseBlob(raw: string): PortalState {
       users: parsed.users ?? {},
       pages: parsed.pages ?? {},
       assets: parsed.assets ?? {},
+      themes: parsed.themes ?? {},
     };
   } catch {
     return empty();

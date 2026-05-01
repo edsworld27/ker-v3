@@ -69,6 +69,8 @@ export async function GET() {
       siteNav: true,              // OMEGA-1 — Site.siteNavigationJsonLd injected via SiteHead
       filenameAlt: true,          // OMEGA-1 — image filename → fallback alt for SEO
       repoBrowser: true,          // OMEGA-1 — /admin/repo full GitHub file browser + commit-on-save
+      themes: true,               // T-1 — per-site themes + per-page themeId + per-block themeStyles + CSS-var injection
+      portalPageRoute: true,      // T-1 fix — /p/[...slug] catch-all that mounts <PortalPageRenderer> by default
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
