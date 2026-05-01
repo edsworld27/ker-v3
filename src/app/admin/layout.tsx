@@ -268,7 +268,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
             )
           )}
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-3 pt-1 flex-wrap">
+            <Link href="/aqua" className="hover:text-cyan-400 transition-colors" title="Back to agency dashboard">↰ Aqua</Link>
             <Link href="/" className="hover:text-brand-cream transition-colors">View site →</Link>
             {branding.githubRepoUrl && (
               <a href={branding.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="hover:text-brand-cream transition-colors" title="View repository">
