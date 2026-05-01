@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
 import { listOrgs, createOrg } from "@/portal/server/orgs";
+import { requireAdmin } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  try { await requireAdmin(); }
+  catch (r) { return r as Response; }
   await ensureHydrated();
   let body: { name?: string; slug?: string; ownerEmail?: string; brandColor?: string; logoUrl?: string };
   try { body = await req.json(); }
