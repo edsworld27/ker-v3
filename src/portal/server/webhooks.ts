@@ -16,7 +16,7 @@ export interface WebhookConfig {
   orgId: string;
   url: string;
   secret: string;                 // HMAC secret
-  events: AquaEventName[] | ["*"];
+  events: Array<AquaEventName | "*">;
   enabled: boolean;
   description?: string;
   createdAt: number;
@@ -53,7 +53,7 @@ export interface CreateWebhookInput {
   orgId: string;
   url: string;
   secret?: string;
-  events?: AquaEventName[];
+  events?: Array<AquaEventName | "*">;
   description?: string;
 }
 
@@ -204,7 +204,7 @@ export function bindEventBus(): void {
   bound = true;
   on("*", async event => {
     const subs = listWebhooks(event.orgId).filter(w =>
-      w.enabled && (w.events.includes("*" as AquaEventName) || w.events.includes(event.name)),
+      w.enabled && (w.events.includes("*") || w.events.includes(event.name)),
     );
     for (const wh of subs) {
       void dispatch(wh, event, 1);

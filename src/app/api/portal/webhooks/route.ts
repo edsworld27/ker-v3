@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const wh = createWebhook({
     orgId: body.orgId,
     url: body.url,
-    events: body.events as AquaEventName[],
+    events: body.events as Array<AquaEventName | "*"> | undefined,
     description: body.description,
   });
   return NextResponse.json({ ok: true, webhook: wh });
