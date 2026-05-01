@@ -497,6 +497,7 @@ export interface OrgRecord {
   isPrimary: boolean;
   createdAt: number;
   members?: OrgMembership[];   // G-5: per-org access control
+  subscription?: Subscription; // G-3 active plan + Stripe linkage
 }
 
 // ─── Server-side users + sessions (G-5) ─────────────────────────────────────
@@ -520,4 +521,31 @@ export interface OrgMembership {
   email: string;               // FK to ServerUser.email
   role: "owner" | "admin" | "member";
   joinedAt: number;
+}
+
+// ─── Plans + subscriptions (G-3) ───────────────────────────────────────────
+//
+// Plans gate admin features. Each org has at most one active subscription.
+// Stripe is the eventual source of truth — this scaffold mirrors the
+// minimum shape so the UI can be built before the Stripe integration lands.
+
+export type PlanId = "starter" | "pro" | "enterprise";
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  priceMonthly: number;        // pence
+  features: string[];          // feature flags this plan unlocks
+}
+
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled";
+
+export interface Subscription {
+  planId: PlanId;
+  status: SubscriptionStatus;
+  startedAt: number;
+  renewsAt?: number;
+  canceledAt?: number;
+  stripeSubId?: string;        // populated by the live Stripe webhook (later)
+  stripeCustomerId?: string;
 }
