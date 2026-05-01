@@ -17,6 +17,7 @@ export async function GET() {
       products: true,
       tag: true,                  // /portal/tag.js loader + heartbeat
       heartbeat: true,            // POST /api/portal/heartbeat
+      tracking: true,             // GET/POST /api/portal/config/[siteId]
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

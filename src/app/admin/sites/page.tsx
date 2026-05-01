@@ -24,6 +24,44 @@ interface Heartbeat {
   lastEvent?: string;
 }
 
+// Tracking config — mirrors src/portal/server/types.ts. Inlined for the
+// same reason as Heartbeat above.
+type TrackerProvider = "ga4" | "gtm" | "meta-pixel" | "tiktok-pixel" | "hotjar" | "clarity" | "plausible";
+type ConsentCategory = "analytics" | "marketing" | "functional";
+
+interface Tracker {
+  id: string;
+  provider: TrackerProvider;
+  enabled: boolean;
+  consentCategory: ConsentCategory;
+  value: string;
+  label?: string;
+}
+
+interface AdminTrackingConfig {
+  siteId: string;
+  requireConsent: boolean;
+  trackers: Tracker[];
+  updatedAt: number;
+}
+
+const PROVIDER_OPTIONS: { id: TrackerProvider; label: string; placeholder: string; defaultCategory: ConsentCategory }[] = [
+  { id: "ga4",          label: "Google Analytics 4", placeholder: "G-XXXXXXXXXX",  defaultCategory: "analytics" },
+  { id: "gtm",          label: "Google Tag Manager", placeholder: "GTM-XXXXXX",    defaultCategory: "marketing" },
+  { id: "meta-pixel",   label: "Meta Pixel",         placeholder: "1234567890",    defaultCategory: "marketing" },
+  { id: "tiktok-pixel", label: "TikTok Pixel",       placeholder: "C4XXXXXXXXXX",  defaultCategory: "marketing" },
+  { id: "hotjar",       label: "Hotjar",             placeholder: "1234567",       defaultCategory: "analytics" },
+  { id: "clarity",      label: "Microsoft Clarity",  placeholder: "abcdef1234",    defaultCategory: "analytics" },
+  { id: "plausible",    label: "Plausible",          placeholder: "yourdomain.com",defaultCategory: "analytics" },
+];
+
+const PROVIDER_BY_ID: Record<TrackerProvider, (typeof PROVIDER_OPTIONS)[number]> =
+  PROVIDER_OPTIONS.reduce((acc, p) => { acc[p.id] = p; return acc; }, {} as Record<TrackerProvider, (typeof PROVIDER_OPTIONS)[number]>);
+
+function newTrackerId(): string {
+  return `tk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
 type ConnectionState = "live" | "stale" | "never";
 
 const LIVE_WINDOW_MS = 90 * 1000;            // ≤90s ago → green dot
@@ -328,6 +366,9 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Portal connection — install snippet + heartbeat status */}
           <PortalSnippet site={site} portalOrigin={portalOrigin} heartbeat={heartbeat} now={now} state={conn} />
 
+          {/* Tracking & analytics — central config served to the loader */}
+          <TrackingBlock siteId={site.id} />
+
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {!site.isPrimary && (
@@ -473,6 +514,220 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="px-2.5 py-2 rounded-lg bg-brand-black border border-white/5">
       <p className="text-[9px] uppercase tracking-wider text-brand-cream/40">{label}</p>
       <p className="text-[12px] text-brand-cream font-medium truncate">{value}</p>
+    </div>
+  );
+}
+
+// ─── Tracking & analytics ───────────────────────────────────────────────────
+//
+// Each site has a list of trackers. The portal tag fetches this list and
+// injects only what's enabled, gated by consent for marketing/analytics
+// categories. Replaces five copy-pasted snippets with one config row.
+
+function TrackingBlock({ siteId }: { siteId: string }) {
+  const [cfg, setCfg] = useState<AdminTrackingConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [addProvider, setAddProvider] = useState<TrackerProvider>("ga4");
+  const [addValue, setAddValue] = useState("");
+
+  // Load full admin config on mount.
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/config/${encodeURIComponent(siteId)}?admin=1`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminTrackingConfig;
+        if (!cancelled) setCfg(data);
+      } catch { /* leave cfg null — UI shows error state */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  async function save(next: AdminTrackingConfig) {
+    setCfg(next);
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/portal/config/${encodeURIComponent(siteId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requireConsent: next.requireConsent,
+          trackers: next.trackers,
+        }),
+      });
+      if (res.ok) setSavedAt(Date.now());
+    } catch { /* keep optimistic state */ }
+    finally { setSaving(false); }
+  }
+
+  function ensure(): AdminTrackingConfig {
+    return cfg ?? { siteId, requireConsent: true, trackers: [], updatedAt: 0 };
+  }
+
+  function addTracker() {
+    const value = addValue.trim();
+    if (!value) return;
+    const meta = PROVIDER_BY_ID[addProvider];
+    const t: Tracker = {
+      id: newTrackerId(),
+      provider: addProvider,
+      enabled: true,
+      consentCategory: meta.defaultCategory,
+      value,
+    };
+    save({ ...ensure(), trackers: [...ensure().trackers, t] });
+    setAddValue("");
+  }
+
+  function patchTracker(id: string, patch: Partial<Tracker>) {
+    save({ ...ensure(), trackers: ensure().trackers.map(t => t.id === id ? { ...t, ...patch } : t) });
+  }
+
+  function deleteTracker(id: string) {
+    if (!confirm("Remove this tracker?")) return;
+    save({ ...ensure(), trackers: ensure().trackers.filter(t => t.id !== id) });
+  }
+
+  const trackers = cfg?.trackers ?? [];
+  const enabledCount = trackers.filter(t => t.enabled && t.value).length;
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Tracking & analytics</p>
+        <Tip text="Configure GA4, GTM, Meta Pixel, TikTok, Hotjar, Clarity and Plausible once here. The portal tag fetches this config and injects only what's enabled, gated by consent for marketing/analytics. Replaces every per-pixel snippet with a single managed config." />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : `${enabledCount} active`}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-4">
+        {/* Consent toggle */}
+        <div className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-brand-black border border-white/5">
+          <button
+            onClick={() => save({ ...ensure(), requireConsent: !ensure().requireConsent })}
+            className={`mt-0.5 w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+              ensure().requireConsent ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"
+            }`}
+            aria-pressed={ensure().requireConsent}
+          >
+            <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-brand-cream">Require consent before loading</p>
+            <p className="text-[11px] text-brand-cream/45 leading-relaxed mt-0.5">
+              When on, marketing/analytics trackers wait until your site calls
+              <code className="font-mono text-brand-cream/65"> window.__portal.consent.grant() </code>
+              (e.g. after an Accept on your cookie banner). Functional trackers always load.
+            </p>
+          </div>
+        </div>
+
+        {/* Tracker list */}
+        {trackers.length === 0 && !loading && (
+          <p className="text-xs text-brand-cream/40 italic px-1">No trackers yet — add one below.</p>
+        )}
+        {trackers.map(t => (
+          <TrackerRow
+            key={t.id}
+            tracker={t}
+            onPatch={p => patchTracker(t.id, p)}
+            onDelete={() => deleteTracker(t.id)}
+          />
+        ))}
+
+        {/* Add tracker */}
+        <div className="rounded-lg border border-white/5 bg-brand-black p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-brand-cream/40">Add tracker</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={addProvider}
+              onChange={e => setAddProvider(e.target.value as TrackerProvider)}
+              className={INPUT + " sm:w-48"}
+            >
+              {PROVIDER_OPTIONS.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+            <input
+              value={addValue}
+              onChange={e => setAddValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTracker(); } }}
+              placeholder={PROVIDER_BY_ID[addProvider].placeholder}
+              className={INPUT + " font-mono text-xs flex-1 min-w-[160px]"}
+            />
+            <button
+              onClick={addTracker}
+              disabled={!addValue.trim()}
+              className="text-xs px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-40 shrink-0"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-brand-cream/30">
+          Changes apply within ~30 seconds (the loader caches the config that long). The portal tag must be installed on the site for any of this to take effect.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TrackerRow({ tracker, onPatch, onDelete }: {
+  tracker: Tracker;
+  onPatch: (p: Partial<Tracker>) => void;
+  onDelete: () => void;
+}) {
+  const meta = PROVIDER_BY_ID[tracker.provider];
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => onPatch({ enabled: !tracker.enabled })}
+          className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+            tracker.enabled ? "bg-green-500/80 justify-end" : "bg-white/15 justify-start"
+          }`}
+          aria-pressed={tracker.enabled}
+          title={tracker.enabled ? "Enabled — click to pause" : "Disabled — click to enable"}
+        >
+          <div className="w-3 h-3 rounded-full bg-white" />
+        </button>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/65 border border-white/10 shrink-0">
+          {meta.label}
+        </span>
+        <input
+          value={tracker.value}
+          onChange={e => onPatch({ value: e.target.value })}
+          placeholder={meta.placeholder}
+          className={INPUT + " font-mono text-xs flex-1 min-w-[140px] py-1.5"}
+        />
+        <select
+          value={tracker.consentCategory}
+          onChange={e => onPatch({ consentCategory: e.target.value as ConsentCategory })}
+          className={INPUT + " text-xs py-1.5 sm:w-32"}
+          title="Which consent category gates this tracker"
+        >
+          <option value="functional">Functional</option>
+          <option value="analytics">Analytics</option>
+          <option value="marketing">Marketing</option>
+        </select>
+        <button
+          onClick={onDelete}
+          className="text-[12px] px-2 py-1 text-brand-cream/45 hover:text-red-400 shrink-0"
+          aria-label="Remove tracker"
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 }

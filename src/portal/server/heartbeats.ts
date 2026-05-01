@@ -1,24 +1,11 @@
-// Server-only heartbeat store for the portal tag.
-//
-// Each external site that loads /portal/tag.js posts a heartbeat to
-// /api/portal/heartbeat. We keep the most recent reading per site in a
-// module-level Map. State is in-memory and resets on cold start — fine for
-// connectivity monitoring (heartbeats arrive frequently), and the Phase B
-// migration to durable storage (KV / DB) replaces this module wholesale.
+// Server-only heartbeat store for the portal tag. Backed by storage.ts so
+// state survives dev-server restarts when the filesystem is writable, and
+// gracefully degrades to in-memory otherwise.
 
-export interface Heartbeat {
-  siteId: string;
-  firstSeenAt: number;
-  lastSeenAt: number;
-  beats: number;
-  lastUrl?: string;
-  lastTitle?: string;
-  lastReferrer?: string;
-  lastUserAgent?: string;
-  lastEvent?: string;          // "connect" | "hide" | "ping"
-}
+import { getState, mutate } from "./storage";
+import type { Heartbeat } from "./types";
 
-const store = new Map<string, Heartbeat>();
+export type { Heartbeat };
 
 export interface IncomingBeat {
   siteId: string;
@@ -31,31 +18,36 @@ export interface IncomingBeat {
 
 export function record(beat: IncomingBeat): Heartbeat {
   const now = Date.now();
-  const existing = store.get(beat.siteId);
-  const next: Heartbeat = {
-    siteId: beat.siteId,
-    firstSeenAt: existing?.firstSeenAt ?? now,
-    lastSeenAt: now,
-    beats: (existing?.beats ?? 0) + 1,
-    lastUrl: beat.url ?? existing?.lastUrl,
-    lastTitle: beat.title ?? existing?.lastTitle,
-    lastReferrer: beat.referrer ?? existing?.lastReferrer,
-    lastUserAgent: beat.userAgent ?? existing?.lastUserAgent,
-    lastEvent: beat.event ?? existing?.lastEvent,
-  };
-  store.set(beat.siteId, next);
-  return next;
+  let recorded!: Heartbeat;
+  mutate(state => {
+    const existing = state.heartbeats[beat.siteId];
+    recorded = {
+      siteId: beat.siteId,
+      firstSeenAt: existing?.firstSeenAt ?? now,
+      lastSeenAt: now,
+      beats: (existing?.beats ?? 0) + 1,
+      lastUrl: beat.url ?? existing?.lastUrl,
+      lastTitle: beat.title ?? existing?.lastTitle,
+      lastReferrer: beat.referrer ?? existing?.lastReferrer,
+      lastUserAgent: beat.userAgent ?? existing?.lastUserAgent,
+      lastEvent: beat.event ?? existing?.lastEvent,
+    };
+    state.heartbeats[beat.siteId] = recorded;
+  });
+  return recorded;
 }
 
 export function list(): Heartbeat[] {
-  return Array.from(store.values()).sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+  return Object.values(getState().heartbeats).sort((a, b) => b.lastSeenAt - a.lastSeenAt);
 }
 
 export function get(siteId: string): Heartbeat | undefined {
-  return store.get(siteId);
+  return getState().heartbeats[siteId];
 }
 
 export function clear(siteId?: string) {
-  if (siteId) store.delete(siteId);
-  else store.clear();
+  mutate(state => {
+    if (siteId) delete state.heartbeats[siteId];
+    else state.heartbeats = {};
+  });
 }
