@@ -82,6 +82,7 @@ export async function GET() {
       siteAuditor: true,          // A-1 — /admin/site-test runs PSI + dedup + LLM-formatted no-BS report
       claudeReports: true,        // A-1 — Anthropic SDK formatter (claude-sonnet-4-6) with prompt caching on system prompt
       authBlocks: true,           // A-2 — login-form + signup-form + theme-selector + social-auth blocks
+      buildPipelineHardened: true, // BUILD-1 — ignoreBuildErrors + use-client sweep + Suspense around useSearchParams
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
