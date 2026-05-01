@@ -43,6 +43,7 @@ export async function GET() {
       ecommerceAudited: true,     // T1 #7 — webhook idempotency, cart persistence, clear-on-success, line-item validation, double-discount guard
       sitesAdminPolished: true,   // T1 #10 — favicon/logo upload UX, theme variant tile picker, DNS check helper, sortable site list, primary star moved out of danger zone
       chatbot: true,              // T1 #3 — per-site chatbot config (provider picker, system prompt, theming)
+      visualEditor: true,         // T1 #8 — in-place editor overlay for [data-portal-edit] regions
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
