@@ -36,7 +36,7 @@ src/plugins/
   _types.ts           ← AquaPlugin contract (the single source of truth)
   _registry.ts        ← lists every shipped plugin
   _runtime.ts         ← install / uninstall / configure / applyPreset
-  _presets.ts         ← 17 one-click bundles
+  _presets.ts         ← 14 one-click bundles
   _pathMapping.ts     ← /admin path → plugin id
   <plugin-id>/        ← one folder per plugin
     index.ts          ← manifest (data only)
@@ -74,7 +74,7 @@ src/app/api/portal/             ← plugin + tenant API
   Analytics · Funnels · Affiliates · CRM · Automation · Search · Reviews
   v2 · Compliance · Support · Auditor · Audit log · Backups · Webhooks
   · Repo · i18n)
-- **17 presets** for one-click portal creation
+- **14 presets** for one-click portal creation
 - **Marketplace** at `/aqua/<orgId>/marketplace` — install / configure /
   disable / uninstall by category, with setup wizards for plugins that
   need credentials before installing (Stripe, Resend, GitHub PAT, etc.)
