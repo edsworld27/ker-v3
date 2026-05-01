@@ -6,6 +6,7 @@ import {
   onFlagsChange, CATEGORY_LABELS,
   type FeatureFlag, type FlagStatus, type FlagCategory,
 } from "@/lib/admin/featureFlags";
+import Tip from "@/components/admin/Tip";
 
 const STATUS_STYLE: Record<FlagStatus, string> = {
   on:      "bg-green-500/20 text-green-400",
@@ -37,7 +38,10 @@ export default function AdminFeaturesPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Growth</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Feature flags</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Feature flags</h1>
+            <Tip text="Toggle parts of the site without redeploying. Use rollout % to gradually expose new features to a subset of users (deterministic by stable hash of email)." align="bottom" />
+          </div>
           <p className="text-brand-cream/45 text-sm mt-1">
             Turn features on/off, do percentage rollouts, or override per user. Store future features here until ready to launch.
           </p>
@@ -84,6 +88,7 @@ export default function AdminFeaturesPage() {
                 <button
                   key={s}
                   onClick={() => saveFlag(flag.id, { status: s })}
+                  title={s === "on" ? "Always on for everyone" : s === "off" ? "Always off for everyone" : "Use rollout % below"}
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${
                     flag.status === s ? STATUS_STYLE[s] : "bg-white/5 text-brand-cream/25 hover:text-brand-cream/50"
                   }`}
@@ -117,6 +122,7 @@ export default function AdminFeaturesPage() {
                   />
                   <span className="text-xs font-mono text-brand-amber">{flag.rolloutPercent}%</span>
                   <span className="text-[11px] text-brand-cream/35">of users</span>
+                  <Tip text="Sticky bucketing: each user is hashed to a stable number 0–99, and stays in or out for the lifetime of this flag. Increase the percentage to widen exposure." />
                 </div>
               )}
 

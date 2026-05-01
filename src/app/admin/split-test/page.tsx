@@ -6,6 +6,7 @@ import {
   type ABTest, type ABVariant, type ABTestStatus, type GoalType,
 } from "@/lib/admin/abtests";
 import { listPages } from "@/lib/admin/customPages";
+import Tip from "@/components/admin/Tip";
 
 const GOAL_LABELS: Record<GoalType, string> = {
   page_visit: "Page visit",
@@ -90,11 +91,11 @@ function TestModal({ test, pages, onClose }: {
             <F label="Description (optional)">
               <input value={description} onChange={(e) => setDescription(e.target.value)} className={INPUT} />
             </F>
-            <F label="Target path (URL to intercept)">
+            <F label="Target path (URL to intercept)" tip="The URL where visitors land. They'll then be redirected to one of the variants (preserving query strings).">
               <input required value={targetPath} onChange={(e) => setTargetPath(e.target.value)} placeholder="/" className={INPUT} />
               <p className="text-[11px] text-brand-cream/30 mt-1">Visitors to this URL are split between variants.</p>
             </F>
-            <F label="Goal type">
+            <F label="Goal type" tip="What you're measuring. Page visit fires when a user reaches goalPath. Add to cart fires on cart updates. Purchase fires on /checkout/success.">
               <select value={goalType} onChange={(e) => setGoalType(e.target.value as GoalType)} className={INPUT}>
                 {Object.entries(GOAL_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -190,7 +191,10 @@ export default function AdminSplitTestPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Growth</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Split testing</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Split testing</h1>
+            <Tip text="Run controlled experiments. Each visitor sees a single variant for the lifetime of the test (sticky bucketing). Statistical significance kicks in around 200+ conversions per variant." align="bottom" />
+          </div>
           <p className="text-brand-cream/45 text-sm mt-1">A/B test landing pages and measure which variant converts better.</p>
         </div>
         <button onClick={() => setModal({})} className="px-4 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold hover:bg-brand-orange-dark">+ New test</button>
@@ -282,10 +286,15 @@ export default function AdminSplitTestPage() {
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/50";
 
-function F({ label, children }: { label?: string; children: React.ReactNode }) {
+function F({ label, tip, children }: { label?: string; tip?: string; children: React.ReactNode }) {
   return (
     <div>
-      {label && <label className="block text-xs text-brand-cream/50 mb-1.5">{label}</label>}
+      {label && (
+        <label className="text-xs text-brand-cream/50 mb-1.5 flex items-center gap-1.5">
+          {label}
+          {tip && <Tip text={tip} />}
+        </label>
+      )}
       {children}
     </div>
   );

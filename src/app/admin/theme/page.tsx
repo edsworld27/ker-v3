@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Tip from "@/components/admin/Tip";
 import {
   getDraftTheme,
   saveDraft,
@@ -420,9 +421,12 @@ export default function AdminThemePage() {
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">
             Appearance
           </p>
-          <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">
-            Theme &amp; styling
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">
+              Theme &amp; styling
+            </h1>
+            <Tip text="Edits here update Tailwind CSS variables at runtime — the storefront re-skins live without a deploy. Use the Variants tab to maintain Light/Earth/Ocean alongside Dark." align="bottom" />
+          </div>
           <p className="text-brand-cream/45 text-sm mt-1">
             Customise colours, fonts, backgrounds, animations and effects site-wide.
           </p>

@@ -13,6 +13,7 @@ import {
   onLoginCustomisationChange,
   type LoginCustomisation, type LoginLayout,
 } from "@/lib/admin/loginCustomisation";
+import Tip from "@/components/admin/Tip";
 
 type Tab = "branding" | "tabs" | "login" | "export";
 
@@ -441,13 +442,3 @@ function ToggleRow({ label, value, onChange, tip }: { label: string; value: bool
   );
 }
 
-function Tip({ text }: { text: string }) {
-  return (
-    <span
-      title={text}
-      className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-white/20 text-[9px] text-brand-cream/40 hover:text-brand-cream hover:border-brand-cream/40 cursor-help shrink-0"
-    >
-      ?
-    </span>
-  );
-}
