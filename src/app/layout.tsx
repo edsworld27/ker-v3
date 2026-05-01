@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
+import dynamic from "next/dynamic";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
-import ChatBot from "@/components/ChatBot";
 import PurpleSideScroller from "@/components/PurpleSideScroller";
 import SiteHead from "@/components/SiteHead";
 import PreviewBar from "@/components/PreviewBar";
@@ -13,12 +13,23 @@ import ForcePasswordChange from "@/components/ForcePasswordChange";
 import FeatureGate from "@/components/FeatureGate";
 import SiteResolver from "@/components/SiteResolver";
 import PortalTagInjector from "@/components/PortalTagInjector";
+import WebVitalsReporter from "@/components/web-vitals-reporter";
 
+// ChatBot is client-only, rarely opened on first paint, and pulls in a
+// chunk of UI + per-site config. Lazy-loading with `ssr: false` keeps it
+// out of the initial JS bundle and out of the streamed HTML.
+const ChatBot = dynamic(() => import("@/components/ChatBot"), { ssr: false });
+
+// Both fonts use `display: "swap"` to avoid FOIT on slow networks, and a
+// system-stack `fallback` so the layout doesn't shift visibly when the
+// webfont finally arrives. Subsets are pinned to "latin" to keep the
+// downloaded byte count small (the storefront copy is Latin-only).
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   weight: ["400", "600", "700", "800"],
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
 });
 
 const dmSans = DM_Sans({
@@ -26,6 +37,7 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -63,6 +75,7 @@ export default function RootLayout({
         <CartProvider>
           <SiteResolver />
           <PortalTagInjector />
+          <WebVitalsReporter />
           <ImpersonationBar />
           <ForcePasswordChange />
           <ThemeInjector />
