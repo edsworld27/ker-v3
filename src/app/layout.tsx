@@ -16,6 +16,7 @@ import PortalTagInjector from "@/components/PortalTagInjector";
 import WebVitalsReporter from "@/components/web-vitals-reporter";
 import PortalEditOverlay from "@/components/PortalEditOverlay";
 import ChatBotLazy from "@/components/ChatBotLazy";
+import AnalyticsResolver from "@/components/AnalyticsResolver";
 
 // Both fonts use `display: "swap"` to avoid FOIT on slow networks, and a
 // system-stack `fallback` so the layout doesn't shift visibly when the
@@ -81,6 +82,7 @@ export default function RootLayout({
           <ABTestRunner />
           <PreviewBar />
           <SiteHead />
+          <AnalyticsResolver />
           {children}
           <FeatureGate flag="chatbot"><ChatBotLazy /></FeatureGate>
           <FeatureGate flag="purple_scroller"><PurpleSideScroller /></FeatureGate>

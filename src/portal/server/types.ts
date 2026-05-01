@@ -646,7 +646,10 @@ export type BlockType =
   | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
   | "variant-picker" | "product-search"
   // Auth blocks (A-2)
-  | "login-form" | "signup-form" | "theme-selector" | "social-auth";
+  | "login-form" | "signup-form" | "theme-selector" | "social-auth"
+  // Marketing / content blocks (added with the plugin platform)
+  | "pricing-table" | "faq" | "contact-form" | "stats-bar" | "logo-grid"
+  | "feature-grid" | "newsletter-signup" | "countdown-timer" | "language-switcher";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the

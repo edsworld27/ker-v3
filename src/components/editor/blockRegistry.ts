@@ -44,6 +44,15 @@ import LoginFormBlock from "./blocks/LoginFormBlock";
 import SignupFormBlock from "./blocks/SignupFormBlock";
 import ThemeSelectorBlock from "./blocks/ThemeSelectorBlock";
 import SocialAuthBlock from "./blocks/SocialAuthBlock";
+import PricingTableBlock from "./blocks/PricingTableBlock";
+import FaqBlock from "./blocks/FaqBlock";
+import ContactFormBlock from "./blocks/ContactFormBlock";
+import StatsBarBlock from "./blocks/StatsBarBlock";
+import LogoGridBlock from "./blocks/LogoGridBlock";
+import FeatureGridBlock from "./blocks/FeatureGridBlock";
+import NewsletterSignupBlock from "./blocks/NewsletterSignupBlock";
+import CountdownTimerBlock from "./blocks/CountdownTimerBlock";
+import LanguageSwitcherBlock from "./blocks/LanguageSwitcherBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -607,6 +616,154 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "subhead", label: "Sub-headline", type: "textarea", default: "" },
       { key: "ctaLabel", label: "CTA label", type: "text", default: "Continue shopping" },
       { key: "ctaHref", label: "CTA URL", type: "url", default: "/shop" },
+    ],
+  },
+
+  // ── Marketing / content (added with the plugin platform) ───────────────
+  "pricing-table": {
+    type: "pricing-table",
+    label: "Pricing table",
+    icon: "💲",
+    category: "content",
+    isContainer: false,
+    Component: PricingTableBlock,
+    defaultProps: {
+      heading: "Simple, honest pricing",
+      subheading: "Pick the plan that fits.",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+    ],
+  },
+  "faq": {
+    type: "faq",
+    label: "FAQ",
+    icon: "?",
+    category: "content",
+    isContainer: false,
+    Component: FaqBlock,
+    defaultProps: { heading: "Frequently asked" },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "contact-form": {
+    type: "contact-form",
+    label: "Contact form",
+    icon: "✉",
+    category: "content",
+    isContainer: false,
+    Component: ContactFormBlock,
+    defaultProps: {
+      heading: "Get in touch",
+      subheading: "We'll get back to you within 1 business day.",
+      submitLabel: "Send message",
+      showPhone: true,
+      formName: "contact",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "submitLabel", label: "Submit label", type: "text" },
+      { key: "showPhone", label: "Show phone field", type: "boolean" },
+      { key: "formName", label: "Form name (admin)", type: "text" },
+    ],
+  },
+  "stats-bar": {
+    type: "stats-bar",
+    label: "Stats bar",
+    icon: "📊",
+    category: "content",
+    isContainer: false,
+    Component: StatsBarBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "logo-grid": {
+    type: "logo-grid",
+    label: "Logo grid",
+    icon: "▦",
+    category: "content",
+    isContainer: false,
+    Component: LogoGridBlock,
+    defaultProps: { heading: "As featured in", logos: [] },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "feature-grid": {
+    type: "feature-grid",
+    label: "Feature grid",
+    icon: "▥",
+    category: "content",
+    isContainer: false,
+    Component: FeatureGridBlock,
+    defaultProps: {
+      heading: "What's included",
+      columns: 3,
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "columns", label: "Columns", type: "number", default: 3 },
+    ],
+  },
+  "newsletter-signup": {
+    type: "newsletter-signup",
+    label: "Newsletter signup",
+    icon: "📧",
+    category: "content",
+    isContainer: false,
+    Component: NewsletterSignupBlock,
+    defaultProps: {
+      heading: "Stay in the loop",
+      subheading: "One email a month. New launches, no spam.",
+      submitLabel: "Subscribe",
+      successMessage: "You're in. Welcome!",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "submitLabel", label: "Submit label", type: "text" },
+      { key: "successMessage", label: "Success message", type: "text" },
+    ],
+  },
+  "countdown-timer": {
+    type: "countdown-timer",
+    label: "Countdown timer",
+    icon: "⏱",
+    category: "content",
+    isContainer: false,
+    Component: CountdownTimerBlock,
+    defaultProps: {
+      heading: "Sale ends in",
+      target: "+7d",
+      expiredText: "Sale has ended.",
+      showSeconds: true,
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "target", label: "Target (ISO date or +Nd/+Nh/+Nm)", type: "text", placeholder: "+7d" },
+      { key: "expiredText", label: "Expired text", type: "text" },
+      { key: "showSeconds", label: "Show seconds", type: "boolean" },
+    ],
+  },
+  "language-switcher": {
+    type: "language-switcher",
+    label: "Language switcher",
+    icon: "🌐",
+    category: "content",
+    isContainer: false,
+    Component: LanguageSwitcherBlock,
+    defaultProps: {
+      variant: "dropdown",
+      enabledLocales: "en,fr,es",
+    },
+    fields: [
+      { key: "variant", label: "Variant", type: "select", default: "dropdown",
+        options: [{ value: "dropdown", label: "Dropdown" }, { value: "pills", label: "Pills" }] },
+      { key: "enabledLocales", label: "Enabled locales (csv)", type: "text" },
     ],
   },
 };
