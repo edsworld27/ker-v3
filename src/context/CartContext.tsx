@@ -14,6 +14,14 @@ export interface CartItem {
   variant?: string;
   shopifyVariantId?: string;
   stockSku?: string;     // links to inventory item; cart qty = reserved stock
+  // Picker-driven variant metadata. The visual-editor variant picker
+  // emits these so cart line items reflect the chosen swatch / size /
+  // custom colour. `variantId` is the resolved variant id (or
+  // `custom:<hex>` for ephemeral colour-wheel picks). `image` overrides
+  // the product card thumbnail when a swatch carries its own picture.
+  variantId?: string;
+  image?: string;
+  customHex?: string;    // when the customer picked a colour-wheel hex
 }
 
 interface CartContextValue {

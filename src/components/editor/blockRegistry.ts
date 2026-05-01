@@ -38,6 +38,7 @@ import CartSummaryBlock from "./blocks/CartSummaryBlock";
 import CheckoutSummaryBlock from "./blocks/CheckoutSummaryBlock";
 import PaymentButtonBlock from "./blocks/PaymentButtonBlock";
 import OrderSuccessBlock from "./blocks/OrderSuccessBlock";
+import VariantPickerBlock from "./blocks/VariantPickerBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -474,6 +475,21 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "provider", label: "Provider", type: "select", default: "stripe", options: [
         { value: "stripe", label: "Stripe" }, { value: "paypal", label: "PayPal" }, { value: "applepay", label: "Apple Pay" },
       ] },
+    ],
+  },
+  "variant-picker": {
+    type: "variant-picker",
+    label: "Variant picker",
+    icon: "🎨",
+    category: "commerce",
+    isContainer: false,
+    Component: VariantPickerBlock,
+    defaultProps: { productHandle: "", showPrice: true, showCta: true, ctaLabel: "Add to cart" },
+    fields: [
+      { key: "productHandle", label: "Product handle", type: "text", default: "" },
+      { key: "showPrice", label: "Show price", type: "boolean", default: true },
+      { key: "showCta", label: "Show add-to-cart button", type: "boolean", default: true },
+      { key: "ctaLabel", label: "CTA label", type: "text", default: "Add to cart" },
     ],
   },
   "order-success": {

@@ -602,7 +602,8 @@ export type BlockType =
   // Composite content blocks
   | "hero" | "cta" | "testimonials" | "navbar" | "footer" | "form"
   // E-commerce blocks
-  | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success";
+  | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
+  | "variant-picker";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the
