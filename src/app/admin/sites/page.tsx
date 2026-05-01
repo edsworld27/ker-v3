@@ -705,6 +705,38 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             <textarea value={site.description ?? ""} onChange={e => updateSite(site.id, { description: e.target.value })} rows={2} className={INPUT} />
           </Field>
 
+          {/* Custom head/body code per site (P-3) — for tracking pixels,
+              custom CSS/JS, third-party widgets, etc. Injected by SiteHead
+              into every page on this tenant. */}
+          <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Custom code</p>
+              <Tip text="Injected on every page of this site. Use for analytics tags, custom CSS, third-party widgets — without touching the codebase." />
+            </div>
+            <div className="p-4 space-y-3">
+              <Field label={"Head code (<head>)"}>
+                <textarea
+                  value={site.customHead ?? ""}
+                  onChange={e => updateSite(site.id, { customHead: e.target.value })}
+                  rows={5}
+                  spellCheck={false}
+                  placeholder={"<!-- e.g. Google Analytics, Meta Pixel, hotjar, custom <style> -->"}
+                  className={INPUT + " font-mono text-[11px]"}
+                />
+              </Field>
+              <Field label={"Body end code (before </body>)"}>
+                <textarea
+                  value={site.customBody ?? ""}
+                  onChange={e => updateSite(site.id, { customBody: e.target.value })}
+                  rows={4}
+                  spellCheck={false}
+                  placeholder={"<!-- e.g. late-loading scripts, chat widgets -->"}
+                  className={INPUT + " font-mono text-[11px]"}
+                />
+              </Field>
+            </div>
+          </div>
+
           {/* Domains */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
             <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">

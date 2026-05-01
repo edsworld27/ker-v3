@@ -45,6 +45,8 @@ interface PageResponse {
     blocks: Block[];
     status: "draft" | "published";
     updatedAt: number;
+    customHead?: string;
+    customFoot?: string;
   };
   error?: string;
 }
@@ -102,7 +104,16 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
     return <>{fallback ?? null}</>;
   }
 
-  return <BlockRenderer blocks={data.page.blocks} />;
+  const customHead = data.page.customHead;
+  const customFoot = data.page.customFoot;
+
+  return (
+    <>
+      {customHead && <span dangerouslySetInnerHTML={{ __html: customHead }} />}
+      <BlockRenderer blocks={data.page.blocks} />
+      {customFoot && <span dangerouslySetInnerHTML={{ __html: customFoot }} />}
+    </>
+  );
 }
 
 // Helper for invalidating the in-page cache (e.g. when the admin saves

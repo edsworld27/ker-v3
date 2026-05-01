@@ -30,6 +30,7 @@ export default function EditorPage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [view, setView] = useState<"visual" | "code">("visual");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -260,6 +261,17 @@ export default function EditorPage() {
         />
         <span className="text-[11px] text-brand-cream/45 font-mono">{page?.slug}</span>
         <span className="ml-auto" />
+        {/* View toggle: visual canvas ↔ raw JSON code editor */}
+        <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 mr-2">
+          <button
+            onClick={() => setView("visual")}
+            className={`px-2.5 py-1 text-[11px] rounded ${view === "visual" ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
+          >Visual</button>
+          <button
+            onClick={() => setView("code")}
+            className={`px-2.5 py-1 text-[11px] rounded ${view === "code" ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
+          >Code</button>
+        </div>
         <button
           onClick={handleUndo}
           disabled={undoStack.current.length === 0}
@@ -293,24 +305,37 @@ export default function EditorPage() {
       </header>
 
       {/* 3-pane workspace */}
-      <div className="flex-1 min-h-0 flex">
-        <Sidebar blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} onAddTopLevel={handleDropOnCanvas} />
-        <Canvas
+      {view === "visual" ? (
+        <div className="flex-1 min-h-0 flex">
+          <Sidebar blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} onAddTopLevel={handleDropOnCanvas} />
+          <Canvas
+            blocks={blocks}
+            selectedId={selectedId}
+            device={device}
+            onSelect={setSelectedId}
+            onDropOnCanvas={handleDropOnCanvas}
+            onDropBeside={handleDropBeside}
+            onMoveBeside={handleMoveBeside}
+          />
+          <PropertiesPanel
+            block={selectedBlock}
+            onPatch={handlePatchSelected}
+            onDuplicate={handleDuplicateSelected}
+            onRemove={handleRemoveSelected}
+          />
+        </div>
+      ) : (
+        <CodeView
+          page={page}
           blocks={blocks}
-          selectedId={selectedId}
-          device={device}
-          onSelect={setSelectedId}
-          onDropOnCanvas={handleDropOnCanvas}
-          onDropBeside={handleDropBeside}
-          onMoveBeside={handleMoveBeside}
+          onPageMutate={(patch) => {
+            if (!page) return;
+            setPage({ ...page, ...patch });
+            void updatePage(siteId, pageId, patch);
+          }}
+          onTreeMutate={(next) => mutate(next)}
         />
-        <PropertiesPanel
-          block={selectedBlock}
-          onPatch={handlePatchSelected}
-          onDuplicate={handleDuplicateSelected}
-          onRemove={handleRemoveSelected}
-        />
-      </div>
+      )}
 
       {error && (
         <div className="absolute bottom-4 right-4 max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-400">{error}</div>
@@ -320,6 +345,104 @@ export default function EditorPage() {
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+// Raw JSON editor for the entire page — block tree + custom head + foot.
+// Edit + blur to commit; parse failures keep the prior value. Lets the
+// admin hand-wire what the visual UI can't express (custom CSS,
+// awkward flex/grid layouts, third-party scripts) and round-trip back
+// to the visual canvas without losing data.
+function CodeView({
+  page, blocks, onPageMutate, onTreeMutate,
+}: {
+  page: EditorPage | null;
+  blocks: Block[];
+  onPageMutate: (patch: Partial<EditorPage>) => void;
+  onTreeMutate: (next: Block[]) => void;
+}) {
+  const initial = JSON.stringify(blocks, null, 2);
+  const [tree, setTree] = useState(initial);
+  const [treeError, setTreeError] = useState<string | null>(null);
+
+  // Sync if blocks changed externally (undo/redo, autosave revert).
+  useEffect(() => { setTree(JSON.stringify(blocks, null, 2)); }, [blocks]);
+
+  function commitTree() {
+    try {
+      const parsed = JSON.parse(tree);
+      if (!Array.isArray(parsed)) throw new Error("expected an array of blocks");
+      onTreeMutate(parsed as Block[]);
+      setTreeError(null);
+    } catch (e) {
+      setTreeError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 p-3 overflow-y-auto bg-[#0a0a0a]">
+      {/* Block tree */}
+      <div className="lg:col-span-2 flex flex-col rounded-2xl border border-white/8 bg-brand-black-soft overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/8 flex items-center justify-between">
+          <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/55">Page block tree (JSON)</p>
+          {treeError && <span className="text-[10px] text-red-400">{treeError}</span>}
+        </div>
+        <textarea
+          value={tree}
+          onChange={e => setTree(e.target.value)}
+          onBlur={commitTree}
+          spellCheck={false}
+          className="flex-1 bg-transparent p-3 text-[11px] font-mono leading-relaxed text-brand-cream resize-none focus:outline-none"
+        />
+        <div className="px-3 py-2 border-t border-white/8 flex items-center justify-between text-[10px] text-brand-cream/45">
+          <span>Saves on blur. Use this to hand-wire what the visual editor can&apos;t express.</span>
+          <button onClick={commitTree} className="px-2 py-1 rounded bg-brand-orange/20 text-brand-orange hover:bg-brand-orange/30">Apply</button>
+        </div>
+      </div>
+
+      {/* Custom head + foot */}
+      <div className="flex flex-col gap-3">
+        <CodePane
+          label="Page <head> code"
+          help="Injected at the top of this page only. Use for one-off scripts/styles, schema, page-specific tracking."
+          value={page?.customHead ?? ""}
+          onChange={v => onPageMutate({ customHead: v })}
+          height="h-48"
+        />
+        <CodePane
+          label="Page footer code"
+          help="Injected at the bottom of this page (after all blocks). Useful for late scripts."
+          value={page?.customFoot ?? ""}
+          onChange={v => onPageMutate({ customFoot: v })}
+          height="h-48"
+        />
+        <div className="rounded-2xl border border-white/8 bg-brand-black-soft p-3 text-[11px] text-brand-cream/55 leading-relaxed">
+          <p className="font-semibold text-brand-cream/85 mb-1">Tip — clean output</p>
+          <p>The host site renders only the resting block tree via <code className="font-mono text-brand-cream/85">&lt;PortalPageRenderer /&gt;</code>. None of the editor chrome (selection rings, drag handles, properties panel) ships to visitors — just the blocks plus this code.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodePane({ label, help, value, onChange, height }: { label: string; help: string; value: string; onChange: (v: string) => void; height: string }) {
+  const [text, setText] = useState(value);
+  useEffect(() => { setText(value); }, [value]);
+  return (
+    <div className="rounded-2xl border border-white/8 bg-brand-black-soft overflow-hidden flex flex-col">
+      <div className="px-3 py-2 border-b border-white/8">
+        <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/55">{label}</p>
+        <p className="text-[10px] text-brand-cream/40 mt-0.5">{help}</p>
+      </div>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onBlur={() => text !== value && onChange(text)}
+        spellCheck={false}
+        className={`${height} bg-transparent p-3 text-[11px] font-mono leading-relaxed text-brand-cream resize-none focus:outline-none`}
+        placeholder='<script>...</script>'
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@
 import { useState } from "react";
 import type { Block, BlockType } from "@/portal/server/types";
 import BlockRenderer from "../BlockRenderer";
-import { getBlockDefinition } from "../blockRegistry";
+import { getBlockDefinition, listBlocksByCategory, type BlockDefinition } from "../blockRegistry";
 
 interface CanvasProps {
   blocks: Block[];
@@ -56,6 +56,94 @@ export default function Canvas({ blocks, selectedId, device, onSelect, onDropOnC
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Inline "+" button rendered just below a hovered/selected block. Click
+// to open a tiny block picker; pick to insert after the current block.
+// Most-used categories first to keep the menu small.
+function InlineInsert({ onPick }: { onPick: (type: BlockType) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{ position: "absolute", left: "50%", bottom: -16, transform: "translateX(-50%)", zIndex: 11, pointerEvents: "auto" }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        title="Insert block here"
+        aria-label="Insert block here"
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          background: "var(--brand-orange, #ff6b35)",
+          color: "#fff",
+          border: "2px solid #0a0a0a",
+          fontSize: 16,
+          fontWeight: 700,
+          lineHeight: 1,
+          cursor: "pointer",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+        }}
+      >
+        {open ? "×" : "+"}
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(15,15,15,0.98)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 12,
+            padding: 8,
+            minWidth: 240,
+            maxHeight: 320,
+            overflowY: "auto",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
+          }}
+        >
+          <QuickPicker onPick={t => { onPick(t); setOpen(false); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuickPicker({ onPick }: { onPick: (type: BlockType) => void }) {
+  const groups: Array<{ label: string; items: BlockDefinition[] }> = [
+    { label: "Layout",   items: listBlocksByCategory("layout") },
+    { label: "Content",  items: listBlocksByCategory("content") },
+    { label: "Media",    items: listBlocksByCategory("media") },
+    { label: "Commerce", items: listBlocksByCategory("commerce") },
+  ];
+  return (
+    <div>
+      {groups.map(g => g.items.length > 0 && (
+        <div key={g.label} style={{ marginBottom: 6 }}>
+          <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, padding: "0 4px 2px", margin: 0 }}>{g.label}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2 }}>
+            {g.items.map(b => (
+              <button
+                key={b.type}
+                type="button"
+                onClick={() => onPick(b.type)}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 4px", background: "transparent", border: "1px solid transparent", borderRadius: 6, color: "rgba(255,255,255,0.85)", fontSize: 9, cursor: "pointer" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 14 }}>{b.icon}</span>
+                <span>{b.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -188,6 +276,9 @@ function BlockWrapper({
           {def?.label ?? block.type}
         </span>
       )}
+
+      {/* Inline + insert button — appears between blocks on hover */}
+      {(hovered || selected) && <InlineInsert onPick={type => onDropBeside(block.id, type, "after")} />}
 
       {/* Render the block + recurse into children with chrome */}
       {def

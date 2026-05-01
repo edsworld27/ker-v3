@@ -206,4 +206,153 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
       }),
     ],
   },
+  {
+    id: "landing",
+    label: "Landing page",
+    description: "Hero + features grid + testimonial + CTA.",
+    icon: "★",
+    defaultSlug: "/landing",
+    defaultTitle: "Landing",
+    build: () => [
+      blk("hero", {
+        eyebrow: "Launch offer",
+        headline: "Ship faster, look better",
+        subhead: "A focused landing page built block-by-block.",
+        ctaLabel: "Get started",
+        ctaHref: "/signup",
+      }),
+      blk("section", { fullWidth: false }, [
+        blk("heading", { text: "Why us", level: 2 }),
+        blk("grid", { columns: 3, gap: "24px" }, [
+          blk("column", {}, [blk("icon", { glyph: "⚡", size: "32px", color: "#ff6b35" }), blk("heading", { text: "Fast", level: 3 }), blk("text", { text: "Drag, drop, publish — minutes not weeks." })]),
+          blk("column", {}, [blk("icon", { glyph: "🎨", size: "32px", color: "#ff6b35" }), blk("heading", { text: "Beautiful", level: 3 }), blk("text", { text: "Themes that look custom out of the box." })]),
+          blk("column", {}, [blk("icon", { glyph: "🛒", size: "32px", color: "#ff6b35" }), blk("heading", { text: "Commerce-ready", level: 3 }), blk("text", { text: "Variants, cart, checkout — all built in." })]),
+        ]),
+      ]),
+      blk("testimonials", {
+        title: "Customers say",
+        items: [{ quote: "Best builder I've used in years.", author: "Jamie", role: "Founder" }],
+      }),
+      blk("cta", { headline: "Ready to launch?", subhead: "It's faster than booking a meeting.", ctaLabel: "Start free", ctaHref: "/signup" }),
+    ],
+  },
+  {
+    id: "pricing",
+    label: "Pricing",
+    description: "3-tier pricing table.",
+    icon: "💰",
+    defaultSlug: "/pricing",
+    defaultTitle: "Pricing",
+    build: () => [
+      blk("section", { fullWidth: false }, [
+        blk("heading", { text: "Simple, honest pricing", level: 1 }),
+        blk("text", { text: "No surprises. Cancel anytime." }),
+        blk("grid", { columns: 3, gap: "24px" }, [
+          blk("column", { gap: "12px" }, [
+            blk("heading", { text: "Starter", level: 3 }),
+            blk("heading", { text: "£0", level: 2 }),
+            blk("text", { text: "per month" }),
+            blk("text", { text: "1 site\nUp to 50 products\nCommunity support" }),
+            blk("button", { label: "Get started", href: "/signup", variant: "secondary" }),
+          ]),
+          blk("column", { gap: "12px" }, [
+            blk("heading", { text: "Pro", level: 3 }),
+            blk("heading", { text: "£49", level: 2 }),
+            blk("text", { text: "per month" }),
+            blk("text", { text: "5 sites\nUnlimited products\nVariants + analytics\nPriority support" }),
+            blk("button", { label: "Start free trial", href: "/signup?plan=pro", variant: "primary" }),
+          ]),
+          blk("column", { gap: "12px" }, [
+            blk("heading", { text: "Enterprise", level: 3 }),
+            blk("heading", { text: "£199", level: 2 }),
+            blk("text", { text: "per month" }),
+            blk("text", { text: "Unlimited everything\nWhite-label\nDedicated manager\nSLA" }),
+            blk("button", { label: "Contact sales", href: "/contact", variant: "secondary" }),
+          ]),
+        ]),
+      ]),
+    ],
+  },
+  {
+    id: "faq",
+    label: "FAQ",
+    description: "Common questions + answers.",
+    icon: "?",
+    defaultSlug: "/faq",
+    defaultTitle: "FAQ",
+    build: () => [
+      blk("section", { fullWidth: false }, [
+        blk("heading", { text: "Frequently asked questions", level: 1 }),
+        blk("html", {
+          html: `
+<details style="border-bottom:1px solid rgba(255,255,255,0.08); padding:16px 0;">
+  <summary style="cursor:pointer; font-weight:600; font-size:16px;">How long does setup take?</summary>
+  <p style="margin-top:8px; opacity:0.75;">Most stores ship their first page within 30 minutes.</p>
+</details>
+<details style="border-bottom:1px solid rgba(255,255,255,0.08); padding:16px 0;">
+  <summary style="cursor:pointer; font-weight:600; font-size:16px;">Can I import my existing products?</summary>
+  <p style="margin-top:8px; opacity:0.75;">Yes — CSV or Shopify import works in one click.</p>
+</details>
+<details style="border-bottom:1px solid rgba(255,255,255,0.08); padding:16px 0;">
+  <summary style="cursor:pointer; font-weight:600; font-size:16px;">Do you charge transaction fees?</summary>
+  <p style="margin-top:8px; opacity:0.75;">No. You pay only your payment provider's fees.</p>
+</details>
+        `.trim() }),
+      ]),
+    ],
+  },
+  {
+    id: "services",
+    label: "Services",
+    description: "Service grid with offerings.",
+    icon: "✨",
+    defaultSlug: "/services",
+    defaultTitle: "Services",
+    build: () => [
+      blk("hero", {
+        eyebrow: "What we do",
+        headline: "Services tailored to you",
+        subhead: "Browse our offerings or get in touch for a custom quote.",
+        ctaLabel: "Contact us",
+        ctaHref: "/contact",
+      }),
+      blk("section", { fullWidth: false }, [
+        blk("grid", { columns: 2, gap: "24px" }, [
+          blk("column", { gap: "8px" }, [blk("heading", { text: "Strategy", level: 3 }), blk("text", { text: "Brand, positioning, audience research." })]),
+          blk("column", { gap: "8px" }, [blk("heading", { text: "Design", level: 3 }), blk("text", { text: "Identity systems, visual languages, packaging." })]),
+          blk("column", { gap: "8px" }, [blk("heading", { text: "Development", level: 3 }), blk("text", { text: "Web + mobile builds with conversion baked in." })]),
+          blk("column", { gap: "8px" }, [blk("heading", { text: "Growth", level: 3 }), blk("text", { text: "Ads, SEO, retention loops, lifecycle." })]),
+        ]),
+      ]),
+    ],
+  },
+  {
+    id: "blog-index",
+    label: "Blog index",
+    description: "Latest posts grid.",
+    icon: "📝",
+    defaultSlug: "/blog",
+    defaultTitle: "Blog",
+    build: () => [
+      blk("section", { fullWidth: false }, [
+        blk("heading", { text: "Latest posts", level: 1 }),
+        blk("text", { text: "Notes from the team." }),
+        blk("html", {
+          html: `
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+  <article style="padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+    <p style="font-size:11px; opacity:0.5; margin:0 0 8px; text-transform:uppercase; letter-spacing:0.18em;">Notes · 5 min read</p>
+    <h3 style="font-family:var(--font-playfair, Georgia, serif); font-size:20px; margin:0 0 8px;">First post title</h3>
+    <p style="opacity:0.75; line-height:1.5; margin:0;">Replace with the latest post excerpt. Wire to /admin/blog when you're ready.</p>
+  </article>
+  <article style="padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+    <p style="font-size:11px; opacity:0.5; margin:0 0 8px; text-transform:uppercase; letter-spacing:0.18em;">Tutorial · 8 min read</p>
+    <h3 style="font-family:var(--font-playfair, Georgia, serif); font-size:20px; margin:0 0 8px;">Second post title</h3>
+    <p style="opacity:0.75; line-height:1.5; margin:0;">Another placeholder excerpt.</p>
+  </article>
+</div>
+        `.trim() }),
+      ]),
+    ],
+  },
 ];
