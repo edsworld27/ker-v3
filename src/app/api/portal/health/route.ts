@@ -38,6 +38,7 @@ export async function GET() {
       embedLoader: true,          // /portal/embed.js chatbot-style JS loader for floating + inline widgets
       embedTheme: true,           // /api/portal/embed-theme/[siteId] per-site customisation (G-1)
       aiConvert: true,            // AI Convert prompt modal in the setup checklist (F-2)
+      deploymentGuide: true,      // /admin/portal-settings deployment paths card (Vercel / self-host / managed-host) + repo-zip download (T1 #1)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
