@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const origin = req.headers.get("x-forwarded-proto") && req.headers.get("host")
     ? `${req.headers.get("x-forwarded-proto")}://${req.headers.get("host")}`
     : process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  const url = `${origin}/api/portal/reservations/calendar.ics?orgId=${encodeURIComponent(orgId)}&token=${token}`;
+  const url = `${origin}/api/portal/reservations/feed?orgId=${encodeURIComponent(orgId)}&token=${token}`;
   return NextResponse.json({ ok: true, url });
 }
 
