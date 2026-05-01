@@ -1,8 +1,11 @@
-"use client";
-
 // Blog / journal store. Felicia writes, edits, and publishes posts entirely
 // from the admin panel. Posts hold a rich HTML body (with embedded images,
 // videos, iframes from YouTube etc.) plus metadata for SEO.
+//
+// This module is intentionally NOT marked "use client" — every IO function
+// guards on `typeof window`. That makes the SSR-only seed data importable
+// from server route handlers (e.g. /blog/rss.xml) without breaking client
+// code that mutates the localStorage-backed store.
 //
 // TODO Database (Supabase):
 //   table blog_posts (
@@ -42,10 +45,11 @@ export interface BlogPost {
   title: string;
   excerpt: string;
   bodyHtml: string;          // sanitised on render — admin trusts itself
-  coverImage: string;        // path / data URL / media:id
+  coverImage: string;        // path / data URL / media:id (a.k.a. featured image)
   category: string;
   author: string;
-  readTime: string;          // "5 min read"
+  readTime: string;          // "5 min read" — auto-derived if blank
+  tags: string[];            // free-form tag chips
   status: PostStatus;
   featured: boolean;
   publishedAt?: number;
@@ -59,8 +63,24 @@ interface Store { [id: string]: BlogPost; }
 
 function read(): Store {
   if (typeof window === "undefined") return seedIfEmpty({});
-  try { return seedIfEmpty(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") as Store); }
-  catch { return seedIfEmpty({}); }
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") as Store;
+    return migrate(seedIfEmpty(raw));
+  } catch { return migrate(seedIfEmpty({})); }
+}
+
+// Back-fill any new fields onto older posts read from localStorage. Cheap;
+// keeps the store forward-compatible without forcing the user to re-save.
+function migrate(s: Store): Store {
+  let dirty = false;
+  for (const id of Object.keys(s)) {
+    const p = s[id] as Partial<BlogPost>;
+    if (!Array.isArray(p.tags)) { p.tags = []; dirty = true; }
+  }
+  if (dirty && typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  }
+  return s;
 }
 
 function write(s: Store) {
@@ -69,11 +89,13 @@ function write(s: Store) {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-function seedIfEmpty(s: Store): Store {
-  if (Object.keys(s).length > 0) return s;
-  const now = Date.now();
+// Default seed data — exported so server-side route handlers (RSS feed,
+// future sitemap, OG generators) can fall back to it when localStorage
+// (the live edit store) isn't available.
+export function defaultSeedPosts(nowMs: number = Date.now()): BlogPost[] {
+  const now = nowMs;
   const day = 1000 * 60 * 60 * 24;
-  const seed: BlogPost[] = [
+  return [
     {
       id: "p_seed_black_soap",
       slug: "what-is-african-black-soap",
@@ -84,6 +106,7 @@ function seedIfEmpty(s: Store): Store {
       category: "Ingredients",
       author: "Felicia",
       readTime: "6 min read",
+      tags: ["black soap", "ingredients", "skincare"],
       status: "published",
       featured: true,
       publishedAt: now - day * 7,
@@ -101,6 +124,7 @@ function seedIfEmpty(s: Store): Store {
       category: "Our Story",
       author: "Editorial",
       readTime: "8 min read",
+      tags: ["our story", "accra"],
       status: "published",
       featured: false,
       publishedAt: now - day * 30,
@@ -109,22 +133,49 @@ function seedIfEmpty(s: Store): Store {
       updatedAt: now - day * 30,
     },
   ];
+}
+
+function seedIfEmpty(s: Store): Store {
+  if (Object.keys(s).length > 0) return s;
+  const seed = defaultSeedPosts();
   const next: Store = {};
   seed.forEach(p => { next[p.id] = p; });
   if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }
 
-export function listPosts(opts: { status?: PostStatus | "all" } = {}): BlogPost[] {
-  const all = Object.values(read()).sort((a, b) => (b.publishedAt ?? b.updatedAt) - (a.publishedAt ?? a.updatedAt));
-  if (!opts.status || opts.status === "all") return all;
-  return all.filter(p => p.status === opts.status);
+// effectiveStatus folds time-of-read into the persisted status. A post saved
+// as "scheduled" with scheduledFor in the past is treated as "published" by
+// every consumer (storefront, RSS, listings) — no cron needed.
+export function effectiveStatus(post: BlogPost, nowMs: number = Date.now()): PostStatus {
+  if (post.status === "scheduled" && post.scheduledFor != null && post.scheduledFor <= nowMs) {
+    return "published";
+  }
+  return post.status;
 }
 
+export function listPosts(opts: { status?: PostStatus | "all" } = {}): BlogPost[] {
+  const now = Date.now();
+  const all = Object.values(read()).sort((a, b) => (b.publishedAt ?? b.updatedAt) - (a.publishedAt ?? a.updatedAt));
+  if (!opts.status || opts.status === "all") return all;
+  return all.filter(p => effectiveStatus(p, now) === opts.status);
+}
+
+// Public-facing list: only posts whose effective status is "published",
+// sorted newest-first by publishedAt (fallback to scheduledFor / updatedAt).
 export function listPublished(): BlogPost[] {
   const now = Date.now();
-  return listPosts().filter(p => p.status === "published" || (p.status === "scheduled" && (p.scheduledFor ?? Infinity) <= now));
+  return Object.values(read())
+    .filter(p => effectiveStatus(p, now) === "published")
+    .sort((a, b) => {
+      const av = a.publishedAt ?? a.scheduledFor ?? a.updatedAt;
+      const bv = b.publishedAt ?? b.scheduledFor ?? b.updatedAt;
+      return bv - av;
+    });
 }
+
+// Alias matching the spec ("listPublishedPosts").
+export const listPublishedPosts = listPublished;
 
 export function getPost(id: string): BlogPost | null {
   return read()[id] ?? null;
@@ -159,6 +210,7 @@ export function createPost(seed: Partial<BlogPost> = {}): BlogPost {
     category: seed.category ?? "Journal",
     author: seed.author ?? "Felicia",
     readTime: seed.readTime ?? "3 min read",
+    tags: seed.tags ?? [],
     status: seed.status ?? "draft",
     featured: seed.featured ?? false,
     publishedAt: seed.publishedAt,
@@ -183,11 +235,22 @@ export function updatePost(id: string, patch: Partial<BlogPost>) {
 }
 
 export function publishPost(id: string) {
-  updatePost(id, { status: "published", publishedAt: Date.now() });
+  // Publishing now clears any future-dated schedule.
+  updatePost(id, { status: "published", publishedAt: Date.now(), scheduledFor: undefined });
 }
 
 export function unpublishPost(id: string) {
   updatePost(id, { status: "draft" });
+}
+
+// Renamed to avoid colliding with `saveDraft` in admin/theme.ts when both
+// modules are re-exported from src/portal/website/index.ts.
+export function saveBlogDraft(id: string) {
+  updatePost(id, { status: "draft", scheduledFor: undefined });
+}
+
+export function schedulePost(id: string, whenMs: number) {
+  updatePost(id, { status: "scheduled", scheduledFor: whenMs, publishedAt: undefined });
 }
 
 export function deletePost(id: string) {
@@ -202,6 +265,42 @@ export function setFeatured(id: string) {
   for (const p of Object.values(s)) p.featured = false;
   s[id].featured = true;
   write(s);
+}
+
+// Strip HTML tags / markdown decoration and count whitespace-separated words.
+// Cheap; works for the editor's word-count UI and the reading-time estimate.
+export function wordCount(body: string): number {
+  if (!body) return 0;
+  const text = body
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#*_>`~\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return 0;
+  return text.split(/\s+/).length;
+}
+
+// Average adult reading speed ~225 wpm; clamp to a 1-min minimum.
+export function estimatedReadTime(body: string): { minutes: number; label: string } {
+  const words = wordCount(body);
+  const minutes = Math.max(1, Math.round(words / 225));
+  return { minutes, label: `${minutes} min read` };
+}
+
+// Comma-separated input → trimmed, lowercased, deduplicated tag list.
+export function parseTags(raw: string): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const t = part.trim().toLowerCase();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
 }
 
 export function onBlogChange(handler: () => void): () => void {

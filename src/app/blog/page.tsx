@@ -86,8 +86,17 @@ export default function BlogPage() {
                   <p className="text-brand-cream/55 text-base leading-relaxed max-w-2xl mb-6">
                     {featured.excerpt}
                   </p>
+                  {featured.tags && featured.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-5">
+                      {featured.tags.slice(0, 4).map(t => (
+                        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/8">
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-4 text-xs text-brand-cream/30 tracking-wide">
-                    <span>{featured.publishedAt ? new Date(featured.publishedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "Recent"}</span>
+                    <span>{featured.publishedAt ? new Date(featured.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "Recent"}</span>
                     <span>·</span>
                     <span>{featured.readTime}</span>
                     <span className="ml-2 text-brand-orange group-hover:translate-x-1 transition-transform inline-block">Read →</span>
@@ -97,7 +106,7 @@ export default function BlogPage() {
             )}
 
             {rest.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
                 {rest.map(post => (
                   <Link
                     key={post.id}
@@ -118,8 +127,17 @@ export default function BlogPage() {
                       <p className="text-brand-cream/50 text-sm leading-relaxed line-clamp-3">
                         {post.excerpt}
                       </p>
+                      {post.tags && post.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {post.tags.slice(0, 3).map(t => (
+                            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/8">
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex items-center gap-3 text-xs text-brand-cream/30 tracking-wide pt-2 border-t border-white/5">
-                        <span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "Recent"}</span>
+                        <span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "Recent"}</span>
                         <span>·</span>
                         <span>{post.readTime}</span>
                       </div>
@@ -129,9 +147,15 @@ export default function BlogPage() {
               </div>
             )}
 
-            <div className="flex flex-col items-center text-center py-10 border-t border-white/5">
-              <p className="text-brand-cream/30 text-sm mb-1">More stories coming soon.</p>
+            <div className="flex flex-col items-center text-center py-10 border-t border-white/5 gap-2">
+              <p className="text-brand-cream/30 text-sm">More stories coming soon.</p>
               <p className="text-brand-cream/20 text-xs">Follow us on Instagram for the latest from Accra.</p>
+              <a
+                href="/blog/rss.xml"
+                className="mt-2 inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-brand-amber/70 hover:text-brand-amber"
+              >
+                <span aria-hidden>◉</span> Subscribe via RSS
+              </a>
             </div>
           </div>
         </section>
