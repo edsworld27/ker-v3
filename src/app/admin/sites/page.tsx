@@ -68,6 +68,25 @@ interface AdminContentState {
   updatedAt: number;
 }
 
+// Manifest schema shape — mirrors src/portal/server/types.ts. Inlined for
+// the same reason as the Heartbeat/Tracker types above (the page is a
+// client component and shouldn't import server-only modules).
+interface ManifestField {
+  type: OverrideType;
+  default: string;
+  description?: string;
+  multiline?: boolean;
+}
+
+type ManifestSchema = Record<string, Record<string, ManifestField>>;
+
+interface AdminSiteManifestSchema {
+  siteId: string;
+  schema: ManifestSchema;
+  uploadedAt: number;
+  uploadedFrom?: string;
+}
+
 const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
   "text":      "Text",
   "html":      "HTML",
@@ -771,8 +790,46 @@ function TrackerRow({ tracker, onPatch, onDelete }: {
 // (via [data-portal-edit] in the markup), plus any keys the admin has
 // added manually. Saves the override map to /api/portal/content/[siteId]
 // with a 750ms debounce so the admin can keep typing.
+//
+// When a portal.config.ts schema has been uploaded for this site (D-1),
+// we render the grouped schema-driven editor instead — same save path,
+// nicer UX. Otherwise this falls back to the flat list (Phase C).
 
 function ContentOverridesBlock({ siteId }: { siteId: string }) {
+  const [schema, setSchema] = useState<AdminSiteManifestSchema | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/schema/${encodeURIComponent(siteId)}?admin=1`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminSiteManifestSchema | null;
+        if (!cancelled) setSchema(data);
+      } catch { if (!cancelled) setSchema(null); }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Wait for the schema probe to settle before deciding which UI to show
+  // — flashing the flat editor and then swapping in the grouped one looks
+  // jarring. Schema endpoint is fast and cached so this rarely takes
+  // longer than a frame or two.
+  if (schema === undefined) {
+    return (
+      <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-[11px] text-brand-cream/40">
+        Loading content editor…
+      </div>
+    );
+  }
+  if (schema && Object.keys(schema.schema).length > 0) {
+    return <SchemaGroupedOverrides siteId={siteId} schema={schema} />;
+  }
+  return <FlatContentOverridesBlock siteId={siteId} />;
+}
+
+function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
   const [state, setState] = useState<AdminContentState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -999,6 +1056,218 @@ function OverrideRow({ keyName, type, value, discovered, hasOverride, onChangeTy
         />
       )}
       <p className="text-[10px] text-brand-cream/30 truncate" title={seenLabel}>{seenLabel}</p>
+    </div>
+  );
+}
+
+// ─── Schema-grouped overrides (D-1) ────────────────────────────────────────
+//
+// When the host site has uploaded a portal.config.ts via the CLI, the
+// admin gets a structured editor: one card per top-level section, every
+// field shown in the order the schema declared. Saves go through the
+// same /api/portal/content/[siteId] endpoint as the flat editor — the
+// override store is the source of truth for *values*, the schema only
+// adds structure and defaults.
+
+function SchemaGroupedOverrides({ siteId, schema }: {
+  siteId: string;
+  schema: AdminSiteManifestSchema;
+}) {
+  const [state, setState] = useState<AdminContentState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}?admin=1`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminContentState;
+        if (!cancelled) setState(data);
+      } catch {} finally { if (!cancelled) setLoading(false); }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Auto-save with the same 750ms debounce as the flat editor.
+  useEffect(() => {
+    if (!dirty || !state) return;
+    const id = setTimeout(async () => {
+      setSaving(true);
+      const overrides = Object.entries(state.overrides).map(([key, o]) => ({
+        key, value: o.value, type: o.type,
+      }));
+      try {
+        const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ overrides }),
+        });
+        if (res.ok) { setSavedAt(Date.now()); setDirty(false); }
+      } catch {} finally { setSaving(false); }
+    }, 750);
+    return () => clearTimeout(id);
+  }, [dirty, state, siteId]);
+
+  function setOverrideValue(flatKey: string, value: string, type: OverrideType) {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev.overrides };
+      if (value === "") {
+        delete next[flatKey];           // empty = clear (matches server semantics)
+      } else {
+        next[flatKey] = { value, type, updatedAt: Date.now() };
+      }
+      return { ...prev, overrides: next };
+    });
+    setDirty(true);
+  }
+
+  // Counts for the header — total fields, count overridden away from default.
+  const sections = Object.entries(schema.schema);
+  const totalFields = sections.reduce((n, [, fields]) => n + Object.keys(fields).length, 0);
+  let overriddenCount = 0;
+  for (const [section, fields] of sections) {
+    for (const [key, field] of Object.entries(fields)) {
+      const o = state?.overrides[`${section}.${key}`];
+      if (o && o.value !== "" && o.value !== field.default) overriddenCount += 1;
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Content</p>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-orange/15 text-brand-orange font-semibold uppercase tracking-wider">Manifest</span>
+        <Tip text="This site uploaded a portal.config.ts schema, so the editor is grouped by section and pre-populated with defaults. Saving still writes to the same override store as the flat editor — host code that already uses [data-portal-edit] keeps working." />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : `${overriddenCount}/${totalFields} overridden`}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-4">
+        <p className="text-[11px] text-brand-cream/45 leading-relaxed">
+          Schema uploaded {schema.uploadedFrom ? <>via <code className="font-mono text-brand-cream/65">{schema.uploadedFrom}</code> </> : null}
+          {schema.uploadedAt ? `${formatAge(Date.now() - schema.uploadedAt)}` : "recently"}.
+          Re-run <code className="font-mono text-brand-cream/65">portal-sync</code> to update.
+        </p>
+
+        {sections.map(([section, fields]) => (
+          <SchemaSectionCard
+            key={section}
+            section={section}
+            fields={fields}
+            overrides={state?.overrides ?? {}}
+            onChange={setOverrideValue}
+          />
+        ))}
+
+        <p className="text-[10px] text-brand-cream/30">
+          Empty values fall back to the schema default. Use <strong>Reset</strong> to clear an override explicitly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SchemaSectionCard({ section, fields, overrides, onChange }: {
+  section: string;
+  fields: Record<string, ManifestField>;
+  overrides: Record<string, ContentOverride>;
+  onChange: (flatKey: string, value: string, type: OverrideType) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/30 overflow-hidden">
+      <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-cream/70">{section}</p>
+      </div>
+      <div className="p-3 space-y-3">
+        {Object.entries(fields).map(([key, field]) => {
+          const flatKey = `${section}.${key}`;
+          const override = overrides[flatKey];
+          return (
+            <SchemaFieldRow
+              key={flatKey}
+              flatKey={flatKey}
+              field={field}
+              override={override}
+              onChange={(v) => onChange(flatKey, v, field.type)}
+              onReset={() => onChange(flatKey, "", field.type)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SchemaFieldRow({ flatKey, field, override, onChange, onReset }: {
+  flatKey: string;
+  field: ManifestField;
+  override: ContentOverride | undefined;
+  onChange: (value: string) => void;
+  onReset: () => void;
+}) {
+  const hasOverride = !!override && override.value !== "";
+  const isDifferent = hasOverride && override.value !== field.default;
+  const value = hasOverride ? override.value : field.default;
+  const useTextarea = field.type === "text" || field.type === "html" || field.multiline;
+
+  return (
+    <div className="rounded-lg border border-white/5 bg-brand-black/40 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="font-mono text-xs text-brand-cream bg-white/5 px-2 py-1 rounded border border-white/10 flex-1 min-w-0 truncate" title={flatKey}>
+          {flatKey}
+        </code>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/65 border border-white/10 shrink-0">
+          {OVERRIDE_TYPE_LABEL[field.type]}
+        </span>
+        {field.multiline && (
+          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10 shrink-0">
+            multiline
+          </span>
+        )}
+        {isDifferent && (
+          <button
+            onClick={onReset}
+            className="text-[11px] px-2 py-1 rounded-lg border border-white/15 text-brand-cream/55 hover:text-brand-cream hover:border-white/30 shrink-0"
+            title={`Reset to default: ${field.default}`}
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      {field.description && (
+        <p className="text-[11px] text-brand-cream/45 leading-relaxed">{field.description}</p>
+      )}
+      {useTextarea ? (
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={field.type === "html" ? 3 : 2}
+          placeholder={field.default}
+          className={INPUT + " font-mono text-xs"}
+        />
+      ) : (
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={field.default}
+          className={INPUT + " font-mono text-xs"}
+        />
+      )}
+      {!isDifferent && (
+        <p className="text-[10px] text-brand-cream/30">
+          {hasOverride ? "matches default" : "showing default"}
+        </p>
+      )}
     </div>
   );
 }
