@@ -32,6 +32,14 @@ import analytics from "./analytics";
 import email from "./email";
 import i18n from "./i18n";
 import subscriptions from "./subscriptions";
+import webhooks from "./webhooks";
+import memberships from "./memberships";
+import reservations from "./reservations";
+import donations from "./donations";
+import crm from "./crm";
+import affiliates from "./affiliates";
+import livechat from "./livechat";
+import auditlog from "./auditlog";
 
 // First-party plugins. Order is presentation-only (marketplace
 // rendering); install dependencies are enforced by the runtime.
@@ -41,15 +49,23 @@ const PLUGINS: AquaPlugin[] = [
   ecommerce,
   subscriptions,
   blog,
+  memberships,
+  reservations,
+  donations,
   email,
   forms,
   chatbot,
+  livechat,
   seo,
   analytics,
   funnels,
+  affiliates,
+  crm,
   compliance,
   support,
   auditor,
+  auditlog,
+  webhooks,
   repo,
   i18n,
 ];

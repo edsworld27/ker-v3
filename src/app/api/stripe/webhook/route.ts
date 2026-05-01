@@ -67,6 +67,8 @@ import {
   type ServerOrderItem,
 } from "@/portal/server/orders";
 import { sendEmail } from "@/portal/server/email";
+import { emit } from "@/portal/server/eventBus";
+import "@/portal/server/webhooks"; // ensure event bus is wired
 
 export const runtime = "nodejs";
 
@@ -185,6 +187,10 @@ export async function POST(req: Request) {
         }).catch(err => console.error("[stripe/webhook] order-confirmation email failed:", err));
       }
 
+      // Emit events so subscribed webhooks fire too.
+      emit(orgId, "order.created", { orderId: order.id, amountTotal: order.amountTotal, currency: order.currency });
+      emit(orgId, "order.paid",    { orderId: order.id, amountTotal: order.amountTotal, currency: order.currency });
+
       console.info("[stripe/webhook] order persisted", { orderId: order.id, sessionId: session.id });
       break;
     }
@@ -202,6 +208,9 @@ export async function POST(req: Request) {
             text: `Your refund for order ${refunded.id} has been issued. It may take 5–10 business days to appear on your statement.`,
             tags: ["refund", `org:${refunded.orgId}`],
           }).catch(err => console.error("[stripe/webhook] refund email failed:", err));
+        }
+        if (refunded) {
+          emit(refunded.orgId, "order.refunded", { orderId: refunded.id });
         }
         console.info("[stripe/webhook] charge.refunded", { id: charge.id, orderId: refunded?.id });
       }

@@ -12,6 +12,8 @@ import crypto from "crypto";
 import { ensureHydrated } from "@/portal/server/storage";
 import { recordSubmission, getFormsConfig } from "@/portal/server/formSubmissions";
 import { sendEmail } from "@/portal/server/email";
+import { emit } from "@/portal/server/eventBus";
+import "@/portal/server/webhooks"; // ensure event bus is wired
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,6 +91,13 @@ export async function POST(req: NextRequest) {
       }),
     }).catch(() => undefined);
   }
+
+  // Emit event so Webhooks plugin (and future listeners) can react.
+  emit(orgId, "form.submitted", {
+    submissionId: submission.id,
+    formName,
+    fields,
+  });
 
   return NextResponse.json({ ok: true, id: submission.id });
 }
