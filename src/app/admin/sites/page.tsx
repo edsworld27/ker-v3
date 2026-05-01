@@ -11,6 +11,39 @@ import Tip from "@/components/admin/Tip";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
+// Shape returned by GET /api/portal/heartbeats. Kept inline so the client
+// page doesn't import server-only modules.
+interface Heartbeat {
+  siteId: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  beats: number;
+  lastUrl?: string;
+  lastTitle?: string;
+  lastReferrer?: string;
+  lastEvent?: string;
+}
+
+type ConnectionState = "live" | "stale" | "never";
+
+const LIVE_WINDOW_MS = 90 * 1000;            // ≤90s ago → green dot
+const STALE_WINDOW_MS = 24 * 60 * 60 * 1000; // ≤24h ago → amber dot
+
+function connectionState(beat: Heartbeat | undefined, now: number): ConnectionState {
+  if (!beat) return "never";
+  const age = now - beat.lastSeenAt;
+  if (age <= LIVE_WINDOW_MS) return "live";
+  if (age <= STALE_WINDOW_MS) return "stale";
+  return "never";
+}
+
+function formatAge(ms: number): string {
+  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
+  return `${Math.round(ms / 86_400_000)}d ago`;
+}
+
 export default function AdminSitesPage() {
   const [sites,  setSites]  = useState<Site[]>([]);
   const [active, setActive] = useState<string>("");
@@ -19,6 +52,9 @@ export default function AdminSitesPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDomain, setNewDomain] = useState("");
+  const [heartbeats, setHeartbeats] = useState<Record<string, Heartbeat>>({});
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [portalOrigin, setPortalOrigin] = useState<string>("");
 
   function refresh() {
     setSites(listSites());
@@ -29,6 +65,32 @@ export default function AdminSitesPage() {
   useEffect(() => {
     refresh();
     return onSitesChange(refresh);
+  }, []);
+
+  // Capture the portal origin once so the install snippet always reflects
+  // the actual deployment URL the admin is using.
+  useEffect(() => {
+    if (typeof window !== "undefined") setPortalOrigin(window.location.origin);
+  }, []);
+
+  // Poll heartbeats every 10s while the page is mounted; also drift `now`
+  // each second so age labels stay fresh.
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch("/api/portal/heartbeats", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { heartbeats: Heartbeat[] };
+        const map: Record<string, Heartbeat> = {};
+        for (const h of data.heartbeats) map[h.siteId] = h;
+        setHeartbeats(map);
+      } catch { /* offline / dev-server hop — keep last snapshot */ }
+    }
+    pull();
+    const pollId = setInterval(pull, 10_000);
+    const tickId = setInterval(() => setNow(Date.now()), 1_000);
+    return () => { cancelled = true; clearInterval(pollId); clearInterval(tickId); };
   }, []);
 
   function handleCreate() {
@@ -101,6 +163,9 @@ export default function AdminSitesPage() {
             isActive={site.id === active}
             isOpen={editingId === site.id}
             variants={variants}
+            heartbeat={heartbeats[site.id]}
+            now={now}
+            portalOrigin={portalOrigin}
             onToggle={() => setEditingId(editingId === site.id ? null : site.id)}
           />
         ))}
@@ -116,10 +181,18 @@ export default function AdminSitesPage() {
   );
 }
 
-function SiteRow({ site, isActive, isOpen, variants, onToggle }: {
-  site: Site; isActive: boolean; isOpen: boolean; variants: ThemeVariant[]; onToggle: () => void;
+function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigin, onToggle }: {
+  site: Site;
+  isActive: boolean;
+  isOpen: boolean;
+  variants: ThemeVariant[];
+  heartbeat: Heartbeat | undefined;
+  now: number;
+  portalOrigin: string;
+  onToggle: () => void;
 }) {
   const [domain, setDomain] = useState("");
+  const conn = connectionState(heartbeat, now);
 
   function handleAddDomain() {
     if (!domain.trim()) return;
@@ -146,6 +219,7 @@ function SiteRow({ site, isActive, isOpen, variants, onToggle }: {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${site.status === "live" ? "bg-green-500/20 text-green-400" : "bg-white/8 text-brand-cream/40"}`}>
               {site.status}
             </span>
+            <ConnectionDot state={conn} heartbeat={heartbeat} now={now} />
           </div>
           <p className="text-[11px] text-brand-cream/45 truncate font-mono mt-0.5">
             {site.domains.length === 0 ? "no domains yet" : site.domains.join(" · ")}
@@ -251,6 +325,9 @@ function SiteRow({ site, isActive, isOpen, variants, onToggle }: {
             </div>
           </div>
 
+          {/* Portal connection — install snippet + heartbeat status */}
+          <PortalSnippet site={site} portalOrigin={portalOrigin} heartbeat={heartbeat} now={now} state={conn} />
+
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {!site.isPrimary && (
@@ -291,6 +368,111 @@ function Field({ label, tip, children }: { label: string; tip?: string; children
         {tip && <Tip text={tip} />}
       </label>
       {children}
+    </div>
+  );
+}
+
+// ─── Portal connection ──────────────────────────────────────────────────────
+
+function ConnectionDot({ state, heartbeat, now }: {
+  state: ConnectionState;
+  heartbeat: Heartbeat | undefined;
+  now: number;
+}) {
+  const colour = state === "live"
+    ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]"
+    : state === "stale"
+      ? "bg-brand-amber"
+      : "bg-white/15";
+  const label = state === "live" ? "Live"
+    : state === "stale" ? "Stale"
+    : "Not connected";
+  const subtitle = heartbeat
+    ? `last seen ${formatAge(now - heartbeat.lastSeenAt)}`
+    : "tag never reported in";
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-cream/60"
+      title={subtitle}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${colour}`} />
+      <span className="font-semibold uppercase tracking-wider">{label}</span>
+    </span>
+  );
+}
+
+function PortalSnippet({ site, portalOrigin, heartbeat, now, state }: {
+  site: Site;
+  portalOrigin: string;
+  heartbeat: Heartbeat | undefined;
+  now: number;
+  state: ConnectionState;
+}) {
+  const origin = portalOrigin || "https://your-portal.example";
+  const snippet = `<script src="${origin}/portal/tag.js" data-site="${site.id}" defer></script>`;
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* clipboard blocked — fall back: select-all the textarea */ }
+  }
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Portal connection</p>
+        <Tip text="Drop this single tag into the <head> of your site. It pings the portal so you see a live connection here, and is the same loader that will carry tracking modules and content overrides in the next phases — you only paste it once." />
+        <span className="ml-auto"><ConnectionDot state={state} heartbeat={heartbeat} now={now} /></span>
+      </div>
+      <div className="p-4 space-y-3">
+        <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+          Paste this into the <code className="font-mono text-brand-cream/80">&lt;head&gt;</code> of <strong className="text-brand-cream">{site.name}</strong>.
+          Once the page loads, the dot above flips to <span className="text-green-400 font-semibold">Live</span>.
+        </p>
+        <div className="relative">
+          <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 pr-20 overflow-x-auto text-brand-cream/85">
+{snippet}
+          </pre>
+          <button
+            onClick={copy}
+            className="absolute top-2 right-2 text-[11px] px-2 py-1 rounded-md bg-brand-orange/20 border border-brand-orange/30 text-brand-orange hover:bg-brand-orange/30 font-semibold"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+        {heartbeat ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <Stat label="Beats" value={heartbeat.beats.toLocaleString()} />
+            <Stat label="Last seen" value={formatAge(now - heartbeat.lastSeenAt)} />
+            <Stat label="First seen" value={formatAge(now - heartbeat.firstSeenAt)} />
+            <Stat label="Last event" value={heartbeat.lastEvent ?? "—"} />
+            {heartbeat.lastUrl && (
+              <p className="col-span-full text-brand-cream/40 truncate font-mono">
+                {heartbeat.lastUrl}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-brand-cream/40 italic">
+            Waiting for first heartbeat. After installing the snippet, load any page and refresh here within ~10 seconds.
+          </p>
+        )}
+        <p className="text-[10px] text-brand-cream/30">
+          Heartbeats are stored in memory and reset when the server restarts. Persistence ships with Phase B (tracking config).
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-2.5 py-2 rounded-lg bg-brand-black border border-white/5">
+      <p className="text-[9px] uppercase tracking-wider text-brand-cream/40">{label}</p>
+      <p className="text-[12px] text-brand-cream font-medium truncate">{value}</p>
     </div>
   );
 }
