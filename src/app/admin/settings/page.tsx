@@ -1,15 +1,99 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getActiveOrgId } from "@/lib/admin/orgs";
+
+interface InstalledPlugin {
+  pluginId: string;
+  enabled: boolean;
+  installedAt: number;
+}
+interface RegistryPlugin {
+  id: string; name: string; tagline: string; category: string; core: boolean;
+}
+
 export default function AdminSettingsPage() {
+  const [installs, setInstalls] = useState<InstalledPlugin[]>([]);
+  const [registry, setRegistry] = useState<RegistryPlugin[]>([]);
+  const [orgId, setOrgId] = useState<string>("agency");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const id = getActiveOrgId();
+      if (cancelled) return;
+      setOrgId(id);
+      try {
+        const [r, i] = await Promise.all([
+          fetch("/api/portal/plugins").then(x => x.json()),
+          fetch(`/api/portal/orgs/${id}/plugins`).then(x => x.json()),
+        ]);
+        if (cancelled) return;
+        setRegistry(r.plugins ?? []);
+        setInstalls(i.installs ?? []);
+      } catch { /* noop */ }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const installedMeta = installs
+    .map(i => ({ install: i, meta: registry.find(p => p.id === i.pluginId) }))
+    .filter((x): x is { install: InstalledPlugin; meta: RegistryPlugin } => Boolean(x.meta));
+
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-3xl">
       <div>
         <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Settings</p>
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Integrations</h1>
         <p className="text-brand-cream/55 text-sm mt-1">
-          What needs wiring before this admin runs in production.
+          What's installed for this portal and what still needs wiring.
         </p>
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/55">Installed plugins</h2>
+          <Link
+            href={`/aqua/${orgId}/marketplace`}
+            className="text-[11px] text-cyan-300/80 hover:text-cyan-200"
+          >
+            Open marketplace →
+          </Link>
+        </div>
+        {installedMeta.length === 0 ? (
+          <p className="text-[12px] text-brand-cream/45">
+            No plugins installed yet. Open the marketplace to add them.
+          </p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-2">
+            {installedMeta.map(({ install, meta }) => (
+              <article
+                key={install.pluginId}
+                className={`rounded-xl border p-3 flex items-start justify-between gap-2 ${
+                  install.enabled ? "border-white/10 bg-white/[0.02]" : "border-white/5 bg-white/[0.01] opacity-60"
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[13px] text-brand-cream truncate">{meta.name}</p>
+                    {meta.core && <span className="text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-cyan-400/15 text-cyan-300">core</span>}
+                    {!install.enabled && <span className="text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-white/5 text-brand-cream/45">disabled</span>}
+                  </div>
+                  <p className="text-[11px] text-brand-cream/55 line-clamp-2">{meta.tagline}</p>
+                </div>
+                <Link
+                  href={`/aqua/${orgId}/plugins/${install.pluginId}`}
+                  className="text-[11px] text-cyan-300/80 hover:text-cyan-200 shrink-0"
+                >
+                  Configure →
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <Section
         title="Stripe"

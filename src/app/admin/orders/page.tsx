@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { listOrders, type Order, type OrderStatus } from "@/lib/admin/orders";
 import { listAllSources, type OrderSource } from "@/lib/admin/marketing";
 import { StatusPill } from "../page";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const FILTERS: { id: "all" | OrderStatus; label: string }[] = [
   { id: "all",       label: "All" },
@@ -54,6 +55,10 @@ function rangeBounds(preset: RangePreset, customFrom?: string, customTo?: string
 }
 
 export default function AdminOrdersPage() {
+  return <PluginRequired plugin="ecommerce"><AdminOrdersPageInner /></PluginRequired>;
+}
+
+function AdminOrdersPageInner() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [sources, setSources] = useState<OrderSource[]>([]);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");

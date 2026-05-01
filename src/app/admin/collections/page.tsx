@@ -8,8 +8,13 @@ import {
   onCollectionsChange,
   type Collection,
 } from "@/lib/admin/collections";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminCollectionsPage() {
+  return <PluginRequired plugin="ecommerce"><AdminCollectionsPageInner /></PluginRequired>;
+}
+
+function AdminCollectionsPageInner() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [editing, setEditing] = useState<Collection | null>(null);
   const [isNew, setIsNew] = useState(false);

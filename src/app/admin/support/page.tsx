@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { listTickets, onTicketsChange, type Ticket, type TicketStatus } from "@/lib/admin/tickets";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const STATUS_FILTERS: (TicketStatus | "all")[] = ["all", "open", "pending", "resolved", "closed"];
 
 export default function AdminSupportPage() {
+  return <PluginRequired plugin="support"><AdminSupportPageInner /></PluginRequired>;
+}
+
+function AdminSupportPageInner() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filter, setFilter] = useState<TicketStatus | "all">("open");
 

@@ -99,6 +99,10 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
         },
         { type: "link", id: "shipping", label: "Shipping", href: "/admin/shipping", resource: "shipping" },
         { type: "link", id: "support",  label: "Support",  href: "/admin/support",  resource: "support",  badgeKey: "tickets" },
+        // Plugin contributions — only visible when their plugin is installed
+        // for the active org (see installedPlugins / isPathAllowed filtering).
+        { type: "link", id: "analytics", label: "Analytics", href: "/admin/analytics", resource: "marketing" },
+        { type: "link", id: "email",    label: "Email",     href: "/admin/email",     resource: "marketing" },
       ],
     },
     {

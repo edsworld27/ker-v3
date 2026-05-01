@@ -8,8 +8,13 @@ import {
   onShippingChange, type ShippingConfig,
 } from "@/lib/admin/shipping";
 import Tip from "@/components/admin/Tip";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminShippingPage() {
+  return <PluginRequired plugin="ecommerce" feature="shipping"><AdminShippingPageInner /></PluginRequired>;
+}
+
+function AdminShippingPageInner() {
   const [cfg, setCfg] = useState<ShippingConfig | null>(null);
 
   useEffect(() => {

@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import Tip from "@/components/admin/Tip";
 import type { ComplianceMode, ComplianceSettings } from "@/portal/server/types";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -83,6 +84,10 @@ const MODES: Array<{
 ];
 
 export default function AdminCompliancePage() {
+  return <PluginRequired plugin="compliance"><AdminCompliancePageInner /></PluginRequired>;
+}
+
+function AdminCompliancePageInner() {
   const [data, setData] = useState<ComplianceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

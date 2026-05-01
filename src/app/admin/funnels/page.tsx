@@ -6,6 +6,7 @@ import {
   funnelConversionRate, onFunnelsChange,
   type Funnel, type FunnelStep, type FunnelStatus, type StepType,
 } from "@/lib/admin/funnels";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const STATUS_STYLE: Record<FunnelStatus, string> = {
   active: "bg-green-500/20 text-green-400",
@@ -148,6 +149,10 @@ function FunnelModal({ funnel, onClose }: { funnel: Partial<Funnel> | null; onCl
 }
 
 export default function AdminFunnelsPage() {
+  return <PluginRequired plugin="funnels" feature="funnels"><AdminFunnelsPageInner /></PluginRequired>;
+}
+
+function AdminFunnelsPageInner() {
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [modal, setModal] = useState<Partial<Funnel> | null | false>(false);
 

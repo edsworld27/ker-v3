@@ -10,8 +10,13 @@ import {
 } from "@/lib/admin/content";
 import { listMedia, onMediaChange, type MediaItem } from "@/lib/admin/media";
 import { listPages, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminWebsitePage() {
+  return <PluginRequired plugin="website"><AdminWebsitePageInner /></PluginRequired>;
+}
+
+function AdminWebsitePageInner() {
   const [store, setStore] = useState<ContentStore>({});
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [pages, setPages] = useState<CustomPage[]>([]);

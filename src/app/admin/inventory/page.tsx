@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { adjustStock, listInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminInventoryPage() {
+  return <PluginRequired plugin="ecommerce" feature="inventory"><AdminInventoryPageInner /></PluginRequired>;
+}
+
+function AdminInventoryPageInner() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [query, setQuery] = useState("");
 

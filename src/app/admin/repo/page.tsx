@@ -10,12 +10,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 interface TreeItem { type: "file" | "dir"; name: string; path: string; sha?: string; size?: number }
 interface TreeResponse { ok: boolean; ref?: string; path?: string; items?: TreeItem[]; error?: string }
 interface FileResponse { ok: boolean; path?: string; ref?: string; sha?: string; size?: number; content?: string; error?: string }
 
 export default function RepoBrowser() {
+  return <PluginRequired plugin="repo"><RepoBrowserInner /></PluginRequired>;
+}
+
+function RepoBrowserInner() {
   const [path, setPath] = useState("");
   const [items, setItems] = useState<TreeItem[]>([]);
   const [openFile, setOpenFile] = useState<{ path: string; sha?: string; content: string } | null>(null);

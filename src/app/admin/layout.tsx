@@ -18,6 +18,9 @@ import {
   type SidebarLayout, type SidebarPanel, type SidebarItem, type SidebarGroup,
   type SidebarLink, type BadgeKey,
 } from "@/lib/admin/sidebarLayout";
+import {
+  isPathAllowed, onInstalledPluginsChange, refreshInstalledPlugins,
+} from "@/lib/admin/installedPlugins";
 import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
 import CommandPalette from "@/components/admin/CommandPalette";
@@ -93,10 +96,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const off2 = onTicketsChange(refresh);
     const off3 = onAffiliatesChange(refresh);
     const off4 = onSidebarLayoutChange(() => setLayout(getSidebarLayout()));
+    void refreshInstalledPlugins();
+    const off5 = onInstalledPluginsChange(() => {
+      // Bump the layout reference so panels re-filter through isPathAllowed.
+      setLayout(prev => ({ ...prev }));
+    });
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
-      off0(); off1(); off2(); off3(); off4();
+      off0(); off1(); off2(); off3(); off4(); off5();
     };
   }, [pathname]);
 
@@ -180,10 +188,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return acc;
   }, {});
 
-  // Decide which panels are visible to this user (any descendant link viewable → panel viewable).
+  // Decide which panels are visible to this user. A panel shows if at
+  // least one descendant link is both (a) permitted by the team-perms
+  // gate AND (b) belongs to a plugin that's installed + enabled on the
+  // active org. Primary (agency) orgs see every link regardless.
   const visiblePanels = layout.panels.filter(panel => {
     for (const link of walkLinks(panel.items)) {
-      if (canView(link.resource)) return true;
+      if (canView(link.resource) && isPathAllowed(link.href)) return true;
     }
     return false;
   });
@@ -482,6 +493,7 @@ function SidebarItemRow({
 }) {
   if (item.type === "link") {
     if (!canView(item.resource)) return null;
+    if (!isPathAllowed(item.href)) return null;
     return <SidebarLinkRow link={item} pathname={pathname} counters={counters} depth={depth} />;
   }
   return (
@@ -556,10 +568,12 @@ function SidebarGroupRow({
   counters: Counters;
   canView: (r: Resource | undefined) => boolean;
 }) {
-  // A child folder is visible if any of its descendant links is viewable.
+  // A child folder is visible if any of its descendant links is both
+  // permitted by team-perms AND belongs to a plugin installed on the
+  // active org (primary org always sees all).
   const visibleChildren = group.items.filter(child => {
     for (const link of walkLinks([child])) {
-      if (canView(link.resource)) return true;
+      if (canView(link.resource) && isPathAllowed(link.href)) return true;
     }
     return false;
   });

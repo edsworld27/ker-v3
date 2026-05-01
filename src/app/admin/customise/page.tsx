@@ -20,10 +20,15 @@ import {
   type SidebarLayout, type SidebarPanel, type SidebarItem,
 } from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 type Tab = "branding" | "sidebar" | "tabs" | "login" | "export";
 
 export default function AdminCustomisePage() {
+  return <PluginRequired plugin="brand"><AdminCustomisePageInner /></PluginRequired>;
+}
+
+function AdminCustomisePageInner() {
   const [tab, setTab] = useState<Tab>("branding");
   const [branding, setBranding] = useState<AdminBranding>(getBranding);
   const [tabs, setTabs] = useState<CustomTab[]>(listCustomTabs);

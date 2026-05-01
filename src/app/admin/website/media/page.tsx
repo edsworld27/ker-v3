@@ -7,10 +7,15 @@ import {
   listMedia, addMedia, deleteMedia, fileToDataUrl, formatBytes,
   onMediaChange, type MediaItem,
 } from "@/lib/admin/media";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const MAX_BYTES = 1.5 * 1024 * 1024; // 1.5 MB per image — keeps localStorage sane
 
 export default function AdminMediaPage() {
+  return <PluginRequired plugin="website"><AdminMediaPageInner /></PluginRequired>;
+}
+
+function AdminMediaPageInner() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

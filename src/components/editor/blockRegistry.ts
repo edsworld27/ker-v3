@@ -44,6 +44,30 @@ import LoginFormBlock from "./blocks/LoginFormBlock";
 import SignupFormBlock from "./blocks/SignupFormBlock";
 import ThemeSelectorBlock from "./blocks/ThemeSelectorBlock";
 import SocialAuthBlock from "./blocks/SocialAuthBlock";
+import PricingTableBlock from "./blocks/PricingTableBlock";
+import FaqBlock from "./blocks/FaqBlock";
+import ContactFormBlock from "./blocks/ContactFormBlock";
+import StatsBarBlock from "./blocks/StatsBarBlock";
+import LogoGridBlock from "./blocks/LogoGridBlock";
+import FeatureGridBlock from "./blocks/FeatureGridBlock";
+import NewsletterSignupBlock from "./blocks/NewsletterSignupBlock";
+import CountdownTimerBlock from "./blocks/CountdownTimerBlock";
+import LanguageSwitcherBlock from "./blocks/LanguageSwitcherBlock";
+import GalleryBlock from "./blocks/GalleryBlock";
+import QuoteBlock from "./blocks/QuoteBlock";
+import MapBlock from "./blocks/MapBlock";
+import BannerBlock from "./blocks/BannerBlock";
+import AuthorBioBlock from "./blocks/AuthorBioBlock";
+import MemberGateBlock from "./blocks/MemberGateBlock";
+import DonationButtonBlock from "./blocks/DonationButtonBlock";
+import TabsBlock from "./blocks/TabsBlock";
+import AccordionBlock from "./blocks/AccordionBlock";
+import TimelineBlock from "./blocks/TimelineBlock";
+import CardGridBlock from "./blocks/CardGridBlock";
+import BeforeAfterBlock from "./blocks/BeforeAfterBlock";
+import MarqueeBlock from "./blocks/MarqueeBlock";
+import AppShowcaseBlock from "./blocks/AppShowcaseBlock";
+import SocialProofBarBlock from "./blocks/SocialProofBarBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -607,6 +631,400 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "subhead", label: "Sub-headline", type: "textarea", default: "" },
       { key: "ctaLabel", label: "CTA label", type: "text", default: "Continue shopping" },
       { key: "ctaHref", label: "CTA URL", type: "url", default: "/shop" },
+    ],
+  },
+
+  // ── Marketing / content (added with the plugin platform) ───────────────
+  "pricing-table": {
+    type: "pricing-table",
+    label: "Pricing table",
+    icon: "💲",
+    category: "content",
+    isContainer: false,
+    Component: PricingTableBlock,
+    defaultProps: {
+      heading: "Simple, honest pricing",
+      subheading: "Pick the plan that fits.",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+    ],
+  },
+  "faq": {
+    type: "faq",
+    label: "FAQ",
+    icon: "?",
+    category: "content",
+    isContainer: false,
+    Component: FaqBlock,
+    defaultProps: { heading: "Frequently asked" },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "contact-form": {
+    type: "contact-form",
+    label: "Contact form",
+    icon: "✉",
+    category: "content",
+    isContainer: false,
+    Component: ContactFormBlock,
+    defaultProps: {
+      heading: "Get in touch",
+      subheading: "We'll get back to you within 1 business day.",
+      submitLabel: "Send message",
+      showPhone: true,
+      formName: "contact",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "submitLabel", label: "Submit label", type: "text" },
+      { key: "showPhone", label: "Show phone field", type: "boolean" },
+      { key: "formName", label: "Form name (admin)", type: "text" },
+    ],
+  },
+  "stats-bar": {
+    type: "stats-bar",
+    label: "Stats bar",
+    icon: "📊",
+    category: "content",
+    isContainer: false,
+    Component: StatsBarBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "logo-grid": {
+    type: "logo-grid",
+    label: "Logo grid",
+    icon: "▦",
+    category: "content",
+    isContainer: false,
+    Component: LogoGridBlock,
+    defaultProps: { heading: "As featured in", logos: [] },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "feature-grid": {
+    type: "feature-grid",
+    label: "Feature grid",
+    icon: "▥",
+    category: "content",
+    isContainer: false,
+    Component: FeatureGridBlock,
+    defaultProps: {
+      heading: "What's included",
+      columns: 3,
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "columns", label: "Columns", type: "number", default: 3 },
+    ],
+  },
+  "newsletter-signup": {
+    type: "newsletter-signup",
+    label: "Newsletter signup",
+    icon: "📧",
+    category: "content",
+    isContainer: false,
+    Component: NewsletterSignupBlock,
+    defaultProps: {
+      heading: "Stay in the loop",
+      subheading: "One email a month. New launches, no spam.",
+      submitLabel: "Subscribe",
+      successMessage: "You're in. Welcome!",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "submitLabel", label: "Submit label", type: "text" },
+      { key: "successMessage", label: "Success message", type: "text" },
+    ],
+  },
+  "countdown-timer": {
+    type: "countdown-timer",
+    label: "Countdown timer",
+    icon: "⏱",
+    category: "content",
+    isContainer: false,
+    Component: CountdownTimerBlock,
+    defaultProps: {
+      heading: "Sale ends in",
+      target: "+7d",
+      expiredText: "Sale has ended.",
+      showSeconds: true,
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "target", label: "Target (ISO date or +Nd/+Nh/+Nm)", type: "text", placeholder: "+7d" },
+      { key: "expiredText", label: "Expired text", type: "text" },
+      { key: "showSeconds", label: "Show seconds", type: "boolean" },
+    ],
+  },
+  "language-switcher": {
+    type: "language-switcher",
+    label: "Language switcher",
+    icon: "🌐",
+    category: "content",
+    isContainer: false,
+    Component: LanguageSwitcherBlock,
+    defaultProps: {
+      variant: "dropdown",
+      enabledLocales: "en,fr,es",
+    },
+    fields: [
+      { key: "variant", label: "Variant", type: "select", default: "dropdown",
+        options: [{ value: "dropdown", label: "Dropdown" }, { value: "pills", label: "Pills" }] },
+      { key: "enabledLocales", label: "Enabled locales (csv)", type: "text" },
+    ],
+  },
+  "gallery": {
+    type: "gallery",
+    label: "Gallery",
+    icon: "🖼",
+    category: "media",
+    isContainer: false,
+    Component: GalleryBlock,
+    defaultProps: { columns: 3, gap: 12, lightbox: true, photos: [] },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "columns", label: "Columns", type: "number", default: 3 },
+      { key: "gap",     label: "Gap (px)", type: "number", default: 12 },
+      { key: "lightbox", label: "Lightbox on click", type: "boolean", default: true },
+    ],
+  },
+  "quote": {
+    type: "quote",
+    label: "Quote",
+    icon: "❝",
+    category: "content",
+    isContainer: false,
+    Component: QuoteBlock,
+    defaultProps: { text: "Design is intelligence made visible.", align: "center" },
+    fields: [
+      { key: "text",   label: "Quote",   type: "textarea" },
+      { key: "author", label: "Author",  type: "text" },
+      { key: "role",   label: "Role / context", type: "text" },
+      { key: "align",  label: "Align",   type: "select", default: "center",
+        options: [{ value: "left", label: "Left" }, { value: "center", label: "Center" }] },
+    ],
+  },
+  "map": {
+    type: "map",
+    label: "Map",
+    icon: "📍",
+    category: "media",
+    isContainer: false,
+    Component: MapBlock,
+    defaultProps: { lat: 51.5074, lng: -0.1278, zoom: 14, height: 360 },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "address", label: "Address", type: "text" },
+      { key: "lat",     label: "Latitude",  type: "number" },
+      { key: "lng",     label: "Longitude", type: "number" },
+      { key: "zoom",    label: "Zoom",      type: "number", default: 14 },
+      { key: "height",  label: "Height (px)", type: "number", default: 360 },
+      { key: "iframeUrl", label: "Custom embed URL (overrides above)", type: "url" },
+    ],
+  },
+  "banner": {
+    type: "banner",
+    label: "Banner / promo strip",
+    icon: "▬",
+    category: "content",
+    isContainer: false,
+    Component: BannerBlock,
+    defaultProps: {
+      text: "Free UK shipping over £40",
+      tone: "promo",
+      dismissible: true,
+      sticky: false,
+    },
+    fields: [
+      { key: "text",       label: "Text",       type: "text" },
+      { key: "ctaLabel",   label: "CTA label",  type: "text" },
+      { key: "ctaHref",    label: "CTA URL",    type: "url" },
+      { key: "tone",       label: "Tone",       type: "select", default: "promo",
+        options: [
+          { value: "info",  label: "Info" },
+          { value: "promo", label: "Promo" },
+          { value: "alert", label: "Alert" },
+        ] },
+      { key: "dismissible", label: "Dismissible", type: "boolean", default: true },
+      { key: "sticky",      label: "Stick to top", type: "boolean", default: false },
+    ],
+  },
+  "author-bio": {
+    type: "author-bio",
+    label: "Author bio",
+    icon: "👤",
+    category: "content",
+    isContainer: false,
+    Component: AuthorBioBlock,
+    defaultProps: { name: "Felicia", role: "Founder", bio: "" },
+    fields: [
+      { key: "name",      label: "Name", type: "text" },
+      { key: "role",      label: "Role / title", type: "text" },
+      { key: "bio",       label: "Bio",  type: "textarea" },
+      { key: "avatarUrl", label: "Avatar URL", type: "url" },
+    ],
+  },
+  "member-gate": {
+    type: "member-gate",
+    label: "Member gate",
+    icon: "🔒",
+    category: "advanced",
+    isContainer: true,
+    Component: MemberGateBlock,
+    defaultProps: {
+      tier: "free",
+      lockMessage: "Members only — sign in or join to read.",
+      ctaLabel: "Sign in or join",
+      ctaHref: "/account?mode=signup",
+    },
+    fields: [
+      { key: "tier",        label: "Required tier", type: "text", default: "free" },
+      { key: "lockMessage", label: "Lock message",  type: "textarea" },
+      { key: "ctaLabel",    label: "CTA label",     type: "text" },
+      { key: "ctaHref",     label: "CTA URL",       type: "url" },
+    ],
+  },
+  "donation-button": {
+    type: "donation-button",
+    label: "Donation button",
+    icon: "♡",
+    category: "commerce",
+    isContainer: false,
+    Component: DonationButtonBlock,
+    defaultProps: {
+      heading: "Support our work",
+      subheading: "Every donation goes directly to the cause.",
+      currency: "GBP",
+      amounts: "5,10,25,50,100",
+      allowCustom: true,
+      allowRecurring: true,
+    },
+    fields: [
+      { key: "heading",        label: "Heading", type: "text" },
+      { key: "subheading",     label: "Sub-heading", type: "textarea" },
+      { key: "currency",       label: "Currency", type: "select", default: "GBP",
+        options: [
+          { value: "GBP", label: "GBP" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" },
+        ] },
+      { key: "amounts",        label: "Amounts (comma-separated)", type: "text" },
+      { key: "allowCustom",    label: "Allow custom amount", type: "boolean", default: true },
+      { key: "allowRecurring", label: "Show monthly toggle", type: "boolean", default: true },
+    ],
+  },
+  "tabs": {
+    type: "tabs",
+    label: "Tabs",
+    icon: "▤",
+    category: "content",
+    isContainer: false,
+    Component: TabsBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "accordion": {
+    type: "accordion",
+    label: "Accordion",
+    icon: "▭▭",
+    category: "content",
+    isContainer: false,
+    Component: AccordionBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "timeline": {
+    type: "timeline",
+    label: "Timeline",
+    icon: "│",
+    category: "content",
+    isContainer: false,
+    Component: TimelineBlock,
+    defaultProps: { heading: "Our story" },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "card-grid": {
+    type: "card-grid",
+    label: "Card grid",
+    icon: "▥",
+    category: "content",
+    isContainer: false,
+    Component: CardGridBlock,
+    defaultProps: { columns: 3, cards: [] },
+    fields: [
+      { key: "heading",    label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "columns",    label: "Columns", type: "number", default: 3 },
+    ],
+  },
+  "before-after": {
+    type: "before-after",
+    label: "Before / After slider",
+    icon: "↔",
+    category: "media",
+    isContainer: false,
+    Component: BeforeAfterBlock,
+    defaultProps: { beforeLabel: "Before", afterLabel: "After" },
+    fields: [
+      { key: "beforeUrl",   label: "Before image URL", type: "url" },
+      { key: "afterUrl",    label: "After image URL",  type: "url" },
+      { key: "beforeLabel", label: "Before label", type: "text" },
+      { key: "afterLabel",  label: "After label",  type: "text" },
+    ],
+  },
+  "marquee": {
+    type: "marquee",
+    label: "Marquee strip",
+    icon: "→",
+    category: "content",
+    isContainer: false,
+    Component: MarqueeBlock,
+    defaultProps: { speed: 30, items: [] },
+    fields: [
+      { key: "speed", label: "Speed (seconds per loop)", type: "number", default: 30 },
+    ],
+  },
+  "app-showcase": {
+    type: "app-showcase",
+    label: "App showcase",
+    icon: "📱",
+    category: "content",
+    isContainer: false,
+    Component: AppShowcaseBlock,
+    defaultProps: { orientation: "image-right" },
+    fields: [
+      { key: "heading",     label: "Heading", type: "text" },
+      { key: "body",        label: "Body",    type: "textarea" },
+      { key: "screenshotUrl", label: "Screenshot URL", type: "url" },
+      { key: "appStoreUrl",   label: "App Store URL",  type: "url" },
+      { key: "playStoreUrl",  label: "Google Play URL", type: "url" },
+      { key: "orientation",   label: "Orientation", type: "select", default: "image-right",
+        options: [
+          { value: "image-left",  label: "Image left" },
+          { value: "image-right", label: "Image right" },
+        ] },
+    ],
+  },
+  "social-proof-bar": {
+    type: "social-proof-bar",
+    label: "Social proof bar",
+    icon: "★",
+    category: "content",
+    isContainer: false,
+    Component: SocialProofBarBlock,
+    defaultProps: { text: "Join 12,000+ customers loving the change.", avatars: [] },
+    fields: [
+      { key: "text",       label: "Text", type: "text" },
+      { key: "rating",     label: "Average rating (0–5)", type: "number" },
+      { key: "reviewCount", label: "Review count", type: "number" },
     ],
   },
 };

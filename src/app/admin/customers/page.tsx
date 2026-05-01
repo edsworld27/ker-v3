@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { listCustomers, type CustomerSummary } from "@/lib/admin/customers";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminCustomersPage() {
+  return <PluginRequired plugin="ecommerce"><AdminCustomersPageInner /></PluginRequired>;
+}
+
+function AdminCustomersPageInner() {
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [query, setQuery] = useState("");
 

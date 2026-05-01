@@ -520,6 +520,26 @@ export interface OrgRecord {
     postgresUrl?: string;
     label?: string;            // human-readable name for the admin UI
   };
+  // Aqua plugin platform — installed plugins for this org. Each entry
+  // carries its own config + feature toggles. Sidebar nav, admin
+  // routes and storefront contributions are all derived from this
+  // list at request time. See src/plugins/_types.ts.
+  plugins?: OrgPluginInstall[];
+}
+
+// Per-org plugin install record. The full plugin manifest lives in
+// `src/plugins/<id>/index.ts`; this is just the per-tenant state
+// (config values, feature toggles, install timestamp).
+export interface OrgPluginInstall {
+  pluginId: string;
+  installedAt: number;
+  installedBy?: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  features: Record<string, boolean>;
+  setupAnswers?: Record<string, string>;
+  health?: { ok: boolean; message?: string; components?: Record<string, { ok: boolean; message?: string }> };
+  healthCheckedAt?: number;
 }
 
 // ─── Server-side users + sessions (G-5) ─────────────────────────────────────
@@ -626,7 +646,14 @@ export type BlockType =
   | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
   | "variant-picker" | "product-search"
   // Auth blocks (A-2)
-  | "login-form" | "signup-form" | "theme-selector" | "social-auth";
+  | "login-form" | "signup-form" | "theme-selector" | "social-auth"
+  // Marketing / content blocks (added with the plugin platform)
+  | "pricing-table" | "faq" | "contact-form" | "stats-bar" | "logo-grid"
+  | "feature-grid" | "newsletter-signup" | "countdown-timer" | "language-switcher"
+  | "gallery" | "quote" | "map" | "banner" | "author-bio" | "member-gate"
+  | "donation-button"
+  | "tabs" | "accordion" | "timeline" | "card-grid" | "before-after"
+  | "marquee" | "app-showcase" | "social-proof-bar";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the

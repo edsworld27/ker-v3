@@ -4,8 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listPages, createPage, deletePage, togglePageHidden, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminPagesIndex() {
+  return <PluginRequired plugin="website"><AdminPagesIndexInner /></PluginRequired>;
+}
+
+function AdminPagesIndexInner() {
   const router = useRouter();
   const [pages, setPages] = useState<CustomPage[]>([]);
   useEffect(() => {

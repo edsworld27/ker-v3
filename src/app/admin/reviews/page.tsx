@@ -10,8 +10,13 @@ import {
   type AdminReview,
 } from "@/lib/admin/reviews";
 import { getProducts, type Product } from "@/lib/products";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminReviewsPage() {
+  return <PluginRequired plugin="ecommerce" feature="reviews"><AdminReviewsPageInner /></PluginRequired>;
+}
+
+function AdminReviewsPageInner() {
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [editing, setEditing] = useState<AdminReview | null>(null);

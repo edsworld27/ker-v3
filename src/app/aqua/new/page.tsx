@@ -1,38 +1,61 @@
 "use client";
 
-// /aqua/new — onboard a new client portal. Creates an org + a primary
-// site for it, sets the active org so the agency owner drops straight
-// into the new tenant's admin.
+// /aqua/new — onboard a new client portal. Creates an org, applies a
+// preset (which installs a bundle of plugins), seeds a primary site,
+// and drops the operator into the new tenant's admin.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createOrg, setActiveOrgId } from "@/lib/admin/orgs";
 import { createSiteForOrg, setActiveSiteId } from "@/lib/admin/sites";
 
-const PRESETS = [
-  { name: "E-commerce store",   icon: "🛍", color: "#ff6b35", tagline: "Sell physical or digital goods.", siteSlug: "shop" },
-  { name: "Service business",   icon: "✦", color: "#06b6d4", tagline: "Booking-driven studio or agency.",  siteSlug: "services" },
-  { name: "Personal brand",     icon: "★", color: "#a855f7", tagline: "Author, coach, or creator.",        siteSlug: "site" },
-  { name: "Restaurant / cafe",  icon: "🍽", color: "#ef4444", tagline: "Menu + reservations + ordering.",   siteSlug: "menu" },
-  { name: "Custom",             icon: "▢", color: "#888888", tagline: "Start from scratch.",                siteSlug: "site" },
-];
+interface ApiPreset {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  plugins: { pluginId: string }[];
+}
+
+// Visual hints layered on top of the data-driven preset list. Falls
+// back to a neutral palette if the preset id isn't recognised here.
+const HINTS: Record<string, { icon: string; color: string; siteSlug: string }> = {
+  empty:               { icon: "▢", color: "#64748b", siteSlug: "site" },
+  "website-scratch":   { icon: "✦", color: "#06b6d4", siteSlug: "site" },
+  "website-existing":  { icon: "↻", color: "#06b6d4", siteSlug: "site" },
+  "ecommerce-physical":{ icon: "🛍", color: "#ff6b35", siteSlug: "shop" },
+  "ecommerce-digital": { icon: "↓", color: "#a855f7", siteSlug: "shop" },
+  "ecommerce-hybrid":  { icon: "◇", color: "#f59e0b", siteSlug: "shop" },
+  blog:                { icon: "✎", color: "#22d3ee", siteSlug: "blog" },
+  marketing:           { icon: "★", color: "#ef4444", siteSlug: "site" },
+  saas:                { icon: "◈", color: "#0ea5e9", siteSlug: "site" },
+};
 
 export default function NewPortalPage() {
   const router = useRouter();
+  const [presets, setPresets] = useState<ApiPreset[]>([]);
+  const [presetId, setPresetId] = useState<string>("website-scratch");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [brandColor, setBrandColor] = useState("#ff6b35");
+  const [brandColor, setBrandColor] = useState("#06b6d4");
   const [logoUrl, setLogoUrl] = useState("");
-  const [preset, setPreset] = useState(PRESETS[0]);
   const [siteDomain, setSiteDomain] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function pickPreset(p: typeof PRESETS[0]) {
-    setPreset(p);
-    setBrandColor(p.color);
+  useEffect(() => {
+    void fetch("/api/portal/presets")
+      .then(r => r.json())
+      .then((data: { presets: ApiPreset[] }) => setPresets(data.presets ?? []))
+      .catch(() => setPresets([]));
+  }, []);
+
+  function pickPreset(id: string) {
+    setPresetId(id);
+    const hint = HINTS[id];
+    if (hint) setBrandColor(hint.color);
   }
 
   function autoSlug(value: string) {
@@ -55,22 +78,25 @@ export default function NewPortalPage() {
         ownerEmail: ownerEmail.trim() || undefined,
         brandColor: brandColor || undefined,
         logoUrl: logoUrl.trim() || undefined,
+        presetId,
       });
       if (!org) { setError("Could not create portal — try again"); return; }
-      // Seed a primary site so the new portal's admin isn't empty.
+      const siteSlug = HINTS[presetId]?.siteSlug ?? "site";
       const site = createSiteForOrg(org.id, {
         name: trimmed,
-        slug: preset.siteSlug,
+        slug: siteSlug,
         domains: siteDomain.trim() ? [siteDomain.trim()] : [],
-        tagline: preset.tagline,
+        tagline: presets.find(p => p.id === presetId)?.tagline ?? "",
       });
       setActiveOrgId(org.id);
       setActiveSiteId(site.id);
-      router.push("/admin");
+      router.push(`/aqua/${org.id}/marketplace`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally { setBusy(false); }
   }
+
+  const activePreset = presets.find(p => p.id === presetId);
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
@@ -78,33 +104,41 @@ export default function NewPortalPage() {
         <Link href="/aqua" className="text-[12px] text-brand-cream/55 hover:text-brand-cream">← Back to portals</Link>
         <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mt-3 mb-1">Onboard</p>
         <h1 className="font-display text-3xl text-brand-cream">New client portal</h1>
-        <p className="text-[13px] text-brand-cream/55 mt-1">Each portal is an isolated tenant with its own sites, branding + plan.</p>
+        <p className="text-[13px] text-brand-cream/55 mt-1">
+          Pick a preset (a bundle of plugins) and we&apos;ll boot the portal with everything wired up.
+          You can install or remove plugins later from the marketplace.
+        </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Preset picker */}
         <section>
-          <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-2">What kind of portal?</p>
-          <div className="grid sm:grid-cols-3 gap-2">
-            {PRESETS.map(p => {
-              const active = p.name === preset.name;
+          <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-2">Pick a preset</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {presets.map(p => {
+              const hint = HINTS[p.id] ?? { icon: "◦", color: "#888888" };
+              const active = p.id === presetId;
               return (
                 <button
                   type="button"
-                  key={p.name}
-                  onClick={() => pickPreset(p)}
-                  className={`text-left p-3 rounded-xl border transition-colors ${active ? "border-brand-orange/60 bg-brand-orange/10" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                  key={p.id}
+                  onClick={() => pickPreset(p.id)}
+                  className={`text-left p-3 rounded-xl border transition-colors ${active ? "border-cyan-400/60 bg-cyan-500/10" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"}`}
                 >
-                  <p className="text-base mb-1">{p.icon}</p>
+                  <p className="text-base mb-1" style={{ color: hint.color }}>{hint.icon}</p>
                   <p className="text-[12px] font-semibold text-brand-cream">{p.name}</p>
                   <p className="text-[10px] text-brand-cream/55 leading-relaxed mt-0.5">{p.tagline}</p>
+                  <p className="text-[10px] text-brand-cream/40 mt-1">
+                    {p.plugins.length} {p.plugins.length === 1 ? "plugin" : "plugins"}
+                  </p>
                 </button>
               );
             })}
           </div>
+          {activePreset && (
+            <p className="text-[11px] text-brand-cream/45 mt-3 leading-relaxed">{activePreset.description}</p>
+          )}
         </section>
 
-        {/* Identity */}
         <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
           <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45">Identity</p>
           <div className="grid sm:grid-cols-2 gap-3">
@@ -123,7 +157,6 @@ export default function NewPortalPage() {
           </div>
         </section>
 
-        {/* Branding */}
         <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
           <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45">Branding</p>
           <div className="grid sm:grid-cols-2 gap-3">
@@ -145,9 +178,9 @@ export default function NewPortalPage() {
           <button
             type="submit"
             disabled={busy || !name}
-            className="px-4 py-2.5 rounded-xl bg-brand-orange text-white text-[13px] font-semibold disabled:opacity-30 hover:opacity-90"
+            className="px-4 py-2.5 rounded-xl bg-cyan-500 text-white text-[13px] font-semibold disabled:opacity-30 hover:opacity-90"
           >
-            {busy ? "Creating…" : "Create portal + open admin"}
+            {busy ? "Creating…" : "Create portal + apply preset"}
           </button>
           <Link href="/aqua" className="text-[12px] text-brand-cream/55 hover:text-brand-cream">Cancel</Link>
         </div>
@@ -156,13 +189,13 @@ export default function NewPortalPage() {
   );
 }
 
-const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[13px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
+const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[13px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/50";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">
-        {label}{required && <span className="text-brand-orange ml-1">*</span>}
+        {label}{required && <span className="text-cyan-400 ml-1">*</span>}
       </span>
       {children}
     </label>

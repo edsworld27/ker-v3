@@ -95,6 +95,10 @@ export interface CreateOrgInput {
   ownerEmail?: string;
   brandColor?: string;
   logoUrl?: string;
+  // Preset id from src/plugins/_presets.ts. The server applies it after
+  // creating the org so the new portal boots with the right plugins
+  // installed (e.g. Website + E-commerce + SEO + …).
+  presetId?: string;
 }
 
 export async function createOrg(input: CreateOrgInput): Promise<OrgRecord | null> {
