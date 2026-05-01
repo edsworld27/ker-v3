@@ -116,6 +116,20 @@ function FunnelModal({ funnel, onClose }: { funnel: Partial<Funnel> | null; onCl
                     <input value={step.path} onChange={(e) => patchStep(step.id, { path: e.target.value })}
                       placeholder="/p/page-slug or /products/soap" className={INPUT} />
                   </div>
+                  {/* Open this step's page in the visual editor. We pass
+                      the slug as a query string so the pages list can
+                      jump straight to it. */}
+                  {step.path && (step.type === "page" || step.type === "checkout") && (
+                    <a
+                      href={`/admin/sites?openSlug=${encodeURIComponent(step.path)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open this step's page in the visual editor"
+                      className="text-cyan-400/80 hover:text-cyan-400 mt-2 text-xs whitespace-nowrap"
+                    >
+                      Edit ↗
+                    </a>
+                  )}
                   <button type="button" onClick={() => removeStep(step.id)}
                     className="text-red-400/50 hover:text-red-400 mt-2 text-lg leading-none">✕</button>
                 </div>

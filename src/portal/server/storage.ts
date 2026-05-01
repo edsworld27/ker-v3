@@ -24,6 +24,7 @@ import type {
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
   EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage, PortalAsset,
   ThemeRecord, FeatureRequest, MeetingBooking, SupportInvoice,
+  SplitTestGroup, SplitTestResult,
 } from "./types";
 
 interface PortalState {
@@ -45,6 +46,8 @@ interface PortalState {
   featureRequests: Record<string, FeatureRequest>;     // S-1 aqua support
   meetings: Record<string, MeetingBooking>;            // S-1 aqua support
   invoices: Record<string, SupportInvoice>;            // S-1 aqua support (mock until Stripe wired)
+  splitTests: Record<string, SplitTestGroup>;          // X-2 split-test groups, keyed by group id
+  splitTestResults: Record<string, SplitTestResult>;   // X-2 results, keyed by `${groupId}:${variantId}`
 }
 
 const empty = (): PortalState => ({
@@ -62,6 +65,8 @@ const empty = (): PortalState => ({
   featureRequests: {},
   meetings: {},
   invoices: {},
+  splitTests: {},
+  splitTestResults: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -427,6 +432,8 @@ function parseBlob(raw: string): PortalState {
       featureRequests: parsed.featureRequests ?? {},
       meetings: parsed.meetings ?? {},
       invoices: parsed.invoices ?? {},
+      splitTests: parsed.splitTests ?? {},
+      splitTestResults: parsed.splitTestResults ?? {},
     };
   } catch {
     return empty();

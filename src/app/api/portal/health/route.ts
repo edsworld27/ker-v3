@@ -77,6 +77,8 @@ export async function GET() {
       pageLayoutOverrides: true,  // X-1 — EditorPage.layoutOverrides (per-page nav/footer + hide flags)
       touchDnd: true,             // X-1 — touch → drag-event shim for tablet/mobile editor
       mobileEditor: true,         // X-1 — responsive editor (sidebar collapses, properties panel docks bottom)
+      splitTesting: true,         // X-2 — Block.variantsByGroup + SplitTestGroup + Split tab + /admin/split-tests results
+      responsiveBlocks: true,     // X-2 — Footer + Navbar emit per-instance @media breakpoint CSS
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

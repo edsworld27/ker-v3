@@ -92,7 +92,8 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
           items: [
             { type: "link", id: "marketing",  label: "Campaigns",      href: "/admin/marketing",  resource: "marketing", badgeKey: "owedCommissions" },
             { type: "link", id: "popup",      label: "Discount popup", href: "/admin/popup",      resource: "marketing" },
-            { type: "link", id: "split-test", label: "Split test",     href: "/admin/split-test", resource: "split_test", badgeKey: "activeTests" },
+            { type: "link", id: "split-test", label: "Split test (legacy)", href: "/admin/split-test", resource: "split_test", badgeKey: "activeTests" },
+            { type: "link", id: "split-tests-x", label: "Split tests",   href: "/admin/split-tests", resource: "split_test" },
             { type: "link", id: "funnels",    label: "Funnels",        href: "/admin/funnels",    resource: "funnels",    badgeKey: "activeFunnels" },
           ],
         },

@@ -5,10 +5,12 @@
 // parent canvas can debounce-save the page.
 
 import { useEffect, useState } from "react";
-import type { Block, BlockA11y, BlockStyles } from "@/portal/server/types";
+import type { Block, BlockA11y, BlockStyles, BlockVariant, SplitTestGroup } from "@/portal/server/types";
 import { getBlockDefinition, type PropField } from "../blockRegistry";
 import { STYLE_FIELD_GROUPS } from "../blockStyles";
 import AssetPicker from "../AssetPicker";
+import { createGroup as createSplitTestGroup, listGroups as listSplitTestGroups, statusTone as splitTestStatusTone } from "@/lib/admin/splitTests";
+import { getActiveSiteId } from "@/lib/admin/sites";
 
 interface PropertiesPanelProps {
   block: Block | null;
@@ -20,7 +22,7 @@ interface PropertiesPanelProps {
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
 export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove }: PropertiesPanelProps) {
-  const [tab, setTab] = useState<"props" | "styles" | "a11y" | "code">("props");
+  const [tab, setTab] = useState<"props" | "styles" | "a11y" | "split" | "code">("props");
 
   if (!block) {
     return (
@@ -58,6 +60,7 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
         <button onClick={() => setTab("props")}  className={tabClass(tab === "props")}>Props</button>
         <button onClick={() => setTab("styles")} className={tabClass(tab === "styles")}>Styles</button>
         <button onClick={() => setTab("a11y")}   className={tabClass(tab === "a11y")}>A11y</button>
+        <button onClick={() => setTab("split")}  className={tabClass(tab === "split")}>Split</button>
         <button onClick={() => setTab("code")}   className={tabClass(tab === "code")}>Code</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -70,6 +73,7 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
         )}
         {tab === "styles" && <StyleEditor styles={block.styles ?? {}} onChange={setStyle} />}
         {tab === "a11y" && <A11yEditor a11y={block.a11y ?? {}} onPatch={a => onPatch({ a11y: { ...(block.a11y ?? {}), ...a } })} />}
+        {tab === "split" && <SplitTestEditor block={block} onPatch={onPatch} fields={def?.fields ?? []} />}
         {tab === "code" && <BlockCodeEditor block={block} onPatch={onPatch} />}
       </div>
       <div className="p-3 border-t border-white/8 flex gap-2">
@@ -82,6 +86,172 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
 
 function tabClass(active: boolean) {
   return `flex-1 py-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase ${active ? "text-brand-orange border-b-2 border-brand-orange" : "text-brand-cream/55 hover:text-brand-cream"}`;
+}
+
+function SplitTestEditor({ block, onPatch, fields }: { block: Block; onPatch: (patch: Partial<Block>) => void; fields: PropField[] }) {
+  const [groups, setGroups] = useState<SplitTestGroup[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    const id = getActiveSiteId();
+    if (!id) return;
+    setGroups(await listSplitTestGroups(id));
+  }
+  useEffect(() => { void refresh(); }, []);
+
+  const variantsByGroup = block.variantsByGroup ?? {};
+  const memberGroups = groups.filter(g => variantsByGroup[g.id]);
+  const eligibleGroups = groups.filter(g => !variantsByGroup[g.id]);
+
+  function patchGroupVariants(groupId: string, next: BlockVariant[]) {
+    const v = { ...variantsByGroup, [groupId]: next };
+    if (next.length === 0) delete v[groupId];
+    onPatch({ variantsByGroup: v });
+  }
+
+  function addToGroup(groupId: string) {
+    // Seed with one alternative B.
+    patchGroupVariants(groupId, [{ id: `var_${Math.random().toString(36).slice(2, 7)}`, name: "B — variant", weight: 1 }]);
+  }
+
+  function addVariant(groupId: string) {
+    const list = variantsByGroup[groupId] ?? [];
+    const letter = String.fromCharCode(65 + list.length + 1); // A is control, list starts at B
+    patchGroupVariants(groupId, [...list, { id: `var_${Math.random().toString(36).slice(2, 7)}`, name: `${letter} — variant`, weight: 1 }]);
+  }
+
+  function patchVariant(groupId: string, variantId: string, patch: Partial<BlockVariant>) {
+    const list = variantsByGroup[groupId] ?? [];
+    const next = list.map(v => v.id === variantId ? { ...v, ...patch } : v);
+    patchGroupVariants(groupId, next);
+  }
+
+  function removeVariant(groupId: string, variantId: string) {
+    const list = variantsByGroup[groupId] ?? [];
+    patchGroupVariants(groupId, list.filter(v => v.id !== variantId));
+  }
+
+  function removeFromGroup(groupId: string) {
+    if (!confirm("Remove this block from the split-test group? Its variants will be deleted.")) return;
+    patchGroupVariants(groupId, []);
+  }
+
+  async function createInlineGroup(e: React.FormEvent) {
+    e.preventDefault();
+    const id = getActiveSiteId();
+    if (!id || !newName.trim()) return;
+    const g = await createSplitTestGroup({ siteId: id, name: newName.trim(), trafficPercent: 100, stickyBy: "visitor" });
+    if (!g) { setError("Could not create group"); return; }
+    setNewName(""); setCreating(false);
+    void refresh();
+    // Auto-add the current block.
+    patchGroupVariants(g.id, [{ id: `var_${Math.random().toString(36).slice(2, 7)}`, name: "B — variant", weight: 1 }]);
+  }
+
+  // Suggest the most-relevant prop fields to vary (text/url/select).
+  const suggestedKeys = fields.filter(f => f.type === "text" || f.type === "url" || f.type === "richtext" || f.type === "select" || f.type === "color" || f.type === "image").map(f => f.key);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
+        <p className="text-[11px] text-cyan-400/85 leading-relaxed">
+          <strong className="text-cyan-300">Split testing</strong> · Add this block to one or more groups, then define variant values that get rolled out per the group&apos;s traffic %. Visitors see a sticky variant; exposures + conversions are tracked.
+        </p>
+      </div>
+
+      {memberGroups.length === 0 && (
+        <p className="text-[11px] text-brand-cream/55 leading-relaxed">Block is not in any split-test group yet.</p>
+      )}
+
+      {memberGroups.map(group => {
+        const variants = variantsByGroup[group.id] ?? [];
+        return (
+          <div key={group.id} className="rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
+            <div className="px-3 py-2 border-b border-white/8 flex items-center gap-2">
+              <p className="text-[11px] font-semibold text-brand-cream truncate flex-1">{group.name}</p>
+              <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full ${splitTestStatusTone(group.status)}`}>{group.status}</span>
+              <button onClick={() => removeFromGroup(group.id)} className="text-[10px] text-brand-cream/45 hover:text-red-400">Remove</button>
+            </div>
+            <div className="p-2 space-y-1.5">
+              {/* Control row — read-only (just the base block) */}
+              <div className="rounded border border-white/5 bg-black/30 p-2 text-[10px] text-brand-cream/55">
+                <p className="font-mono">A — control (current props)</p>
+              </div>
+              {variants.map(v => (
+                <div key={v.id} className="rounded border border-brand-orange/20 bg-brand-orange/5 p-2 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input value={v.name} onChange={e => patchVariant(group.id, v.id, { name: e.target.value })} className={INPUT + " text-[11px]"} />
+                    <input type="number" value={v.weight ?? 1} onChange={e => patchVariant(group.id, v.id, { weight: Number(e.target.value) || 1 })} className={INPUT + " w-16 text-[11px] font-mono"} title="Relative weight" />
+                    <button onClick={() => removeVariant(group.id, v.id)} className="text-[10px] text-brand-cream/45 hover:text-red-400">×</button>
+                  </div>
+                  {/* Per-prop variant overrides — only the most-relevant fields */}
+                  {suggestedKeys.length > 0 && (
+                    <details className="text-[10px]">
+                      <summary className="cursor-pointer text-brand-cream/55 hover:text-brand-cream">Override props ({Object.keys(v.props ?? {}).length})</summary>
+                      <div className="mt-1.5 space-y-1.5">
+                        {suggestedKeys.map(key => {
+                          const cur = (v.props as Record<string, unknown> | undefined)?.[key];
+                          return (
+                            <div key={key} className="flex items-center gap-2">
+                              <span className="text-[10px] text-brand-cream/45 w-16 shrink-0 font-mono truncate">{key}</span>
+                              <input
+                                value={cur === undefined ? "" : String(cur)}
+                                onChange={e => patchVariant(group.id, v.id, { props: { ...(v.props ?? {}), [key]: e.target.value || undefined } })}
+                                placeholder={String(block.props[key] ?? "")}
+                                className={INPUT + " text-[10px]"}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => addVariant(group.id)} className="w-full px-2 py-1 rounded border border-white/10 text-[10px] text-brand-cream/65 hover:text-brand-cream hover:bg-white/5">
+                + Add variant
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Add to existing group */}
+      {eligibleGroups.length > 0 && (
+        <details className="rounded-lg border border-white/5 bg-white/[0.02] overflow-hidden">
+          <summary className="cursor-pointer px-2.5 py-1.5 text-[10px] uppercase tracking-[0.18em] text-brand-cream/55 hover:text-brand-cream">+ Add to existing group ({eligibleGroups.length})</summary>
+          <div className="p-2 space-y-1">
+            {eligibleGroups.map(g => (
+              <button key={g.id} onClick={() => addToGroup(g.id)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-[11px] text-brand-cream/85 hover:bg-white/5">
+                <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full ${splitTestStatusTone(g.status)}`}>{g.status}</span>
+                <span className="flex-1 truncate">{g.name}</span>
+                <span className="text-[10px] text-brand-cream/40">{g.trafficPercent ?? 100}%</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* Inline new group */}
+      {!creating ? (
+        <button onClick={() => setCreating(true)} className="w-full px-2 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-400 text-[11px] font-semibold hover:bg-cyan-500/25">
+          + Create new split-test group
+        </button>
+      ) : (
+        <form onSubmit={createInlineGroup} className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-2 space-y-2">
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Group name (e.g. Pricing-page CTA test)" required className={INPUT + " text-[11px]"} />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 px-2 py-1 rounded bg-cyan-500 text-white text-[11px] font-semibold">Create + add</button>
+            <button type="button" onClick={() => setCreating(false)} className="px-2 py-1 rounded text-[11px] text-brand-cream/55 hover:text-brand-cream">Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {error && <p className="text-[10px] text-red-400">{error}</p>}
+    </div>
+  );
 }
 
 function HeadingLevelPills({ value, onChange }: { value: number; onChange: (lvl: number) => void }) {

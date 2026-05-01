@@ -17,10 +17,41 @@ export default function FooterBlock({ block }: BlockRenderProps) {
     ...blockStylesToCss(block.styles),
   };
 
+  // Responsive grid: auto-fit columns instead of a fixed `1fr repeat(N, 1fr)`
+  // template so the footer collapses cleanly on narrow viewports without
+  // an overflow scroll. Per-instance scoped CSS — keeps the inline style
+  // story consistent with the rest of the block components.
+  const id = `footer-${block.id}`;
+  const responsiveCss = `
+    [data-footer-id="${id}"] .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr repeat(${Math.max(1, columns.length)}, 1fr);
+      gap: 32px;
+    }
+    @media (max-width: 768px) {
+      [data-footer-id="${id}"] .footer-inner {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+      }
+    }
+    @media (max-width: 480px) {
+      [data-footer-id="${id}"] .footer-inner {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      [data-footer-id="${id}"] .footer-brand {
+        text-align: center;
+      }
+    }
+  `;
+
   return (
-    <footer data-block-type="footer" style={style}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: `1fr repeat(${Math.max(1, columns.length)}, 1fr)`, gap: 32 }}>
-        <div>
+    <footer data-block-type="footer" data-footer-id={id} style={style}>
+      <style dangerouslySetInnerHTML={{ __html: responsiveCss }} />
+      <div className="footer-inner">
+        <div className="footer-brand">
           <p style={{ fontFamily: "var(--font-playfair, Georgia, serif)", fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>{brand}</p>
           {tagline && <p style={{ fontSize: 12, opacity: 0.6, lineHeight: 1.5, margin: 0 }}>{tagline}</p>}
         </div>

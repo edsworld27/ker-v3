@@ -5,27 +5,53 @@
 // passes a renderChildren helper down so containers don't have to
 // re-import the renderer.
 
-import type { Block } from "@/portal/server/types";
+import { useEffect } from "react";
+import type { Block, SplitTestGroup } from "@/portal/server/types";
 import { getBlockDefinition } from "./blockRegistry";
 import AnimateOnScroll from "./AnimateOnScroll";
 import { overridesToCssText } from "./blockStyles";
+import { applyVariant, recordExposure, resolveVariant } from "./variantResolver";
 
 export interface BlockRendererProps {
   blocks: Block[] | undefined;
   editorMode?: boolean;
   themeId?: string;
+  splitTestGroups?: SplitTestGroup[];   // running groups visible to this page
 }
 
-export default function BlockRenderer({ blocks, editorMode = false, themeId }: BlockRendererProps) {
+export default function BlockRenderer({ blocks, editorMode = false, themeId, splitTestGroups }: BlockRendererProps) {
   if (!blocks || blocks.length === 0) return null;
   return (
     <>
-      {blocks.map(block => <BlockNode key={block.id} block={block} editorMode={editorMode} themeId={themeId} />)}
+      {blocks.map(block => <BlockNode key={block.id} block={block} editorMode={editorMode} themeId={themeId} splitTestGroups={splitTestGroups} />)}
     </>
   );
 }
 
-function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: boolean; themeId?: string }) {
+function BlockNode({ block, editorMode, themeId, splitTestGroups }: { block: Block; editorMode: boolean; themeId?: string; splitTestGroups?: SplitTestGroup[] }) {
+  // Split-test resolution — only outside editor mode (the canvas always
+  // shows the control so layout work is precise). Walk the block's
+  // variant groups, find the first one that's running, and overlay the
+  // chosen variant. Exposures are reported once per mount.
+  let variantId: string | null = null;
+  let resolvedGroupId: string | null = null;
+  if (!editorMode && block.variantsByGroup && splitTestGroups) {
+    for (const groupId of Object.keys(block.variantsByGroup)) {
+      const group = splitTestGroups.find(g => g.id === groupId && g.status === "running");
+      if (!group) continue;
+      const result = resolveVariant({
+        block,
+        groupId: group.id,
+        trafficPercent: group.trafficPercent,
+        stickyBy: group.stickyBy,
+      });
+      block = applyVariant(block, result.variant);
+      variantId = result.variantId;
+      resolvedGroupId = group.id;
+      break;
+    }
+  }
+
   // Layer themeStyles on top of base styles when a theme is active.
   // Per-theme overrides win; everything else falls through.
   const themeOverlay = themeId ? block.themeStyles?.[themeId] : undefined;
@@ -50,7 +76,7 @@ function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: b
     <Component
       block={block}
       editorMode={editorMode}
-      renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} themeId={themeId} />}
+      renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} themeId={themeId} splitTestGroups={splitTestGroups} />}
     />
   );
   // A11y wrapper — applies admin-set ARIA attributes to a transparent
@@ -96,7 +122,7 @@ function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: b
   // renders the resting state so layout is editable.
   const animate = block.styles?.animate;
   if (animate && !editorMode) {
-    return (
+    body = (
       <AnimateOnScroll
         animate={animate}
         duration={block.styles?.animateDuration}
@@ -105,5 +131,24 @@ function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: b
       >{body}</AnimateOnScroll>
     );
   }
+
+  // Record an exposure when this block participated in a running group
+  // — fire-and-forget, throttled per (visitor, group, variant) by the
+  // resolver hash. No-op in editor mode.
+  if (resolvedGroupId && variantId && !editorMode) {
+    body = (
+      <SplitTestExposure groupId={resolvedGroupId} variantId={variantId}>
+        {body}
+      </SplitTestExposure>
+    );
+  }
+
   return <>{body}</>;
+}
+
+function SplitTestExposure({ groupId, variantId, children }: { groupId: string; variantId: string; children: React.ReactNode }) {
+  useEffect(() => {
+    recordExposure(groupId, variantId);
+  }, [groupId, variantId]);
+  return <>{children}</>;
 }
