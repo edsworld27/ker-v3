@@ -14,8 +14,9 @@ import { listFunnels } from "@/lib/admin/funnels";
 import { getTeamMemberByEmail, getPermissionsForEmail, type Resource } from "@/lib/admin/team";
 import { getBranding, listCustomTabs, onAdminConfigChange, type AdminBranding, type CustomTab } from "@/lib/admin/adminConfig";
 import {
-  getSidebarLayout, onSidebarLayoutChange, findPanelForPath,
-  type SidebarLayout, type SidebarPanel, type SidebarLink, type BadgeKey,
+  getSidebarLayout, onSidebarLayoutChange, findPanelForPath, walkLinks,
+  type SidebarLayout, type SidebarPanel, type SidebarItem, type SidebarGroup,
+  type SidebarLink, type BadgeKey,
 } from "@/lib/admin/sidebarLayout";
 import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
@@ -167,13 +168,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return acc;
   }, {});
 
-  // Decide which panels are visible to this user (any item viewable → panel viewable).
-  const visiblePanels = layout.panels.filter(panel =>
-    panel.items.some(item => {
-      if (item.type === "link") return canView(item.resource);
-      return item.items.some(child => canView(child.resource));
-    }),
-  );
+  // Decide which panels are visible to this user (any descendant link viewable → panel viewable).
+  const visiblePanels = layout.panels.filter(panel => {
+    for (const link of walkLinks(panel.items)) {
+      if (canView(link.resource)) return true;
+    }
+    return false;
+  });
 
   return (
     <div data-admin-panel className="min-h-screen bg-brand-black text-brand-cream flex">
@@ -434,63 +435,90 @@ function PanelView({
       </div>
 
       <div className="space-y-0.5 pt-1">
-        {panel.items.map(item => {
-          if (item.type === "link") {
-            if (!canView(item.resource)) return null;
-            return (
-              <SidebarLinkRow
-                key={item.id}
-                link={item}
-                pathname={pathname}
-                counters={counters}
-              />
-            );
-          }
-          return (
-            <SidebarGroupRow
-              key={item.id}
-              group={item}
-              pathname={pathname}
-              counters={counters}
-              canView={canView}
-            />
-          );
-        })}
+        {panel.items.map(item => (
+          <SidebarItemRow
+            key={item.id}
+            item={item}
+            depth={2}
+            pathname={pathname}
+            counters={counters}
+            canView={canView}
+          />
+        ))}
       </div>
     </div>
   );
+}
+
+// Recursive row — dispatches between leaf link and nested folder. `depth`
+// counts the panel as level 1, so direct children of a panel render at
+// depth=2 and indent grows by one step per level.
+function SidebarItemRow({
+  item,
+  depth,
+  pathname,
+  counters,
+  canView,
+}: {
+  item: SidebarItem;
+  depth: number;
+  pathname: string;
+  counters: Counters;
+  canView: (r: Resource | undefined) => boolean;
+}) {
+  if (item.type === "link") {
+    if (!canView(item.resource)) return null;
+    return <SidebarLinkRow link={item} pathname={pathname} counters={counters} depth={depth} />;
+  }
+  return (
+    <SidebarGroupRow
+      group={item}
+      depth={depth}
+      pathname={pathname}
+      counters={counters}
+      canView={canView}
+    />
+  );
+}
+
+// Indent: 12px base + 12px per level past depth=2. Capped via depth-clamp so
+// deeply-nested rows stay readable inside the ~240px sidebar rail.
+function indentPx(depth: number): number {
+  const steps = Math.max(0, Math.min(depth - 2, 4));
+  return 12 + steps * 12;
 }
 
 function SidebarLinkRow({
   link,
   pathname,
   counters,
-  indent = false,
+  depth,
 }: {
   link: SidebarLink;
   pathname: string;
   counters: Counters;
-  indent?: boolean;
+  depth: number;
 }) {
   const active = link.href === "/admin"
     ? pathname === "/admin"
     : pathname === link.href || pathname.startsWith(link.href + "/");
   const badge = badgeFor(link, counters);
-  const cls = `flex items-center justify-between ${indent ? "pl-7 pr-3" : "px-3"} py-2 rounded-lg text-sm transition-colors ${
+  const cls = `flex items-center justify-between pr-3 py-2 rounded-lg text-sm transition-colors ${
     active
       ? "bg-brand-orange/15 text-brand-cream border border-brand-orange/30"
       : "text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream border border-transparent"
   }`;
+  const style = { paddingLeft: indentPx(depth) };
   if (link.external || link.href.startsWith("http")) {
     return (
-      <a key={link.id} href={link.href} target="_blank" rel="noopener noreferrer" className={cls}>
+      <a href={link.href} target="_blank" rel="noopener noreferrer" className={cls} style={style} title={link.label}>
         <span className="flex-1 truncate">{link.label}</span>
         <span className="text-[10px] text-brand-cream/30">↗</span>
       </a>
     );
   }
   return (
-    <Link key={link.id} href={link.href} className={cls}>
+    <Link href={link.href} className={cls} style={style} title={link.label}>
       <span className="flex-1 truncate">{link.label}</span>
       {badge && (
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${BADGE_COLORS[badge.tone]}`}>
@@ -503,23 +531,35 @@ function SidebarLinkRow({
 
 function SidebarGroupRow({
   group,
+  depth,
   pathname,
   counters,
   canView,
 }: {
-  group: { id: string; label: string; items: SidebarLink[]; defaultOpen?: boolean };
+  group: SidebarGroup;
+  depth: number;
   pathname: string;
   counters: Counters;
   canView: (r: Resource | undefined) => boolean;
 }) {
-  const visibleChildren = group.items.filter(c => canView(c.resource));
-  const containsActive = visibleChildren.some(c =>
-    pathname === c.href || pathname.startsWith(c.href + "/"),
-  );
-  // The group is open when:
-  //  - a descendant route is active (always show in that case), or
-  //  - the user has manually toggled it open, or
-  //  - it's the default-open group and the user hasn't toggled it shut.
+  // A child folder is visible if any of its descendant links is viewable.
+  const visibleChildren = group.items.filter(child => {
+    for (const link of walkLinks([child])) {
+      if (canView(link.resource)) return true;
+    }
+    return false;
+  });
+
+  // The group is "open" if any descendant link is the active route — that way
+  // direct URL visits unfurl the chain that contains the page.
+  let containsActive = false;
+  for (const link of walkLinks(group.items)) {
+    const isActive = link.href === "/admin"
+      ? pathname === "/admin"
+      : pathname === link.href || pathname.startsWith(link.href + "/");
+    if (isActive) { containsActive = true; break; }
+  }
+
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
   const open = containsActive || (userToggled ?? group.defaultOpen !== false);
 
@@ -529,17 +569,26 @@ function SidebarGroupRow({
     <div>
       <button
         onClick={() => setUserToggled(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream transition-colors"
+        className="w-full flex items-center justify-between pr-3 py-2 rounded-lg text-sm text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream transition-colors"
+        style={{ paddingLeft: indentPx(depth) }}
+        title={group.label}
       >
-        <span className="flex items-center gap-2">
-          <span className="text-brand-cream/35 text-[10px] w-3 inline-block">{open ? "▾" : "▸"}</span>
-          <span>{group.label}</span>
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-brand-cream/35 text-[10px] w-3 inline-block shrink-0">{open ? "▾" : "▸"}</span>
+          <span className="truncate">{group.label}</span>
         </span>
       </button>
       {open && (
         <div className="space-y-0.5 mt-0.5">
           {visibleChildren.map(child => (
-            <SidebarLinkRow key={child.id} link={child} pathname={pathname} counters={counters} indent />
+            <SidebarItemRow
+              key={child.id}
+              item={child}
+              depth={depth + 1}
+              pathname={pathname}
+              counters={counters}
+              canView={canView}
+            />
           ))}
         </div>
       )}

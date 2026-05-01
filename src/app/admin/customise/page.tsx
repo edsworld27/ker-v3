@@ -16,7 +16,8 @@ import {
 import {
   getSidebarLayout, saveSidebarLayout, resetSidebarLayout,
   onSidebarLayoutChange, newId, DEFAULT_LAYOUT,
-  type SidebarLayout, type SidebarPanel, type SidebarItem, type SidebarLink,
+  MAX_SIDEBAR_DEPTH, canAddFolderInside,
+  type SidebarLayout, type SidebarPanel, type SidebarItem,
 } from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
 
@@ -81,7 +82,7 @@ export default function AdminCustomisePage() {
 
   const TABS: Array<{ id: Tab; label: string; desc: string }> = [
     { id: "branding", label: "Branding",      desc: "Logo, colours, custom CSS" },
-    { id: "sidebar",  label: "Sidebar",       desc: "Edit panels, items, dropdowns and custom routes" },
+    { id: "sidebar",  label: "Sidebar",       desc: `Edit panels, links, and nested folders (up to ${MAX_SIDEBAR_DEPTH} levels deep)` },
     { id: "tabs",     label: "Custom tabs",   desc: "Add iframe-embedded sidebar tabs" },
     { id: "login",    label: "Login page",    desc: "Customise the public login UI" },
     { id: "export",   label: "Export & repo", desc: "Download code and view repo" },
@@ -494,9 +495,10 @@ function SidebarEditor({
         <p className="text-sm text-brand-cream/55 leading-relaxed">
           The sidebar opens with a list of <strong className="text-brand-cream">panels</strong> (Store, Website, Users, Settings).
           Clicking a panel <strong className="text-brand-cream">drills in</strong> and shows that panel&apos;s items;
-          a back button returns to the top level. You can rename panels, reorder items,
-          group items into <strong className="text-brand-cream">dropdowns</strong>, and add your own
-          <strong className="text-brand-cream"> custom routes</strong> — internal admin paths or external URLs.
+          a back button returns to the top level. Each item can be a <strong className="text-brand-cream">link</strong> or a
+          <strong className="text-brand-cream"> folder</strong>; folders can hold further folders, up to
+          <strong className="text-brand-cream"> {MAX_SIDEBAR_DEPTH} levels deep</strong> (counting the panel as level 1).
+          Links accept either internal admin paths or external URLs.
         </p>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <button onClick={addPanel} className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold">
@@ -561,8 +563,13 @@ function PanelEditor({
       external: href.startsWith("http"),
     }]);
   }
+  // Panels sit at depth 1, so their direct children sit at depth 2. Adding a
+  // folder here always fits within the depth budget.
+  const canAddFolder = canAddFolderInside(1);
+
   function addGroup() {
-    const label = prompt("Dropdown label", "New group");
+    if (!canAddFolder) return;
+    const label = prompt("Folder name", "New folder");
     if (!label) return;
     onItemsChange([...panel.items, {
       type: "group",
@@ -626,6 +633,7 @@ function PanelEditor({
             <ItemEditor
               key={item.id}
               item={item}
+              depth={2}
               isFirst={i === 0}
               isLast={i === panel.items.length - 1}
               onPatch={p => patchItem(item.id, p)}
@@ -644,8 +652,12 @@ function PanelEditor({
           <button onClick={addLink} className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30">
             + Link
           </button>
-          <button onClick={addGroup} className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30">
-            + Dropdown
+          <button
+            onClick={addGroup}
+            disabled={!canAddFolder}
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            + Folder
           </button>
         </div>
       </div>
@@ -654,9 +666,10 @@ function PanelEditor({
 }
 
 function ItemEditor({
-  item, isFirst, isLast, onPatch, onMove, onDelete,
+  item, depth, isFirst, isLast, onPatch, onMove, onDelete,
 }: {
   item: SidebarItem;
+  depth: number;            // 2 for direct panel children, +1 per nested level
   isFirst: boolean;
   isLast: boolean;
   onPatch: (p: Partial<SidebarItem>) => void;
@@ -687,26 +700,43 @@ function ItemEditor({
       </div>
     );
   }
-  // Group / dropdown editor — alias `item` to a narrowed local so closures
-  // see the group type.
+  // Folder editor — narrows `item` so the closures below see the group shape.
   const group = item;
-  function addChild() {
+  const childDepth = depth + 1;
+  // A folder at this depth may host a nested folder iff the child folder's
+  // own children would still fit inside MAX_SIDEBAR_DEPTH.
+  const canAddFolder = canAddFolderInside(depth);
+
+  function addLinkChild() {
     const label = prompt("Link label", "New link");
     if (!label) return;
     const href = prompt("URL or admin path", "/admin/");
     if (!href) return;
-    const child: SidebarLink = {
-      id: newId("link"),
-      label,
-      href,
-      external: href.startsWith("http"),
-    };
-    onPatch({ items: [...group.items, child] } as Partial<SidebarItem>);
+    onPatch({
+      items: [
+        ...group.items,
+        { type: "link", id: newId("link"), label, href, external: href.startsWith("http") },
+      ],
+    } as Partial<SidebarItem>);
   }
-  function patchChild(id: string, patch: Partial<SidebarLink>) {
-    onPatch({ items: group.items.map(c => c.id === id ? { ...c, ...patch } : c) } as Partial<SidebarItem>);
+  function addFolderChild() {
+    if (!canAddFolder) return;
+    const label = prompt("Folder name", "New folder");
+    if (!label) return;
+    onPatch({
+      items: [
+        ...group.items,
+        { type: "group", id: newId("group"), label, defaultOpen: true, items: [] },
+      ],
+    } as Partial<SidebarItem>);
+  }
+  function patchChild(id: string, patch: Partial<SidebarItem>) {
+    onPatch({
+      items: group.items.map(c => c.id === id ? { ...c, ...patch } as SidebarItem : c),
+    } as Partial<SidebarItem>);
   }
   function deleteChild(id: string) {
+    if (!confirm("Delete this item?")) return;
     onPatch({ items: group.items.filter(c => c.id !== id) } as Partial<SidebarItem>);
   }
   function moveChild(id: string, dir: -1 | 1) {
@@ -722,13 +752,19 @@ function ItemEditor({
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.02]">
       <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-white/5">
-        <span className="text-[10px] uppercase tracking-wider text-brand-amber/60 w-12 shrink-0">Group</span>
+        <span className="text-[10px] uppercase tracking-wider text-brand-amber/60 w-12 shrink-0">Folder</span>
         <input
           value={group.label}
           onChange={e => onPatch({ label: e.target.value } as Partial<SidebarItem>)}
-          placeholder="Group label"
+          placeholder="Folder name"
           className={INPUT + " flex-1 font-medium"}
         />
+        <span
+          className="text-[9px] uppercase tracking-wider text-brand-cream/30 px-2 py-0.5 rounded-full border border-white/10"
+          title={`Level ${depth} of ${MAX_SIDEBAR_DEPTH}`}
+        >
+          L{depth}
+        </span>
         <div className="flex items-center gap-1">
           <button disabled={isFirst} onClick={() => onMove(-1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↑</button>
           <button disabled={isLast} onClick={() => onMove(1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↓</button>
@@ -736,30 +772,35 @@ function ItemEditor({
         </div>
       </div>
       <div className="p-2 space-y-1.5">
+        {group.items.length === 0 && (
+          <p className="text-xs text-brand-cream/30 px-3 py-2 text-center">Empty folder.</p>
+        )}
         {group.items.map((child, i) => (
-          <div key={child.id} className="flex flex-wrap items-center gap-2 pl-4 py-1">
-            <input
-              value={child.label}
-              onChange={e => patchChild(child.id, { label: e.target.value })}
-              placeholder="Label"
-              className={INPUT + " flex-1 min-w-[100px] py-1.5"}
+          <div key={child.id} className="pl-3">
+            <ItemEditor
+              item={child}
+              depth={childDepth}
+              isFirst={i === 0}
+              isLast={i === group.items.length - 1}
+              onPatch={p => patchChild(child.id, p)}
+              onMove={d => moveChild(child.id, d)}
+              onDelete={() => deleteChild(child.id)}
             />
-            <input
-              value={child.href}
-              onChange={e => patchChild(child.id, { href: e.target.value, external: e.target.value.startsWith("http") })}
-              placeholder="/admin/… or https://…"
-              className={INPUT + " flex-[2] min-w-[160px] font-mono text-xs py-1.5"}
-            />
-            <div className="flex items-center gap-1">
-              <button disabled={i === 0} onClick={() => moveChild(child.id, -1)} className="px-1 py-0.5 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25 text-xs">↑</button>
-              <button disabled={i === group.items.length - 1} onClick={() => moveChild(child.id, 1)} className="px-1 py-0.5 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25 text-xs">↓</button>
-              <button onClick={() => deleteChild(child.id)} className="text-[11px] px-1.5 py-0.5 text-brand-cream/45 hover:text-brand-orange">×</button>
-            </div>
           </div>
         ))}
-        <button onClick={addChild} className="text-[11px] px-3 py-1.5 ml-4 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream hover:border-white/25">
-          + Link in dropdown
-        </button>
+        <div className="flex flex-wrap gap-2 pt-1 pl-3">
+          <button onClick={addLinkChild} className="text-[11px] px-3 py-1.5 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream hover:border-white/25">
+            + Link
+          </button>
+          <button
+            onClick={addFolderChild}
+            disabled={!canAddFolder}
+            title={canAddFolder ? "" : `Max ${MAX_SIDEBAR_DEPTH} levels — add a link instead`}
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            + Folder
+          </button>
+        </div>
       </div>
     </div>
   );
