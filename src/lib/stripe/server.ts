@@ -19,6 +19,7 @@ export interface StripeLineItem {
   amount: number;     // in pence (£12.50 → 1250)
   currency: "gbp" | "usd" | "eur";
   quantity: number;
+  images?: string[];  // absolute URLs surfaced on the Stripe-hosted checkout
 }
 
 export interface CheckoutSessionInput {
@@ -61,7 +62,13 @@ export async function createCheckoutSession(input: CheckoutSessionInput): Promis
       price_data: {
         currency: li.currency,
         unit_amount: li.amount,
-        product_data: { name: li.name, description: li.description },
+        product_data: {
+          name: li.name,
+          description: li.description,
+          // Stripe rejects empty arrays — only attach when we actually have
+          // an absolute, https-served URL.
+          images: li.images && li.images.length > 0 ? li.images : undefined,
+        },
       },
     })),
     customer_email: input.customerEmail,
@@ -71,7 +78,10 @@ export async function createCheckoutSession(input: CheckoutSessionInput): Promis
     automatic_tax: { enabled: true },
     shipping_address_collection: { allowed_countries: ["GB", "IE", "FR", "DE", "US", "CA"] },
     phone_number_collection: { enabled: true },
-    allow_promotion_codes: true,
+    // Avoid stacking: if the cart already applied a discount client-side
+    // (we're attaching it as a one-time coupon below), suppress the Stripe
+    // promo-code field so customers can't double-dip.
+    allow_promotion_codes: input.discountAmount && input.discountAmount > 0 ? false : true,
   };
 
   if (input.discountAmount && input.discountAmount > 0) {

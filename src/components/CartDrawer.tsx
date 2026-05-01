@@ -36,6 +36,7 @@ export default function CartDrawer() {
   if (!isOpen) return null;
 
   async function handleCheckout() {
+    if (items.length === 0) return; // belt-and-braces: button is hidden, but never let an empty cart hit the API
     setIsCheckingOut(true);
     try {
       const totalDiscount = discounts.reduce((s, d) => s + d.amountOff, 0);

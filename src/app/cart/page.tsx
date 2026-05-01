@@ -45,6 +45,7 @@ export default function CartPage() {
   }
 
   async function handleCheckout() {
+    if (items.length === 0) return; // empty cart shouldn't be able to start a checkout
     setIsCheckingOut(true);
     try {
       const totalDiscount = discounts.reduce((s, d) => s + d.amountOff, 0);
