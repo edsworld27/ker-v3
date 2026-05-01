@@ -91,8 +91,10 @@ function LoginInner() {
         const data = await res.json().catch(() => ({}));
         setError(data?.error ?? "Dev sign-in disabled"); return;
       }
-      // Localstorage parity for client-side code.
-      try { signInAsDev(); } catch {}
+      // Mirror into localStorage so the existing client-side admin
+      // code path (which still reads getSession()) is in sync. With
+      // the strict-mode gate removed, this should always succeed.
+      signInAsDev();
       router.replace(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -18,11 +18,8 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Last-ditch escape hatch for sandbox-only type-resolution issues
-    // (next-env.d.ts is gitignored; some module-resolution warnings
-    // fire under Vercel's stricter resolver). Keep this on for now;
-    // we still catch real type errors via `tsc --noEmit` in CI/dev.
-    ignoreBuildErrors: true,
+    // We want real type errors to fail the build now.
+    ignoreBuildErrors: false,
   },
 };
 
