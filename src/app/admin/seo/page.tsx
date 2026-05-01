@@ -10,7 +10,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { EditorPage } from "@/portal/server/types";
 import { listPages } from "@/lib/admin/editorPages";
-import { listSites, getActiveSite, type Site } from "@/lib/admin/sites";
+import { listSites, getActiveSite, updateSite, type Site } from "@/lib/admin/sites";
+
+interface LinkRef {
+  url: string;
+  source: { pageSlug: string; pageId: string; blockId: string; blockType: string; field: string };
+  external: boolean;
+  status?: number;
+  ok?: boolean;
+  error?: string;
+}
 
 interface Score { value: number; label: string; tone: "good" | "warn" | "bad" }
 
@@ -36,6 +45,9 @@ export default function SeoDashboard() {
   const [active, setActive] = useState<Site | null>(null);
   const [sitemap, setSitemap] = useState("");
   const [robots, setRobots] = useState("");
+  const [links, setLinks] = useState<LinkRef[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [siteNavJson, setSiteNavJson] = useState("");
 
   async function refresh() {
     setSites(listSites());
@@ -53,6 +65,45 @@ export default function SeoDashboard() {
     setSites(listSites());
     setActive(getActiveSite() ?? null);
   }, []);
+
+  // Build a default Google-friendly Sitelinks JSON-LD from the
+  // visual-editor pages. The admin can edit + override on the textarea
+  // below; we only seed when the field is empty.
+  useEffect(() => {
+    if (!active || pages.length === 0) return;
+    const existing = active.siteNavigationJsonLd;
+    if (existing && existing.trim().length > 0) {
+      setSiteNavJson(existing);
+      return;
+    }
+    const items = pages
+      .filter(p => !p.seo?.excludeFromSitemap)
+      .map(p => ({
+        "@type": "SiteNavigationElement",
+        name: p.seo?.title ?? p.title,
+        url: p.slug === "/" ? "/" : p.slug,
+      }));
+    const seeded = JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": items,
+    }, null, 2);
+    setSiteNavJson(seeded);
+  }, [active, pages]);
+
+  async function scanLinks() {
+    if (!active) return;
+    setScanning(true);
+    try {
+      const res = await fetch(`/api/portal/links/${encodeURIComponent(active.id)}?check=1`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.ok) setLinks(data.links ?? []);
+    } finally { setScanning(false); }
+  }
+
+  async function saveSiteNav() {
+    if (!active) return;
+    updateSite(active.id, { siteNavigationJsonLd: siteNavJson });
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -128,6 +179,72 @@ export default function SeoDashboard() {
             </tbody>
           </table>
         )}
+      </section>
+
+      {/* Broken-link scanner */}
+      <section className="rounded-2xl border border-white/10 bg-white/[0.02]">
+        <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/55">Broken links</p>
+          <button
+            onClick={scanLinks}
+            disabled={scanning}
+            className="px-3 py-1.5 rounded-lg bg-brand-orange text-white text-[11px] font-semibold hover:opacity-90 disabled:opacity-50"
+          >
+            {scanning ? "Scanning…" : links.length === 0 ? "Scan now" : "Re-scan"}
+          </button>
+        </div>
+        {links.length === 0 ? (
+          <p className="p-4 text-[12px] text-brand-cream/45">Click Scan to walk every page block and ping each external link.</p>
+        ) : (
+          <div className="p-2">
+            <p className="text-[11px] text-brand-cream/65 px-2 pb-2">
+              {links.length} link{links.length === 1 ? "" : "s"} found ·{" "}
+              <span className="text-red-400">{links.filter(l => l.external && l.ok === false).length} broken</span> ·{" "}
+              <span className="text-green-400">{links.filter(l => l.ok === true).length} ok</span> ·{" "}
+              <span className="text-brand-cream/55">{links.filter(l => !l.external).length} internal</span>
+            </p>
+            <ul className="space-y-1 max-h-80 overflow-y-auto">
+              {links.map((l, i) => (
+                <li key={i} className={`flex items-start gap-2 px-2 py-1.5 rounded text-[11px] ${
+                  l.external && l.ok === false ? "bg-red-500/5 border border-red-500/20" : "border border-white/5 bg-white/[0.02]"
+                }`}>
+                  <span className={`shrink-0 w-12 text-center font-mono ${
+                    l.external && l.ok === false ? "text-red-400"
+                    : l.external && l.ok === true ? "text-green-400"
+                    : "text-brand-cream/45"
+                  }`}>{l.external ? (l.status ?? "ERR") : "—"}</span>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate font-mono text-brand-cream/85 hover:underline">{l.url}</a>
+                  <span className="text-brand-cream/40 truncate max-w-[260px]">
+                    {l.source.pageSlug} · {l.source.blockType}.{l.source.field}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {/* Sitelinks / Site navigation JSON-LD */}
+      <section className="rounded-2xl border border-white/10 bg-white/[0.02]">
+        <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/55">Sitelinks (Google sub-page indents)</p>
+          <button onClick={saveSiteNav} className="px-3 py-1.5 rounded-lg bg-brand-orange text-white text-[11px] font-semibold hover:opacity-90">Save</button>
+        </div>
+        <div className="p-3 space-y-2">
+          <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+            Google may show indented links beneath your domain in search results (Home / About / Shop / Contact …). This <code className="font-mono">SiteNavigationElement</code> JSON-LD is a strong hint about which pages to show. Auto-seeded from your visual-editor pages — edit + reorder freely.
+          </p>
+          <textarea
+            value={siteNavJson}
+            onChange={e => setSiteNavJson(e.target.value)}
+            spellCheck={false}
+            rows={10}
+            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-[11px] text-brand-cream font-mono leading-relaxed focus:outline-none focus:border-brand-orange/50"
+          />
+          <p className="text-[10px] text-brand-cream/40">
+            Injected as <code className="font-mono">&lt;script type=&quot;application/ld+json&quot;&gt;</code> on every page via the site&apos;s custom head.
+          </p>
+        </div>
       </section>
 
       {/* Live sitemap.xml + robots.txt preview */}

@@ -64,6 +64,11 @@ export async function GET() {
       blockA11y: true,            // SEO-A1 — aria-label/role/htmlId/tabindex/ariaHidden per block
       buttonHoverAnims: true,     // SEO-A1 — lift/glow/shrink/wiggle/shine on Button blocks
       headingSwitcher: true,      // SEO-A1 — inline H1…H6 pills on selected heading
+      textMode: true,             // OMEGA-1 — Text ↔ Visual ↔ Code editor toggle (simple-mode for non-technical clients)
+      brokenLinks: true,          // OMEGA-1 — /api/portal/links/[siteId] scanner + admin UI on /admin/seo
+      siteNav: true,              // OMEGA-1 — Site.siteNavigationJsonLd injected via SiteHead
+      filenameAlt: true,          // OMEGA-1 — image filename → fallback alt for SEO
+      repoBrowser: true,          // OMEGA-1 — /admin/repo full GitHub file browser + commit-on-save
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

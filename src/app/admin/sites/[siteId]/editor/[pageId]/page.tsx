@@ -31,7 +31,7 @@ export default function EditorPage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
-  const [view, setView] = useState<"visual" | "code">("visual");
+  const [view, setView] = useState<"text" | "visual" | "code">("visual");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -277,14 +277,21 @@ export default function EditorPage() {
         />
         <span className="text-[11px] text-brand-cream/45 font-mono">{page?.slug}</span>
         <span className="ml-auto" />
-        {/* View toggle: visual canvas ↔ raw JSON code editor */}
+        {/* View toggle: simple text mode ↔ visual canvas ↔ raw JSON code */}
         <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 mr-2">
           <button
+            onClick={() => setView("text")}
+            title="Simplest mode — edit only text + colours"
+            className={`px-2.5 py-1 text-[11px] rounded ${view === "text" ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
+          >Text</button>
+          <button
             onClick={() => setView("visual")}
+            title="Drag-drop blocks, layout, styles"
             className={`px-2.5 py-1 text-[11px] rounded ${view === "visual" ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
           >Visual</button>
           <button
             onClick={() => setView("code")}
+            title="Raw JSON + custom code"
             className={`px-2.5 py-1 text-[11px] rounded ${view === "code" ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
           >Code</button>
         </div>
@@ -328,8 +335,8 @@ export default function EditorPage() {
         </button>
       </header>
 
-      {/* 3-pane workspace */}
-      {view === "visual" ? (
+      {/* Workspace — text/visual/code */}
+      {view === "visual" && (
         <div className="flex-1 min-h-0 flex">
           <Sidebar blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} onAddTopLevel={handleDropOnCanvas} />
           <Canvas
@@ -348,7 +355,8 @@ export default function EditorPage() {
             onRemove={handleRemoveSelected}
           />
         </div>
-      ) : (
+      )}
+      {view === "code" && (
         <CodeView
           page={page}
           blocks={blocks}
@@ -358,6 +366,21 @@ export default function EditorPage() {
             void updatePage(siteId, pageId, patch);
           }}
           onTreeMutate={(next) => mutate(next)}
+        />
+      )}
+      {view === "text" && (
+        <TextView
+          blocks={blocks}
+          onPatch={(id, props) => {
+            const target = findBlock(blocks, id);
+            if (!target) return;
+            mutate(updateBlock(blocks, id, { props: { ...target.block.props, ...props } }));
+          }}
+          onPatchStyles={(id, stylesPatch) => {
+            const target = findBlock(blocks, id);
+            if (!target) return;
+            mutate(updateBlock(blocks, id, { styles: { ...(target.block.styles ?? {}), ...stylesPatch } }));
+          }}
         />
       )}
 
@@ -371,6 +394,154 @@ export default function EditorPage() {
       )}
     </div>
   );
+}
+
+// Simplest mode — list every text-bearing block as a labelled input.
+// Designed for elderly clients / non-technical owners who want to edit
+// the words on the page without thinking about layout, blocks, or
+// breakpoints. Click → type → save. Colour wheels for the obvious
+// settings only.
+function TextView({
+  blocks, onPatch, onPatchStyles,
+}: {
+  blocks: Block[];
+  onPatch: (id: string, props: Record<string, unknown>) => void;
+  onPatchStyles: (id: string, styles: Partial<NonNullable<Block["styles"]>>) => void;
+}) {
+  const flat: Block[] = [];
+  walk(blocks, b => flat.push(b));
+  const editableTypes = new Set(["heading", "text", "button", "hero", "cta", "testimonials", "navbar", "footer", "image"]);
+  const editable = flat.filter(b => editableTypes.has(b.type));
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto bg-[#0a0a0a]">
+      <div className="max-w-2xl mx-auto py-8 px-6 space-y-4">
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-[12px] text-cyan-400/85 leading-relaxed">
+          Simple mode — edit the words on every block + the brand colour. Need more? Switch to <strong className="text-brand-cream">Visual</strong> in the top bar.
+        </div>
+        {editable.length === 0 && (
+          <p className="text-[12px] text-brand-cream/45 text-center py-12">
+            No editable text yet — switch to Visual mode and drag in a Heading or Text block.
+          </p>
+        )}
+        {editable.map(block => <TextRow key={block.id} block={block} onPatch={onPatch} onPatchStyles={onPatchStyles} />)}
+      </div>
+    </div>
+  );
+}
+
+function TextRow({ block, onPatch, onPatchStyles }: { block: Block; onPatch: (id: string, props: Record<string, unknown>) => void; onPatchStyles: (id: string, styles: Partial<NonNullable<Block["styles"]>>) => void }) {
+  const meta = textMetaFor(block);
+  if (!meta) return null;
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-brand-cream/45">{meta.label}</p>
+        <p className="text-[10px] text-brand-cream/30 font-mono">{block.type}</p>
+      </div>
+      {meta.fields.map(field => (
+        <div key={field.key} className="mb-2 last:mb-0">
+          {field.kind === "input" ? (
+            <input
+              defaultValue={String(block.props[field.key] ?? "")}
+              onBlur={e => onPatch(block.id, { [field.key]: e.target.value })}
+              placeholder={field.placeholder}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50"
+            />
+          ) : (
+            <textarea
+              defaultValue={String(block.props[field.key] ?? "")}
+              onBlur={e => onPatch(block.id, { [field.key]: e.target.value })}
+              placeholder={field.placeholder}
+              rows={3}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50"
+            />
+          )}
+          {field.label && <p className="text-[10px] text-brand-cream/35 mt-1">{field.label}</p>}
+        </div>
+      ))}
+      {/* Always offer a text-colour picker on text-bearing blocks. */}
+      <label className="flex items-center gap-2 mt-2">
+        <span className="text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 w-24">Text colour</span>
+        <input
+          type="color"
+          defaultValue={(block.styles?.textColor as string | undefined) ?? "#ffffff"}
+          onChange={e => onPatchStyles(block.id, { textColor: e.target.value })}
+          className="w-8 h-7 rounded cursor-pointer bg-transparent border border-white/10"
+        />
+        <button
+          onClick={() => onPatchStyles(block.id, { textColor: undefined })}
+          className="text-[10px] text-brand-cream/55 hover:text-brand-orange ml-auto"
+        >
+          Reset
+        </button>
+      </label>
+    </div>
+  );
+}
+
+function walk(blocks: Block[] | undefined, visit: (b: Block) => void) {
+  if (!blocks) return;
+  for (const b of blocks) {
+    visit(b);
+    if (b.children) walk(b.children, visit);
+  }
+}
+
+interface TextMeta {
+  label: string;
+  fields: Array<{ key: string; kind: "input" | "textarea"; label?: string; placeholder?: string }>;
+}
+
+function textMetaFor(block: Block): TextMeta | null {
+  switch (block.type) {
+    case "heading":
+      return { label: "Heading", fields: [{ key: "text", kind: "input", placeholder: "Headline text" }] };
+    case "text":
+      return { label: "Paragraph", fields: [{ key: "text", kind: "textarea", placeholder: "Body copy" }] };
+    case "button":
+      return { label: "Button", fields: [
+        { key: "label", kind: "input", placeholder: "Label" },
+        { key: "href", kind: "input", label: "Where it links to", placeholder: "/, /shop, https://…" },
+      ] };
+    case "hero":
+      return { label: "Hero", fields: [
+        { key: "eyebrow",  kind: "input",    placeholder: "Eyebrow" },
+        { key: "headline", kind: "input",    placeholder: "Big headline" },
+        { key: "subhead",  kind: "textarea", placeholder: "Sub-headline" },
+        { key: "ctaLabel", kind: "input",    label: "CTA label", placeholder: "Get started" },
+        { key: "ctaHref",  kind: "input",    label: "CTA URL", placeholder: "/" },
+      ] };
+    case "cta":
+      return { label: "Call to action", fields: [
+        { key: "headline", kind: "input",    placeholder: "Headline" },
+        { key: "subhead",  kind: "textarea", placeholder: "Sub-headline" },
+        { key: "ctaLabel", kind: "input",    label: "Button label" },
+        { key: "ctaHref",  kind: "input",    label: "Button URL" },
+      ] };
+    case "navbar":
+      return { label: "Navbar", fields: [
+        { key: "brand",    kind: "input", placeholder: "Brand name" },
+        { key: "ctaLabel", kind: "input", label: "CTA label" },
+        { key: "ctaHref",  kind: "input", label: "CTA URL" },
+      ] };
+    case "footer":
+      return { label: "Footer", fields: [
+        { key: "brand",   kind: "input",    placeholder: "Brand" },
+        { key: "tagline", kind: "textarea", placeholder: "Footer tagline" },
+      ] };
+    case "image":
+      return { label: "Image", fields: [
+        { key: "src",  kind: "input", label: "URL", placeholder: "https://…" },
+        { key: "alt",  kind: "input", label: "Alt text (helps SEO + screen readers)" },
+        { key: "href", kind: "input", label: "Click link (optional)" },
+      ] };
+    case "testimonials":
+      return { label: "Testimonials", fields: [{ key: "title", kind: "input", placeholder: "Section title" }] };
+    default:
+      return null;
+  }
 }
 
 function SeoPanel({ page, onPageMutate }: { page: EditorPage; onPageMutate: (patch: Partial<EditorPage>) => void }) {

@@ -197,12 +197,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     category: "media",
     isContainer: false,
     Component: ImageBlock,
-    defaultProps: { src: "", alt: "", width: "100%" },
+    defaultProps: { src: "", alt: "", width: "100%", filenameForSeo: true },
     fields: [
       { key: "src", label: "Image URL", type: "image", default: "" },
-      { key: "alt", label: "Alt text", type: "text", default: "" },
+      { key: "alt", label: "Alt text", type: "text", default: "", help: "Describes the image for screen readers + search engines" },
+      { key: "title", label: "Title (hover tooltip)", type: "text", default: "" },
       { key: "width", label: "Width", type: "text", default: "100%" },
       { key: "href", label: "Link URL (optional)", type: "url", default: "" },
+      { key: "filenameForSeo", label: "Use filename as fallback alt", type: "boolean", default: true, help: "When alt is empty, derives one from the image filename — bonus SEO" },
     ],
   },
   button: {

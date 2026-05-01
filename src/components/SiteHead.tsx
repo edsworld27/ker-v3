@@ -107,11 +107,13 @@ export default function SiteHead() {
   // global CMS values.
   const [siteCustomHead, setSiteCustomHead] = useState("");
   const [siteCustomBody, setSiteCustomBody] = useState("");
+  const [siteNavJsonLd, setSiteNavJsonLd] = useState("");
   useEffect(() => {
     function read() {
       const s = typeof window !== "undefined" ? window.__site : undefined;
       setSiteCustomHead(s?.customHead ?? "");
       setSiteCustomBody(s?.customBody ?? "");
+      setSiteNavJsonLd(s?.siteNavigationJsonLd ?? "");
     }
     read();
     const id = window.setInterval(read, 1000); // re-poll briefly so SiteResolver hydration is picked up
@@ -155,7 +157,15 @@ export default function SiteHead() {
     <>
       {/* Global custom <head> HTML — rendered as a portal-less inert div
           whose innerHTML is reflected into <head> via effect. */}
-      <HtmlInjector target="head" html={[globalHead, siteCustomHead, pageHead].filter(Boolean).join("\n")} />
+      <HtmlInjector
+        target="head"
+        html={[
+          globalHead,
+          siteCustomHead,
+          siteNavJsonLd ? `<script type="application/ld+json">${siteNavJsonLd}</script>` : "",
+          pageHead,
+        ].filter(Boolean).join("\n")}
+      />
       <HtmlInjector target="body-start" html={globalBodyStart} />
       <HtmlInjector target="body-end" html={[globalBodyEnd, siteCustomBody, pageBodyEnd].filter(Boolean).join("\n")} />
 

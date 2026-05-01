@@ -43,6 +43,9 @@ export interface Site {
   // the document <head>; customBody at the end of <body>.
   customHead?: string;             // P-3: arbitrary HTML injected into <head>
   customBody?: string;             // P-3: arbitrary HTML injected at the end of <body>
+  // SEO-A2: Sitelinks JSON-LD blob (SiteNavigationElement). Auto-seeded
+  // from visual-editor pages on /admin/seo, hand-editable.
+  siteNavigationJsonLd?: string;
 }
 
 export const DEFAULT_PRIMARY_SITE: Site = {
