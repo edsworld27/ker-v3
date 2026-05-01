@@ -44,6 +44,11 @@ import automation from "./automation";
 import knowledgebase from "./knowledgebase";
 import search from "./search";
 import backups from "./backups";
+import forum from "./forum";
+import wiki from "./wiki";
+import inventory from "./inventory";
+import reviewsV2 from "./reviews";
+import social from "./social";
 
 // First-party plugins. Order is presentation-only (marketplace
 // rendering); install dependencies are enforced by the runtime.
@@ -51,8 +56,12 @@ const PLUGINS: AquaPlugin[] = [
   brand,
   website,
   ecommerce,
+  inventory,
   subscriptions,
   blog,
+  wiki,
+  knowledgebase,
+  forum,
   memberships,
   reservations,
   donations,
@@ -61,13 +70,14 @@ const PLUGINS: AquaPlugin[] = [
   chatbot,
   livechat,
   seo,
+  social,
   analytics,
   funnels,
   affiliates,
   crm,
   automation,
-  knowledgebase,
   search,
+  reviewsV2,
   compliance,
   support,
   auditor,
