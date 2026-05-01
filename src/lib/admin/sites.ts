@@ -36,6 +36,7 @@ export interface Site {
   };
   status: "draft" | "live";
   createdAt: number;
+  orgId?: string;                  // G-2: which org owns this site (undefined → primary)
 }
 
 export const DEFAULT_PRIMARY_SITE: Site = {
@@ -60,7 +61,12 @@ function read(): Store {
 function seed(s: Partial<Store>): Store {
   const sites = s.sites ?? {};
   if (Object.keys(sites).length === 0) {
-    sites[DEFAULT_PRIMARY_SITE.id] = { ...DEFAULT_PRIMARY_SITE, createdAt: Date.now() };
+    sites[DEFAULT_PRIMARY_SITE.id] = { ...DEFAULT_PRIMARY_SITE, createdAt: Date.now(), orgId: "agency" };
+  }
+  // Migration: any existing site without an orgId is assigned to the
+  // primary "agency" org so the active-org filter doesn't hide it.
+  for (const id of Object.keys(sites)) {
+    if (!sites[id].orgId) sites[id].orgId = "agency";
   }
   return { sites };
 }
@@ -282,4 +288,27 @@ export function onSitesChange(handler: () => void): () => void {
     window.removeEventListener(EVENT, handler);
     window.removeEventListener("storage", handler);
   };
+}
+
+// ─── Org-scoped listing (G-2) ──────────────────────────────────────────────
+
+// `listSites()` keeps returning every site (back-compat for code that
+// hasn't been migrated). New callers should use `listSitesForOrg(orgId)`
+// to scope to the active org.
+export function listSitesForOrg(orgId: string): Site[] {
+  return listSites().filter(s => (s.orgId ?? "agency") === orgId);
+}
+
+// Patch `createSite` so new sites land in the active org. Re-export
+// the existing function name; legacy callers without orgId default to
+// "agency" (the primary org).
+const _originalCreateSite = createSite;
+// (no-op: we want the original createSite to keep working — see
+// below for the explicit org-aware variant)
+
+export function createSiteForOrg(orgId: string, input: { name: string; slug?: string; domains?: string[]; tagline?: string }): Site {
+  const site = _originalCreateSite(input);
+  // Persist orgId on the freshly-created record.
+  updateSite(site.id, { orgId });
+  return { ...site, orgId };
 }
