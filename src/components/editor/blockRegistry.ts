@@ -40,6 +40,10 @@ import PaymentButtonBlock from "./blocks/PaymentButtonBlock";
 import OrderSuccessBlock from "./blocks/OrderSuccessBlock";
 import VariantPickerBlock from "./blocks/VariantPickerBlock";
 import ProductSearchBlock from "./blocks/ProductSearchBlock";
+import LoginFormBlock from "./blocks/LoginFormBlock";
+import SignupFormBlock from "./blocks/SignupFormBlock";
+import ThemeSelectorBlock from "./blocks/ThemeSelectorBlock";
+import SocialAuthBlock from "./blocks/SocialAuthBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -499,6 +503,75 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     fields: [
       { key: "placeholder", label: "Placeholder", type: "text", default: "Search products…" },
       { key: "showPlaceholder", label: "Show placeholder", type: "boolean", default: true },
+    ],
+  },
+  "login-form": {
+    type: "login-form",
+    label: "Login form",
+    icon: "🔑",
+    category: "content",
+    isContainer: false,
+    Component: LoginFormBlock,
+    defaultProps: { title: "Sign in", action: "/api/auth/login", submitLabel: "Sign in", showRemember: true, showForgot: true, showSignupLink: true, signupHref: "/signup", forgotHref: "/account/forgot-password" },
+    fields: [
+      { key: "title",         label: "Title",          type: "text",     default: "Sign in" },
+      { key: "subtitle",      label: "Subtitle",       type: "text",     default: "" },
+      { key: "action",        label: "Submit URL",     type: "url",      default: "/api/auth/login" },
+      { key: "submitLabel",   label: "Submit label",   type: "text",     default: "Sign in" },
+      { key: "showRemember",  label: "Show remember",  type: "boolean",  default: true },
+      { key: "showForgot",    label: "Show forgot link", type: "boolean", default: true },
+      { key: "forgotHref",    label: "Forgot URL",     type: "url",      default: "/account/forgot-password" },
+      { key: "showSignupLink",label: "Show sign-up link", type: "boolean", default: true },
+      { key: "signupHref",    label: "Sign-up URL",    type: "url",      default: "/signup" },
+    ],
+  },
+  "signup-form": {
+    type: "signup-form",
+    label: "Sign-up form",
+    icon: "✏",
+    category: "content",
+    isContainer: false,
+    Component: SignupFormBlock,
+    defaultProps: { title: "Create your account", action: "/api/auth/signup", submitLabel: "Create account", showName: true, requireTerms: false, termsHref: "/terms", showLoginLink: true, loginHref: "/login" },
+    fields: [
+      { key: "title",         label: "Title",          type: "text",     default: "Create your account" },
+      { key: "action",        label: "Submit URL",     type: "url",      default: "/api/auth/signup" },
+      { key: "submitLabel",   label: "Submit label",   type: "text",     default: "Create account" },
+      { key: "showName",      label: "Show name field", type: "boolean", default: true },
+      { key: "requireTerms",  label: "Require terms checkbox", type: "boolean", default: false },
+      { key: "termsHref",     label: "Terms URL",      type: "url",      default: "/terms" },
+      { key: "showLoginLink", label: "Show login link", type: "boolean", default: true },
+      { key: "loginHref",     label: "Login URL",      type: "url",      default: "/login" },
+    ],
+  },
+  "theme-selector": {
+    type: "theme-selector",
+    label: "Theme selector",
+    icon: "🎨",
+    category: "content",
+    isContainer: false,
+    Component: ThemeSelectorBlock,
+    defaultProps: { label: "Theme", variant: "select" },
+    fields: [
+      { key: "label",   label: "Label",  type: "text",   default: "Theme" },
+      { key: "variant", label: "Variant", type: "select", default: "select", options: [
+        { value: "select",  label: "Dropdown" },
+        { value: "buttons", label: "Pill buttons" },
+      ] },
+    ],
+  },
+  "social-auth": {
+    type: "social-auth",
+    label: "Social auth buttons",
+    icon: "🔐",
+    category: "content",
+    isContainer: false,
+    Component: SocialAuthBlock,
+    defaultProps: { enabled: ["google", "github"], baseUrl: "/api/auth", showDivider: true, dividerLabel: "or" },
+    fields: [
+      { key: "baseUrl",       label: "Base URL",       type: "url",     default: "/api/auth", help: "Each button links to {baseUrl}/{provider}." },
+      { key: "showDivider",   label: "Show divider",   type: "boolean", default: true },
+      { key: "dividerLabel",  label: "Divider label",  type: "text",    default: "or" },
     ],
   },
   "variant-picker": {

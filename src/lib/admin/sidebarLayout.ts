@@ -112,6 +112,7 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
         { type: "link", id: "assets",   label: "Assets",    href: "/admin/assets",   resource: "website" },
         { type: "link", id: "seo",      label: "SEO",       href: "/admin/seo",      resource: "website" },
         { type: "link", id: "themes",   label: "Themes",    href: "/admin/themes",   resource: "website" },
+        { type: "link", id: "site-test", label: "Test website", href: "/admin/site-test", resource: "settings" },
         { type: "link", id: "repo",     label: "Repository", href: "/admin/repo",    resource: "settings" },
         { type: "link", id: "blog",     label: "Blog",      href: "/admin/blog",     resource: "blog" },
         { type: "link", id: "faq",      label: "FAQ",       href: "/admin/faq",      resource: "faq" },
