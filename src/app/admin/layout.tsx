@@ -104,14 +104,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div className="min-h-screen bg-brand-black" />;
   }
 
-  // Dev bypass — admin auth is skipped when NEXT_PUBLIC_PORTAL_DEV_BYPASS=1.
-  // Defaults to OFF so production deploys are auth-gated by default. Local
-  // development can opt in via .env.local. The agency vision (Phase G+)
-  // brings real per-tenant auth that retires this entirely.
-  const devBypass = process.env.NEXT_PUBLIC_PORTAL_DEV_BYPASS === "1";
+  // Dev bypass — two-flag system:
+  //   • Legacy: NEXT_PUBLIC_PORTAL_DEV_BYPASS=1 (kept for back-compat)
+  //   • New:    NEXT_PUBLIC_PORTAL_SECURITY in {"false","dev","off"} or unset
+  // Either off-state means the admin doesn't require a session.
+  const legacyBypass = process.env.NEXT_PUBLIC_PORTAL_DEV_BYPASS === "1";
+  const securityEnv = process.env.NEXT_PUBLIC_PORTAL_SECURITY;
+  const securityOff = !securityEnv || securityEnv === "false" || securityEnv === "dev" || securityEnv === "off";
+  const devBypass = legacyBypass || securityOff;
 
   if (!devBypass && !session) {
-    if (typeof window !== "undefined") router.replace("/account");
+    // Send unauthenticated admins to the dedicated admin login (cyan
+    // /login page), NOT the customer storefront login at /account.
+    if (typeof window !== "undefined") {
+      const next = encodeURIComponent(pathname ?? "/admin");
+      router.replace(`/login?next=${next}`);
+    }
     return null;
   }
 

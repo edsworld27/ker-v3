@@ -8,9 +8,12 @@ import { NextResponse, type NextRequest } from "next/server";
 const COOKIE = "lk_session_v1";
 
 export function middleware(req: NextRequest) {
-  const mode = process.env.NEXT_PUBLIC_PORTAL_SECURITY ?? "strict";
+  // Default unset → "dev" so the Dev bypass works out of the box. Flip
+  // env to "true" / "strict" in production to lock /admin behind auth.
+  const env = process.env.NEXT_PUBLIC_PORTAL_SECURITY;
+  const isStrict = env === "strict" || env === "true";
   const legacy = process.env.NEXT_PUBLIC_PORTAL_DEV_BYPASS === "1";
-  if (mode !== "strict" || legacy) return NextResponse.next();
+  if (!isStrict || legacy) return NextResponse.next();
 
   const path = req.nextUrl.pathname;
   if (!path.startsWith("/admin")) return NextResponse.next();

@@ -169,18 +169,14 @@ export function setSecurityModeOverride(mode: SecurityMode | null) {
 }
 
 // One-click dev sign-in: synthesises a super-admin session without going
-// through the password store. Only callable when getSecurityMode() returns
-// "dev" or "off"; the /login page enforces that. The synthesised user is
-// kept in the same shape as a real one so the rest of the admin code path
-// (sidebar, isAdmin, team perms) doesn't need to special-case it.
+// through the password store. Always works when called — the /login page
+// is what enforces the security mode (button visibility + the
+// /api/auth/dev gate). Once the user clicks Dev bypass, that's their
+// explicit consent — this just writes the session.
 
 export const DEV_ADMIN_EMAIL = "dev@local.portal";
 
 export function signInAsDev(): Session {
-  const mode = getSecurityMode();
-  if (mode === "strict") {
-    throw new Error("Dev sign-in is disabled (security=strict). Set NEXT_PUBLIC_PORTAL_SECURITY=dev or off.");
-  }
   const email = DEV_ADMIN_EMAIL;
   const users = loadUsers();
   // Persist the dev user so listAllUsers + getTeamMemberByEmail callers

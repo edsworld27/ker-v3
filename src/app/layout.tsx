@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
-import dynamic from "next/dynamic";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import PurpleSideScroller from "@/components/PurpleSideScroller";
@@ -16,11 +15,7 @@ import SiteUX from "@/components/SiteUX";
 import PortalTagInjector from "@/components/PortalTagInjector";
 import WebVitalsReporter from "@/components/web-vitals-reporter";
 import PortalEditOverlay from "@/components/PortalEditOverlay";
-
-// ChatBot is client-only, rarely opened on first paint, and pulls in a
-// chunk of UI + per-site config. Lazy-loading with `ssr: false` keeps it
-// out of the initial JS bundle and out of the streamed HTML.
-const ChatBot = dynamic(() => import("@/components/ChatBot"), { ssr: false });
+import ChatBotLazy from "@/components/ChatBotLazy";
 
 // Both fonts use `display: "swap"` to avoid FOIT on slow networks, and a
 // system-stack `fallback` so the layout doesn't shift visibly when the
@@ -87,7 +82,7 @@ export default function RootLayout({
           <PreviewBar />
           <SiteHead />
           {children}
-          <FeatureGate flag="chatbot"><ChatBot /></FeatureGate>
+          <FeatureGate flag="chatbot"><ChatBotLazy /></FeatureGate>
           <FeatureGate flag="purple_scroller"><PurpleSideScroller /></FeatureGate>
         </CartProvider>
       </body>
