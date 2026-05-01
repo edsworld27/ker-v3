@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { listCustomers, type CustomerSummary } from "@/lib/admin/customers";
 
 export default function AdminCustomersPage() {
@@ -44,8 +45,12 @@ export default function AdminCustomersPage() {
             <p className="px-5 py-10 text-center text-sm text-brand-cream/45">No customers yet.</p>
           )}
           {filtered.map(c => (
-            <div key={c.email} className="px-5 py-4">
-              <div className="md:grid md:grid-cols-[1fr_1fr_90px_110px_140px] md:gap-4 md:items-center flex flex-col gap-1">
+            <Link
+              key={c.email}
+              href={`/admin/customers/${encodeURIComponent(c.email)}`}
+              className="block px-5 py-4 hover:bg-white/[0.025] transition-colors"
+            >
+              <div className="md:grid md:grid-cols-[1fr_1fr_90px_110px_140px_28px] md:gap-4 md:items-center flex flex-col gap-1">
                 <span className="text-sm text-brand-cream truncate">{c.name}</span>
                 <span className="text-xs text-brand-cream/55 truncate">{c.email}</span>
                 <span className="text-sm text-brand-cream md:text-right">{c.orders}</span>
@@ -53,8 +58,9 @@ export default function AdminCustomersPage() {
                 <span className="text-xs text-brand-cream/55 md:text-right">
                   {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString() : "—"}
                 </span>
+                <span className="hidden md:block text-brand-cream/20 text-right">›</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
