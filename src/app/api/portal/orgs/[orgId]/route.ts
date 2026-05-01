@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
 import { getOrg, updateOrg, deleteOrg } from "@/portal/server/orgs";
 import type { OrgRecord, OrgStatus } from "@/portal/server/types";
+import { requireAdmin } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ orgId: str
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ orgId: string }> }) {
+  try { await requireAdmin(); }
+  catch (r) { return r as Response; }
   await ensureHydrated();
   const { orgId } = await ctx.params;
   let body: Partial<OrgRecord>;
@@ -37,6 +40,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ orgId: st
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ orgId: string }> }) {
+  try { await requireAdmin(); }
+  catch (r) { return r as Response; }
   await ensureHydrated();
   const { orgId } = await ctx.params;
   const ok = deleteOrg(orgId);

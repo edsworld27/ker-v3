@@ -54,24 +54,49 @@ function LoginInner() {
     if (busy) return;
     setBusy(true); setError(null);
     try {
-      const result = await signInWithEmail(email, password);
-      if (!result.ok) { setError(result.error); return; }
+      // Server-side cookie session. Strict mode requires this to succeed.
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (mode !== "strict") {
+          // In dev/off, fall back to the legacy localStorage path so a
+          // pre-existing demo user can still sign in.
+          const fallback = await signInWithEmail(email, password);
+          if (!fallback.ok) { setError(fallback.error); return; }
+          router.replace(next);
+          return;
+        }
+        setError(data?.error ?? "Sign-in failed"); return;
+      }
+      // Mirror the session into localStorage so existing client-side
+      // /admin code (which still reads getSession()) stays in sync.
+      await signInWithEmail(email, password).catch(() => {});
       router.replace(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally { setBusy(false); }
   }
 
-  function handleDevSignIn() {
+  async function handleDevSignIn() {
     if (busy) return;
     setBusy(true); setError(null);
     try {
-      signInAsDev();
+      // Server cookie first — so middleware lets the operator into /admin.
+      const res = await fetch("/api/auth/dev", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.error ?? "Dev sign-in disabled"); return;
+      }
+      // Localstorage parity for client-side code.
+      try { signInAsDev(); } catch {}
       router.replace(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   function handleBack() {

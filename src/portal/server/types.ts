@@ -496,4 +496,87 @@ export interface OrgRecord {
   status: OrgStatus;
   isPrimary: boolean;
   createdAt: number;
+  members?: OrgMembership[];   // G-5: per-org access control
+  subscription?: Subscription; // G-3 active plan + Stripe linkage
+  dashboard?: DashboardLayout; // G-4 per-tenant dashboard customisation
+}
+
+// ─── Server-side users + sessions (G-5) ─────────────────────────────────────
+//
+// The localStorage user store in src/lib/auth.ts will be retired here.
+// Server-side users own the password hash + role, sessions are signed
+// HMAC cookies validated on every protected request.
+
+export type UserRole = "super-admin" | "admin" | "member";
+
+export interface ServerUser {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;        // sha256(password + email-salt)
+  role: UserRole;              // global role; per-org membership lives on OrgRecord.members
+  createdAt: number;
+}
+
+export interface OrgMembership {
+  email: string;               // FK to ServerUser.email
+  role: "owner" | "admin" | "member";
+  joinedAt: number;
+}
+
+// ─── Plans + subscriptions (G-3) ───────────────────────────────────────────
+//
+// Plans gate admin features. Each org has at most one active subscription.
+// Stripe is the eventual source of truth — this scaffold mirrors the
+// minimum shape so the UI can be built before the Stripe integration lands.
+
+export type PlanId = "starter" | "pro" | "enterprise";
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  priceMonthly: number;        // pence
+  features: string[];          // feature flags this plan unlocks
+}
+
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled";
+
+export interface Subscription {
+  planId: PlanId;
+  status: SubscriptionStatus;
+  startedAt: number;
+  renewsAt?: number;
+  canceledAt?: number;
+  stripeSubId?: string;        // populated by the live Stripe webhook (later)
+  stripeCustomerId?: string;
+}
+
+// ─── Per-tenant dashboard layout (G-4) ─────────────────────────────────────
+//
+// Each org carries an optional dashboard layout. Default layout is used
+// when org.dashboard is undefined. Widgets reference well-known IDs so
+// the rendering side can map them to React components.
+
+export type WidgetType =
+  | "stat-orders"
+  | "stat-revenue"
+  | "stat-sites"
+  | "stat-customers"
+  | "list-recent-orders"
+  | "list-recent-activity"
+  | "list-low-stock"
+  | "chart-revenue-trend"
+  | "callout-onboarding";
+
+export interface DashboardWidget {
+  id: string;                  // unique within layout
+  type: WidgetType;
+  title?: string;
+  span: 1 | 2 | 3;             // grid columns out of 3
+  visible: boolean;
+}
+
+export interface DashboardLayout {
+  widgets: DashboardWidget[];
+  updatedAt: number;
 }
