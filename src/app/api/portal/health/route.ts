@@ -34,7 +34,8 @@ export async function GET() {
       quickSetup: true,           // /admin/sites “Quick setup” → /admin/portal-settings checklist
       autoMigrate: true,          // POST /api/portal/migrate auto-applies schema via Supabase Management API
       injectTag: true,            // POST /api/portal/inject-tag opens a PR adding the portal script tag (F-3)
-      embedLogin: true,           // /embed/login iframeable + postMessage auth-success to parent (F-4)
+      embedLogin: true,           // /embed/login iframeable, self-contained portal session (cross-origin safe)
+      embedLoader: true,          // /portal/embed.js chatbot-style JS loader for floating + inline widgets
       aiConvert: true,            // AI Convert prompt modal in the setup checklist (F-2)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

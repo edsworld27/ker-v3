@@ -907,37 +907,39 @@ Format code in fenced blocks so I can paste straight into my files. Keep the pro
 // ─── Iframe login embed snippet ────────────────────────────────────────────
 
 function IframeLoginSnippet({ siteId }: { siteId: string }) {
-  const [copied, setCopied] = useState<"" | "iframe" | "js">("");
+  const [copied, setCopied] = useState<"" | "floating" | "inline">("");
+  const [variant, setVariant] = useState<"floating" | "inline">("floating");
   const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://your-portal.app";
 
-  const iframeSnippet =
-`<iframe
-  src="${portalOrigin}/embed/login?site=${siteId}"
-  width="360"
-  height="480"
-  style="border:0;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.2)"
-  allow="clipboard-write"
-></iframe>
+  const floatingSnippet =
+`<!-- Drop this anywhere in <head> or before </body>. That's it. -->
+<script
+  src="${portalOrigin}/portal/embed.js"
+  data-site="${siteId}"
+  data-mode="floating"
+  data-label="Sign in"
+  defer
+></script>`;
 
-<script>
-  // Listen for the auth-success postMessage and store the token however
-  // your site wants. Always validate event.origin.
-  window.addEventListener("message", (e) => {
-    if (e.origin !== "${portalOrigin}") return;
-    if (!e.data || e.data.source !== "portal-login") return;
-    if (e.data.type === "auth-success") {
-      // e.data → { siteId, email, name, accessToken, expiresAt }
-      console.log("Portal sign-in:", e.data);
-      // …persist the session your way
-    }
-  });
-</script>`;
+  const inlineSnippet =
+`<!-- Where you want the sign-in widget to appear: -->
+<div id="portal-signin"></div>
 
-  async function copy(which: "iframe") {
-    const text = iframeSnippet;
+<!-- And the loader: -->
+<script
+  src="${portalOrigin}/portal/embed.js"
+  data-site="${siteId}"
+  data-mode="inline"
+  data-mount="portal-signin"
+  defer
+></script>`;
+
+  const snippet = variant === "floating" ? floatingSnippet : inlineSnippet;
+
+  async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(which);
+      await navigator.clipboard.writeText(snippet);
+      setCopied(variant);
       setTimeout(() => setCopied(""), 2000);
     } catch {}
   }
@@ -945,21 +947,42 @@ function IframeLoginSnippet({ siteId }: { siteId: string }) {
   return (
     <div className="rounded-lg border border-white/8 bg-brand-black/40 px-3 py-2.5 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <p className="text-xs font-medium text-brand-cream">Embed portal login</p>
-        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10">iframe + postMessage</span>
+        <p className="text-xs font-medium text-brand-cream">Embed portal sign-in</p>
+        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10">chatbot-style widget</span>
         <button
-          onClick={() => copy("iframe")}
+          onClick={copy}
           className="ml-auto text-[11px] px-2.5 py-1 rounded-md bg-brand-amber/20 border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/30 font-semibold"
         >
-          {copied === "iframe" ? "Copied" : "Copy snippet"}
+          {copied === variant ? "Copied" : "Copy snippet"}
         </button>
       </div>
       <p className="text-[11px] text-brand-cream/45 leading-relaxed">
-        Drop this into any page that needs portal sign-in. The iframe renders the portal&apos;s login UI; on success, an <code className="font-mono">auth-success</code> postMessage is sent to the parent with the access token.
+        Drop one <code className="font-mono">&lt;script&gt;</code> line into the host site — same pattern as Crisp / Intercom / Calendly. The portal runs entirely inside its own iframe (cookies, session, API calls all scoped to the portal origin); the host never touches auth tokens. Two layouts:
       </p>
+
+      <div className="flex gap-1 text-[11px]">
+        {(["floating", "inline"] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setVariant(v)}
+            className={`px-2.5 py-1 rounded-md border transition-colors ${
+              variant === v
+                ? "border-brand-orange bg-brand-orange/10 text-brand-cream"
+                : "border-white/10 text-brand-cream/55 hover:border-white/25"
+            }`}
+          >
+            {v === "floating" ? "Floating button" : "Inline at element"}
+          </button>
+        ))}
+      </div>
+
       <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 overflow-x-auto text-brand-cream/85 whitespace-pre max-h-48 overflow-y-auto">
-{iframeSnippet}
+{snippet}
       </pre>
+
+      <p className="text-[10px] text-brand-cream/40">
+        Cross-origin works because the iframe is its own app: the portal reads/writes its database from inside the iframe origin (Supabase / KV / file). Modern browsers partition iframe storage per parent so visitors of different host sites get isolated portal sessions automatically.
+      </p>
     </div>
   );
 }
