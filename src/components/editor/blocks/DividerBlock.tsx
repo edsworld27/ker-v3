@@ -1,3 +1,5 @@
+"use client";
+
 import type { BlockRenderProps } from "../blockRegistry";
 
 export default function DividerBlock({ block }: BlockRenderProps) {
