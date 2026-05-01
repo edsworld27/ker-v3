@@ -39,6 +39,7 @@ import CheckoutSummaryBlock from "./blocks/CheckoutSummaryBlock";
 import PaymentButtonBlock from "./blocks/PaymentButtonBlock";
 import OrderSuccessBlock from "./blocks/OrderSuccessBlock";
 import VariantPickerBlock from "./blocks/VariantPickerBlock";
+import ProductSearchBlock from "./blocks/ProductSearchBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -475,6 +476,19 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "provider", label: "Provider", type: "select", default: "stripe", options: [
         { value: "stripe", label: "Stripe" }, { value: "paypal", label: "PayPal" }, { value: "applepay", label: "Apple Pay" },
       ] },
+    ],
+  },
+  "product-search": {
+    type: "product-search",
+    label: "Product search",
+    icon: "🔍",
+    category: "commerce",
+    isContainer: false,
+    Component: ProductSearchBlock,
+    defaultProps: { placeholder: "Search products…", showPlaceholder: true },
+    fields: [
+      { key: "placeholder", label: "Placeholder", type: "text", default: "Search products…" },
+      { key: "showPlaceholder", label: "Show placeholder", type: "boolean", default: true },
     ],
   },
   "variant-picker": {

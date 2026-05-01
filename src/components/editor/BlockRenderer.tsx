@@ -7,6 +7,8 @@
 
 import type { Block } from "@/portal/server/types";
 import { getBlockDefinition } from "./blockRegistry";
+import AnimateOnScroll from "./AnimateOnScroll";
+import { overridesToCssText } from "./blockStyles";
 
 export interface BlockRendererProps {
   blocks: Block[] | undefined;
@@ -37,11 +39,39 @@ function BlockNode({ block, editorMode }: { block: Block; editorMode: boolean })
     return null;
   }
   const Component = def.Component;
-  return (
+  const node = (
     <Component
       block={block}
       editorMode={editorMode}
       renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} />}
     />
   );
+
+  // Per-block responsive override style tag — only when overrides exist.
+  // Targets `[data-block-id="<id>"]` which we attach below.
+  const tabletCss = !editorMode ? overridesToCssText(block.styles?.tablet) : "";
+  const mobileCss = !editorMode ? overridesToCssText(block.styles?.mobile) : "";
+  const needsScopedCss = tabletCss || mobileCss;
+
+  let body: React.ReactNode = node;
+  if (needsScopedCss) {
+    const css = [
+      tabletCss && `@media (max-width: 1024px) { [data-block-id="${block.id}"] { ${tabletCss} } }`,
+      mobileCss && `@media (max-width: 640px) { [data-block-id="${block.id}"] { ${mobileCss} } }`,
+    ].filter(Boolean).join("\n");
+    body = (
+      <div data-block-id={block.id} style={{ display: "contents" }}>
+        <style dangerouslySetInnerHTML={{ __html: css }} />
+        {node}
+      </div>
+    );
+  }
+
+  // Scroll animations only apply outside editor mode — the canvas
+  // renders the resting state so layout is editable.
+  const animate = block.styles?.animate;
+  if (animate && !editorMode) {
+    return <AnimateOnScroll animate={animate}>{body}</AnimateOnScroll>;
+  }
+  return <>{body}</>;
 }

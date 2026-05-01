@@ -22,7 +22,7 @@ import { dirname, resolve } from "path";
 import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
-  EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage,
+  EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage, PortalAsset,
 } from "./types";
 
 interface PortalState {
@@ -39,6 +39,7 @@ interface PortalState {
   orgs: Record<string, OrgRecord>;          // G-2 org/tenant store
   users: Record<string, ServerUser>;        // G-5 server-side user store
   pages: Record<string, Record<string, EditorPage>>; // V-A visual editor: siteId → pageId → page
+  assets: Record<string, PortalAsset>;               // P-2 asset library: assetId → asset
 }
 
 const empty = (): PortalState => ({
@@ -51,6 +52,7 @@ const empty = (): PortalState => ({
   orgs: {},
   users: {},
   pages: {},
+  assets: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -411,6 +413,7 @@ function parseBlob(raw: string): PortalState {
       orgs: parsed.orgs ?? {},
       users: parsed.users ?? {},
       pages: parsed.pages ?? {},
+      assets: parsed.assets ?? {},
     };
   } catch {
     return empty();
