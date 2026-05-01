@@ -98,6 +98,9 @@ export function getAdminSettings(): PortalSettings {
     database: {
       backend: s.database.backend,
       kvUrl: s.database.kvUrl ? SECRET_PLACEHOLDER : "",
+      supabaseUrl: s.database.supabaseUrl ?? "",
+      supabaseServiceKey: s.database.supabaseServiceKey ? SECRET_PLACEHOLDER : "",
+      supabaseManagementToken: s.database.supabaseManagementToken ? SECRET_PLACEHOLDER : "",
       postgresUrl: s.database.postgresUrl ? SECRET_PLACEHOLDER : "",
     },
     deployment: { ...s.deployment },
@@ -121,6 +124,8 @@ export function applyAdminPatch(patch: PortalSettingsPatch): PortalSettings {
   if (patch.database) {
     const d: NonNullable<PortalSettingsPatch["database"]> = { ...patch.database };
     if (d.kvUrl === SECRET_PLACEHOLDER) delete d.kvUrl;
+    if (d.supabaseServiceKey === SECRET_PLACEHOLDER) delete d.supabaseServiceKey;
+    if (d.supabaseManagementToken === SECRET_PLACEHOLDER) delete d.supabaseManagementToken;
     if (d.postgresUrl === SECRET_PLACEHOLDER) delete d.postgresUrl;
     cleaned.database = d;
   }

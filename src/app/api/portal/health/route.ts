@@ -32,6 +32,7 @@ export async function GET() {
       cloudAudit: true,           // server-side activity log with retention purge by compliance mode
       supabase: true,             // Supabase backend with auto-detected schema + inline migration SQL
       quickSetup: true,           // /admin/sites “Quick setup” → /admin/portal-settings checklist
+      autoMigrate: true,          // POST /api/portal/migrate auto-applies schema via Supabase Management API
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

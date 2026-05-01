@@ -227,6 +227,11 @@ export interface PortalSettings {
     kvUrl?: string;
     supabaseUrl?: string;
     supabaseServiceKey?: string;
+    // Supabase Personal Access Token (different from the service-role
+    // key) used by the one-time "Sync DB" migration via the Supabase
+    // Management API. Only needed once per project — not used at
+    // runtime, only when the schema needs initialising.
+    supabaseManagementToken?: string;
     postgresUrl?: string;
   };
   deployment: {

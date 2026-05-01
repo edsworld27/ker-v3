@@ -131,7 +131,11 @@ export default function AdminPortalSettingsPage() {
 
       {setupSite && <SetupChecklist settings={live} backendInfo={backendInfo} />}
 
-      <MigrationBanner backendInfo={backendInfo} />
+      <MigrationBanner
+        backendInfo={backendInfo}
+        hasManagementToken={hasSecret(live.database.supabaseManagementToken ?? "")}
+        onMigrated={info => setBackendInfo(info)}
+      />
 
       {/* ── GITHUB ────────────────────────────────────────────────────────── */}
       <Card id="setup-github" title="GitHub" tip="Where the admin will open pull requests when you promote draft content. The GitHub App route is preferred — installation tokens are scoped to the repo and rotate automatically. Personal Access Tokens are a fallback for development.">
@@ -229,6 +233,13 @@ export default function AdminPortalSettingsPage() {
               value={live.database.supabaseServiceKey ?? ""}
               onChange={v => patch({ database: { supabaseServiceKey: v } })}
               placeholder="eyJhbGciOiJIUzI1NiIs…"
+            />
+            <SensitiveField
+              label="Supabase Management Token (one-time, for Sync DB)"
+              tip="Personal Access Token from supabase.com/dashboard/account/tokens — different from the service-role key. Only needed once when you click Sync DB; you can clear it after the migration runs."
+              value={live.database.supabaseManagementToken ?? ""}
+              onChange={v => patch({ database: { supabaseManagementToken: v } })}
+              placeholder="sbp_…"
             />
           </>
         )}
@@ -631,10 +642,27 @@ function SetupChecklist({ settings, backendInfo }: {
 // ─── Migration banner (Supabase) ────────────────────────────────────────────
 //
 // When the active backend is Supabase but the portal_state table doesn't
-// exist yet, surface the migration SQL with a one-click copy.
+// exist yet, offer two paths:
+//
+//   1. Sync DB — auto-applies the migration via the Supabase Management
+//      API. Requires a one-time PAT (different from the service-role key).
+//      One click → done.
+//   2. Manual copy + AI helper for other databases — for users on local
+//      Postgres / MySQL / etc., a copy-pasteable Claude/ChatGPT prompt
+//      that generates the right migration for their flavour.
 
-function MigrationBanner({ backendInfo }: { backendInfo: BackendInfoResponse | null }) {
+function MigrationBanner({
+  backendInfo, onMigrated, hasManagementToken,
+}: {
+  backendInfo: BackendInfoResponse | null;
+  onMigrated: (next: BackendInfoResponse) => void;
+  hasManagementToken: boolean;
+}) {
   const [copied, setCopied] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+
   if (!backendInfo) return null;
   if (backendInfo.kind !== "supabase") return null;
   if (backendInfo.schemaState !== "missing" && backendInfo.schemaState !== "unknown") return null;
@@ -646,38 +674,227 @@ function MigrationBanner({ backendInfo }: { backendInfo: BackendInfoResponse | n
       await navigator.clipboard.writeText(backendInfo.migrationSql);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* clipboard blocked */ }
+    } catch {}
+  }
+
+  async function syncDb() {
+    setSyncing(true); setSyncResult(null);
+    try {
+      const res = await fetch("/api/portal/migrate", { method: "POST" });
+      const data = await res.json() as {
+        ok: boolean; appliedTo?: string; backendInfo?: BackendInfoResponse;
+        error?: string; detail?: string;
+      };
+      if (data.ok && data.backendInfo) {
+        setSyncResult({ ok: true, message: `Schema applied to project ${data.appliedTo ?? ""}.` });
+        onMigrated(data.backendInfo);
+      } else {
+        setSyncResult({ ok: false, message: data.error ?? `Sync failed (${res.status})` });
+      }
+    } catch (e) {
+      setSyncResult({ ok: false, message: e instanceof Error ? e.message : String(e) });
+    } finally { setSyncing(false); }
   }
 
   return (
-    <div className="rounded-2xl border border-brand-amber/40 bg-brand-amber/5 overflow-hidden">
-      <div className="px-5 py-3 border-b border-brand-amber/20 flex items-center gap-3 flex-wrap">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-amber">
-          Supabase schema not initialised
-        </p>
-        <span className="text-[11px] text-brand-cream/65">
-          Run this once in Supabase → SQL Editor.
-        </span>
-      </div>
-      <div className="p-5 space-y-3">
-        {backendInfo.schemaError && (
-          <p className="text-[11px] text-brand-cream/60">{backendInfo.schemaError}</p>
-        )}
-        <div className="relative">
-          <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 pr-20 overflow-x-auto text-brand-cream/85 whitespace-pre">
-{backendInfo.migrationSql}
-          </pre>
-          <button
-            onClick={copy}
-            className="absolute top-2 right-2 text-[11px] px-2 py-1 rounded-md bg-brand-amber/20 border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/30 font-semibold"
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
+    <>
+      <div className="rounded-2xl border border-brand-amber/40 bg-brand-amber/5 overflow-hidden">
+        <div className="px-5 py-3 border-b border-brand-amber/20 flex items-center gap-3 flex-wrap">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-amber">
+            Supabase schema not initialised
+          </p>
+          <span className="text-[11px] text-brand-cream/65">
+            One click to apply, or paste the SQL into Supabase&apos;s SQL editor.
+          </span>
         </div>
-        <p className="text-[10px] text-brand-cream/40">
-          The SQL is idempotent — safe to re-run. The portal re-checks the schema on every page load, so once you&apos;ve run it the banner disappears.
-        </p>
+        <div className="p-5 space-y-3">
+          {backendInfo.schemaError && (
+            <p className="text-[11px] text-brand-cream/60">{backendInfo.schemaError}</p>
+          )}
+
+          {/* Primary action: Sync DB */}
+          <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-brand-cream">Sync database</p>
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border bg-brand-orange/15 text-brand-orange border-brand-orange/30">Recommended</span>
+              <button
+                onClick={syncDb}
+                disabled={syncing || !hasManagementToken}
+                title={hasManagementToken ? "Applies the migration via Supabase's Management API" : "Add a Supabase Management Token below first"}
+                className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {syncing ? "Applying…" : "Sync DB"}
+              </button>
+            </div>
+            <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+              {hasManagementToken
+                ? "Reads the migration SQL from the portal source (src/portal/server/storage.ts → getMigrationSql) and applies it to your Supabase project via the Management API. Idempotent — safe to re-run."
+                : "Add a Supabase Management Token in the Database card below (different from the service-role key) and the Sync DB button enables. One-time use; you can clear it after."}
+            </p>
+            {syncResult && (
+              <p className={`text-[11px] ${syncResult.ok ? "text-green-400" : "text-red-400"}`}>
+                {syncResult.ok ? "✓ " : "✗ "}{syncResult.message}
+              </p>
+            )}
+          </div>
+
+          {/* Fallback: copy SQL */}
+          <div className="relative">
+            <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 pr-20 overflow-x-auto text-brand-cream/85 whitespace-pre">
+{backendInfo.migrationSql}
+            </pre>
+            <button
+              onClick={copy}
+              className="absolute top-2 right-2 text-[11px] px-2 py-1 rounded-md bg-brand-amber/20 border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/30 font-semibold"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-[10px] text-brand-cream/40">
+              Source: <code className="font-mono text-brand-cream/60">src/portal/server/storage.ts</code>. Idempotent.
+            </p>
+            <button
+              onClick={() => setAiPromptOpen(true)}
+              className="text-[11px] text-brand-cream/55 hover:text-brand-cream underline"
+            >
+              Using a different database?
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {aiPromptOpen && (
+        <AiPromptModal
+          migrationSql={backendInfo.migrationSql}
+          onClose={() => setAiPromptOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── AI prompt modal (other DBs) ────────────────────────────────────────────
+//
+// For users running local Postgres, MySQL, or anything other than the
+// Supabase REST flow. Opens a copy-pasteable prompt the admin drops
+// into Claude / ChatGPT / etc; the LLM returns migration SQL adapted
+// to their database engine PLUS the env-var config the portal needs.
+//
+// Why a prompt and not a backend implementation: every DB has its own
+// connection conventions (pg vs mysql2 vs better-sqlite3, pooled vs
+// direct, RLS, JSON column type) and each adds a npm dep. Letting the
+// admin's LLM emit the right migration + env config is faster + works
+// for the long tail without us shipping six adapters.
+
+function AiPromptModal({ migrationSql, onClose }: {
+  migrationSql: string;
+  onClose: () => void;
+}) {
+  const [dbDescription, setDbDescription] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const prompt = buildAiPrompt(migrationSql, dbDescription);
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-brand-black-soft border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-5 py-3 border-b border-white/8 flex items-center gap-3">
+          <p className="text-sm font-semibold text-brand-cream">Generate migration for your database</p>
+          <button onClick={onClose} className="ml-auto text-brand-cream/50 hover:text-brand-cream text-lg leading-none">×</button>
+        </div>
+        <div className="p-5 space-y-4 overflow-y-auto">
+          <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+            The portal stores its state as a single JSON blob. The schema you need is one row in one table.
+            Tell the AI what database you&apos;re running and it will adapt the migration SQL + tell you
+            which env vars the portal expects.
+          </p>
+
+          <div>
+            <label className="block text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5">
+              Your database (free text)
+            </label>
+            <input
+              value={dbDescription}
+              onChange={e => setDbDescription(e.target.value)}
+              placeholder="e.g. local Postgres 16 on Docker, MySQL 8, SQLite via better-sqlite3, Neon…"
+              className={INPUT}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50">Prompt</label>
+              <button
+                onClick={copyPrompt}
+                className="text-[11px] px-2.5 py-1 rounded-md bg-brand-orange/20 border border-brand-orange/40 text-brand-orange hover:bg-brand-orange/30 font-semibold"
+              >
+                {copied ? "Copied" : "Copy prompt"}
+              </button>
+            </div>
+            <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 overflow-x-auto text-brand-cream/85 whitespace-pre-wrap max-h-72 overflow-y-auto">
+{prompt}
+            </pre>
+          </div>
+
+          <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/55 leading-relaxed">
+            <p className="font-medium text-brand-cream/75 mb-1">What you&apos;ll get back</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>A migration SQL adapted to your engine&apos;s JSON / JSONB / TEXT type for the blob</li>
+              <li>The env vars to set on your hosting (PORTAL_BACKEND + connection details)</li>
+              <li>Notes on RLS / row-level security, encryption-at-rest, and connection pooling for your engine</li>
+            </ul>
+          </div>
+          <p className="text-[10px] text-brand-cream/40">
+            Once your migration is run and the env vars are set, refresh this page — the storage status row will flip to green and the Sync DB banner disappears.
+          </p>
+        </div>
       </div>
     </div>
   );
+}
+
+function buildAiPrompt(migrationSql: string, dbDescription: string): string {
+  const target = dbDescription.trim() || "<describe your database>";
+  return `I'm setting up the "ker-v3 portal" admin tool with my own database instead of Supabase. It needs a single table called \`portal_state\` to store the portal's serialised state as one big JSON blob. Help me adapt this migration to my database engine and tell me what env vars to set.
+
+## Reference migration (Supabase / Postgres)
+
+\`\`\`sql
+${migrationSql}\`\`\`
+
+## My database
+
+${target}
+
+## What I need back
+
+1. **Migration SQL** adapted to my database engine. Notes:
+   - The \`blob\` column should be JSON / JSONB / TEXT depending on what's idiomatic for the engine
+   - The \`updated_at\` column should default to the current timestamp on insert
+   - Idempotent (safe to re-run)
+   - If the engine has row-level security or equivalent, mention how to lock the table down
+   - One starter row with id = 'singleton' inserted via ON CONFLICT / ON DUPLICATE KEY pattern
+
+2. **Env vars the portal needs** for its backend:
+   - \`PORTAL_BACKEND=...\` (file / kv / supabase / postgres — pick the right one)
+   - Connection details (URL, credentials, etc.)
+   - Any pool sizing or timeout notes that matter for serverless
+
+3. **Optional**: a one-paragraph note on encryption-at-rest, backups, and which Supabase-style "service role" equivalent (if any) the portal needs to bypass RLS.
+
+Format the migration SQL in a single \`\`\`sql code block so I can paste it straight into my SQL client. Keep the explanation short — I just need the SQL + env vars.`;
 }
