@@ -37,6 +37,7 @@ function CalendarPageInner() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [feedUrl, setFeedUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +56,7 @@ function CalendarPageInner() {
       setServices(s.services ?? []);
       setStaff(st.staff ?? []);
       setFeedUrl(t.url ?? null);
+      setLoading(false);
     }
     void load();
     return () => { cancelled = true; };
@@ -83,6 +85,28 @@ function CalendarPageInner() {
 
   function fmtDay(date: Date): string {
     return `${date.toLocaleDateString(undefined, { weekday: "short" })} ${date.getDate()}`;
+  }
+
+  if (loading) {
+    return <main className="max-w-6xl mx-auto px-6 py-12 text-[12px] text-brand-cream/45">Loading calendar…</main>;
+  }
+
+  if (resources.length === 0) {
+    return (
+      <main className="max-w-2xl mx-auto px-6 py-16 text-center space-y-4">
+        <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400">Reservations</p>
+        <h1 className="font-display text-2xl text-brand-cream">No bookable resources yet</h1>
+        <p className="text-[13px] text-brand-cream/55 max-w-md mx-auto">
+          Define a resource (room, table, chair, service slot) before bookings can be taken.
+          Once at least one is set up, the calendar fills in.
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link href="/admin/reservations/services" className="px-4 py-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20 text-[12px]">
+            Define a service →
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (

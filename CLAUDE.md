@@ -105,9 +105,30 @@ src/app/api/portal/             ← plugin + tenant API
 - **CRM** — auto-imports contacts from forms / orders / newsletter
 - **Per-plugin admin pages** for memberships, reservations, donations,
   affiliates, CRM, wiki, KB, forum, automation, email, webhooks, i18n,
-  analytics
+  analytics, notifications
 - **Public storefront pages** — `/help` (KB index), `/account/orders/[id]`
   (post-purchase order detail)
+- **Funnels working end-to-end** — server-side persistence, every
+  pageview the storefront sends to /api/portal/analytics/track now
+  matches the URL against active funnels and advances counters
+  server-side. Drop-off + conversion-rate stats endpoint.
+- **Service-business stack** — bookings calendar + iCal export to
+  Google/Apple/Notion/Outlook + external feed import + 24h/1h
+  email reminders + booking widget block + services / staff /
+  buffer time + cross-calendar merging.
+- **Notifications plugin** — in-app activity feed (`/admin/notifications`),
+  bell in admin chrome with unread badge, email digest, browser
+  push subscriptions stored ready for Web Push dispatch.
+- **Live editor** at `/admin/editor` — Wix / GoHighLevel-style
+  iframe wrapper around the storefront with page selector, Edit/View
+  toggle, device emulator, "Publish to GitHub" link. Click any
+  `data-portal-edit` element inside the iframe → existing
+  PortalEditOverlay popover handles the actual editing.
+- **Block editor polish** — floating block toolbar (drag handle,
+  ↑↓⧉🗑) on hover/select, visible drop indicators (orange line
+  for before/after, dashed border for inside) when dragging,
+  inline text editing on heading/text blocks via
+  `lk-block-text-commit` event chain.
 
 ### 🚧 Partial — has the manifest + some surface, runtime stubbed
 
