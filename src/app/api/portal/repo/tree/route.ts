@@ -39,7 +39,12 @@ export async function GET(req: NextRequest) {
     cache: "no-store",
   });
   if (!res.ok) {
-    return NextResponse.json({ ok: false, error: `github ${res.status}: ${await res.text()}` }, { status: res.status });
+    const friendly =
+      res.status === 401 ? "GitHub rejected the credentials. Re-issue the PAT in /admin/portal-settings."
+      : res.status === 403 ? "GitHub denied access. Check the PAT scopes (needs at least `repo` for private repos)."
+      : res.status === 404 ? "Repo or path not found. Verify the repo URL + branch in /admin/portal-settings."
+      : `GitHub ${res.status}`;
+    return NextResponse.json({ ok: false, error: friendly }, { status: res.status });
   }
   const data = await res.json() as GhEntry[] | GhEntry;
   const items = Array.isArray(data) ? data : [data];

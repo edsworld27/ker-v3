@@ -18,8 +18,9 @@
 // the SiteResolver bootstrap; falls back to a `siteId` prop.
 
 import { useEffect, useMemo, useState } from "react";
-import type { Block } from "@/portal/server/types";
+import type { Block, ThemeRecord } from "@/portal/server/types";
 import BlockRenderer from "./editor/BlockRenderer";
+import { tokensToCssVarsClient } from "./editor/themeCss";
 
 declare global {
   interface Window {
@@ -47,6 +48,7 @@ interface PageResponse {
     updatedAt: number;
     customHead?: string;
     customFoot?: string;
+    themeId?: string;
     seo?: {
       title?: string;
       metaDescription?: string;
@@ -62,6 +64,7 @@ interface PageResponse {
       jsonLd?: string;
     };
   };
+  theme?: ThemeRecord;
   error?: string;
 }
 
@@ -145,13 +148,23 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
     if (robotsParts.length) setMeta("robots", robotsParts.join(","));
   }
 
+  // Theme CSS variables — scoped to the rendered subtree so different
+  // pages on the same SPA can use different themes without colliding.
+  const themeId = data.page.themeId ?? data.theme?.id ?? "default";
+  const themeVars = tokensToCssVarsClient(data.theme?.tokens);
+  const scopeId = `portal-page-${data.page.id}`;
+  const themeCss = themeVars ? `[data-portal-page="${scopeId}"] { ${themeVars} }` : "";
+
   return (
     <>
+      {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       {seo?.jsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: seo.jsonLd }} />
       )}
       {customHead && <span dangerouslySetInnerHTML={{ __html: customHead }} />}
-      <BlockRenderer blocks={data.page.blocks} />
+      <div data-portal-page={scopeId} data-theme-id={themeId} data-theme-appearance={data.theme?.appearance ?? "auto"}>
+        <BlockRenderer blocks={data.page.blocks} themeId={themeId} />
+      </div>
       {customFoot && <span dangerouslySetInnerHTML={{ __html: customFoot }} />}
     </>
   );

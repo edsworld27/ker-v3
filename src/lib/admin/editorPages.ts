@@ -56,6 +56,10 @@ export interface UpdatePageInput {
   slug?: string;
   description?: string;
   blocks?: Block[];
+  themeId?: string;
+  customHead?: string;
+  customFoot?: string;
+  seo?: EditorPage["seo"];
 }
 
 export async function updatePage(siteId: string, pageId: string, patch: UpdatePageInput): Promise<EditorPage | null> {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
 import { getPageBySlug } from "@/portal/server/pages";
+import { resolveTheme } from "@/portal/server/themes";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
   const blocks = preview
     ? page.blocks
     : (page.publishedBlocks ?? page.blocks);
+  const theme = resolveTheme(siteId, page.themeId);
   return NextResponse.json({
     ok: true,
     page: {
@@ -33,6 +35,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
       customHead: page.customHead,
       customFoot: page.customFoot,
       seo: page.seo,
+      themeId: page.themeId,
     },
+    theme,
   });
 }

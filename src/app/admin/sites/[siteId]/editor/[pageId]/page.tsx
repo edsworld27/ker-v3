@@ -8,9 +8,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { Block, BlockType, EditorPage } from "@/portal/server/types";
+import type { Block, BlockType, EditorPage, ThemeRecord } from "@/portal/server/types";
 import { getPage, updatePage, publishPage, revertPage } from "@/lib/admin/editorPages";
 import { promoteSiteToGitHub } from "@/lib/admin/promote";
+import { loadThemes } from "@/lib/admin/themes";
+import { tokensToCssVarsClient } from "@/components/editor/themeCss";
 import {
   appendChild, createBlock, duplicateBlock, findBlock, insertSibling,
   moveBlock, removeBlock, updateBlock,
@@ -32,6 +34,8 @@ export default function EditorPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [view, setView] = useState<"text" | "visual" | "code">("visual");
+  const [themes, setThemes] = useState<ThemeRecord[]>([]);
+  const [activeThemeId, setActiveThemeId] = useState<string>("default");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -56,11 +60,14 @@ export default function EditorPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const p = await getPage(siteId, pageId);
+      const [p, t] = await Promise.all([getPage(siteId, pageId), loadThemes(siteId, true)]);
       if (cancelled) return;
       if (!p) { setError("Page not found"); return; }
       setPage(p);
       setBlocks(p.blocks);
+      setThemes(t);
+      const initial = p.themeId ?? t.find(x => x.isDefault)?.id ?? t[0]?.id ?? "default";
+      setActiveThemeId(initial);
       undoStack.current = [];
       redoStack.current = [];
     })();
@@ -185,6 +192,22 @@ export default function EditorPage() {
 
   function handlePatchSelected(patch: Partial<Block>) {
     if (!selectedId) return;
+    // If we're editing a non-default theme, route style changes into
+    // `themeStyles[activeThemeId]` instead of the base `styles`. That
+    // way the same block can look different per theme without losing
+    // the base values. Props + a11y + children always go to the base.
+    const defaultId = themes.find(t => t.isDefault)?.id ?? "default";
+    const isThemeOverlay = patch.styles && activeThemeId && activeThemeId !== defaultId;
+    if (isThemeOverlay) {
+      const target = findBlock(blocks, selectedId);
+      if (!target) return;
+      const nextOverride = { ...((target.block.themeStyles ?? {})[activeThemeId] ?? {}), ...patch.styles };
+      const themeStyles = { ...(target.block.themeStyles ?? {}), [activeThemeId]: nextOverride };
+      const cleaned: Partial<Block> = { ...patch, themeStyles };
+      delete cleaned.styles;
+      mutate(updateBlock(blocks, selectedId, cleaned));
+      return;
+    }
     mutate(updateBlock(blocks, selectedId, patch));
   }
 
@@ -307,6 +330,34 @@ export default function EditorPage() {
           title="Redo (⌘⇧Z)"
           className="text-[16px] w-7 h-7 rounded text-brand-cream/55 hover:text-brand-cream hover:bg-white/5 disabled:opacity-25 mr-2"
         >↷</button>
+        {/* Theme switcher — when not on the page's saved themeId, shows
+            a small "Save as page default" affordance. */}
+        {themes.length > 0 && (
+          <select
+            value={activeThemeId}
+            onChange={e => setActiveThemeId(e.target.value)}
+            title="Theme — switching applies its tokens to the canvas"
+            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-brand-cream mr-2 focus:outline-none focus:border-brand-orange/50"
+          >
+            {themes.map(t => (
+              <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>
+            ))}
+          </select>
+        )}
+        {page && page.themeId !== activeThemeId && (
+          <button
+            onClick={() => {
+              if (!page) return;
+              setPage({ ...page, themeId: activeThemeId });
+              void updatePage(siteId, pageId, { themeId: activeThemeId });
+              showToast("Page theme set");
+            }}
+            title="Make this theme the page's default"
+            className="text-[11px] text-brand-cream/55 hover:text-brand-orange mr-2"
+          >
+            Pin
+          </button>
+        )}
         <DeviceSwitcher device={device} setDevice={setDevice} />
         <span className="text-[11px] text-brand-cream/45 mx-3">
           {saving ? "Saving…" : savedAt ? "Saved" : page?.status === "published" ? "Published" : "Draft"}
@@ -335,14 +386,23 @@ export default function EditorPage() {
         </button>
       </header>
 
+      {/* Active theme CSS vars — scoped to the workspace so the canvas
+          reflects the picked theme without leaking into admin chrome. */}
+      {(() => {
+        const activeTheme = themes.find(t => t.id === activeThemeId);
+        const css = activeTheme ? tokensToCssVarsClient(activeTheme.tokens) : "";
+        return css ? <style dangerouslySetInnerHTML={{ __html: `[data-editor-workspace="${pageId}"] { ${css} }` }} /> : null;
+      })()}
+
       {/* Workspace — text/visual/code */}
       {view === "visual" && (
-        <div className="flex-1 min-h-0 flex">
+        <div data-editor-workspace={pageId} className="flex-1 min-h-0 flex">
           <Sidebar blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} onAddTopLevel={handleDropOnCanvas} />
           <Canvas
             blocks={blocks}
             selectedId={selectedId}
             device={device}
+            themeId={activeThemeId}
             onSelect={setSelectedId}
             onDropOnCanvas={handleDropOnCanvas}
             onDropBeside={handleDropBeside}
@@ -444,6 +504,9 @@ function TextRow({ block, onPatch, onPatchStyles }: { block: Block; onPatch: (id
         <div key={field.key} className="mb-2 last:mb-0">
           {field.kind === "input" ? (
             <input
+              // `key` resets the controlled value when the upstream block prop
+              // changes (e.g. switching back from Visual mode after edits).
+              key={`${block.id}-${field.key}-${String(block.props[field.key] ?? "")}`}
               defaultValue={String(block.props[field.key] ?? "")}
               onBlur={e => onPatch(block.id, { [field.key]: e.target.value })}
               placeholder={field.placeholder}
@@ -451,6 +514,7 @@ function TextRow({ block, onPatch, onPatchStyles }: { block: Block; onPatch: (id
             />
           ) : (
             <textarea
+              key={`${block.id}-${field.key}-${String(block.props[field.key] ?? "")}`}
               defaultValue={String(block.props[field.key] ?? "")}
               onBlur={e => onPatch(block.id, { [field.key]: e.target.value })}
               placeholder={field.placeholder}
