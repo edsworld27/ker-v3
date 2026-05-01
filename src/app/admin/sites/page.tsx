@@ -705,6 +705,55 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             <textarea value={site.description ?? ""} onChange={e => updateSite(site.id, { description: e.target.value })} rows={2} className={INPUT} />
           </Field>
 
+          {/* Site UX toggles (X-1) — cursor + smooth scroll. Off by default. */}
+          <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">UX touches</p>
+              <Tip text="Optional global flourishes — applied site-wide on every page." />
+            </div>
+            <div className="p-4 grid sm:grid-cols-2 gap-3">
+              <Field label="Smooth scrolling">
+                <button
+                  type="button"
+                  onClick={() => updateSite(site.id, { smoothScroll: !site.smoothScroll })}
+                  className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-colors ${site.smoothScroll ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"}`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white" />
+                </button>
+              </Field>
+              <Field label="Custom cursor">
+                <select
+                  value={site.customCursor ?? "default"}
+                  onChange={e => updateSite(site.id, { customCursor: e.target.value as "default" | "dot" | "ring" | "blur" })}
+                  className={INPUT}
+                >
+                  <option value="default">System (default)</option>
+                  <option value="dot">Dot</option>
+                  <option value="ring">Ring</option>
+                  <option value="blur">Blur halo</option>
+                </select>
+              </Field>
+              {site.customCursor && site.customCursor !== "default" && (
+                <Field label="Cursor colour">
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={site.cursorColor ?? "#ff6b35"}
+                      onChange={e => updateSite(site.id, { cursorColor: e.target.value })}
+                      className="w-10 h-9 rounded cursor-pointer bg-transparent border border-white/10"
+                    />
+                    <input
+                      value={site.cursorColor ?? ""}
+                      onChange={e => updateSite(site.id, { cursorColor: e.target.value || undefined })}
+                      placeholder="#ff6b35"
+                      className={INPUT + " font-mono"}
+                    />
+                  </div>
+                </Field>
+              )}
+            </div>
+          </div>
+
           {/* Custom head/body code per site (P-3) — for tracking pixels,
               custom CSS/JS, third-party widgets, etc. Injected by SiteHead
               into every page on this tenant. */}

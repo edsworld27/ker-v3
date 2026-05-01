@@ -71,6 +71,12 @@ export async function GET() {
       repoBrowser: true,          // OMEGA-1 — /admin/repo full GitHub file browser + commit-on-save
       themes: true,               // T-1 — per-site themes + per-page themeId + per-block themeStyles + CSS-var injection
       portalPageRoute: true,      // T-1 fix — /p/[...slug] catch-all that mounts <PortalPageRenderer> by default
+      aquaSupport: true,          // S-1 — /aqua/support hub: feature requests, meetings, billing, resources
+      animationLibrary: true,     // X-1 — duration/delay/easing per block + 7 entrance animations
+      siteUx: true,               // X-1 — Site.smoothScroll + Site.customCursor (dot/ring/blur)
+      pageLayoutOverrides: true,  // X-1 — EditorPage.layoutOverrides (per-page nav/footer + hide flags)
+      touchDnd: true,             // X-1 — touch → drag-event shim for tablet/mobile editor
+      mobileEditor: true,         // X-1 — responsive editor (sidebar collapses, properties panel docks bottom)
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

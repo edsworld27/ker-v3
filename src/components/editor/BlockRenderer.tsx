@@ -96,7 +96,14 @@ function BlockNode({ block, editorMode, themeId }: { block: Block; editorMode: b
   // renders the resting state so layout is editable.
   const animate = block.styles?.animate;
   if (animate && !editorMode) {
-    return <AnimateOnScroll animate={animate}>{body}</AnimateOnScroll>;
+    return (
+      <AnimateOnScroll
+        animate={animate}
+        duration={block.styles?.animateDuration}
+        delay={block.styles?.animateDelay}
+        easing={block.styles?.animateEasing}
+      >{body}</AnimateOnScroll>
+    );
   }
   return <>{body}</>;
 }

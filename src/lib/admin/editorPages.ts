@@ -60,6 +60,7 @@ export interface UpdatePageInput {
   customHead?: string;
   customFoot?: string;
   seo?: EditorPage["seo"];
+  layoutOverrides?: EditorPage["layoutOverrides"];
 }
 
 export async function updatePage(siteId: string, pageId: string, patch: UpdatePageInput): Promise<EditorPage | null> {

@@ -25,9 +25,22 @@ interface SidebarProps {
 
 export default function Sidebar({ blocks, selectedId, onSelect, onAddTopLevel }: SidebarProps) {
   const [tab, setTab] = useState<"library" | "layers">("library");
+  // Collapsed-on-mobile state — admin can expand via the floating button.
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="w-72 shrink-0 flex flex-col border-r border-white/8 bg-brand-black-soft">
+    <>
+      {/* Mobile toggle */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="md:hidden fixed bottom-4 left-4 z-40 w-11 h-11 rounded-full bg-brand-orange text-white text-lg font-bold shadow-lg shadow-black/40"
+        aria-label={open ? "Close blocks panel" : "Open blocks panel"}
+      >{open ? "×" : "▦"}</button>
+
+      <aside className={`shrink-0 flex flex-col border-r border-white/8 bg-brand-black-soft
+        ${open ? "fixed inset-y-0 left-0 z-30 w-72" : "hidden"}
+        md:relative md:flex md:w-72`}>
       <div className="flex border-b border-white/8">
         <button
           onClick={() => setTab("library")}
@@ -44,11 +57,12 @@ export default function Sidebar({ blocks, selectedId, onSelect, onAddTopLevel }:
       </div>
       <div className="flex-1 overflow-y-auto">
         {tab === "library"
-          ? <BlockLibrary onAdd={onAddTopLevel} />
-          : <LayersTree blocks={blocks} selectedId={selectedId} onSelect={onSelect} />
+          ? <BlockLibrary onAdd={t => { onAddTopLevel(t); setOpen(false); }} />
+          : <LayersTree blocks={blocks} selectedId={selectedId} onSelect={id => { onSelect(id); setOpen(false); }} />
         }
       </div>
     </aside>
+    </>
   );
 }
 
@@ -67,12 +81,13 @@ function BlockLibrary({ onAdd }: { onAdd: (type: BlockDefinition["type"]) => voi
                 <button
                   key={d.type}
                   draggable
+                  data-touch-drag-payload={JSON.stringify({ type: "x-block-type", value: d.type })}
                   onDragStart={e => {
                     e.dataTransfer.setData("application/x-block-type", d.type);
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   onClick={() => onAdd(d.type)}
-                  className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg border border-white/8 bg-white/[0.02] hover:bg-white/[0.06] hover:border-brand-orange/40 transition-colors text-center cursor-grab active:cursor-grabbing"
+                  className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg border border-white/8 bg-white/[0.02] hover:bg-white/[0.06] hover:border-brand-orange/40 transition-colors text-center cursor-grab active:cursor-grabbing touch-none"
                 >
                   <span className="text-base leading-none">{d.icon}</span>
                   <span className="text-[10px] text-brand-cream/75 leading-tight">{d.label}</span>

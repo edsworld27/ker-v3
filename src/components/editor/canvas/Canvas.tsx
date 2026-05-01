@@ -245,6 +245,7 @@ function BlockWrapper({
       onMouseEnter={e => { e.stopPropagation(); setHover(block.id); }}
       onMouseLeave={() => setHover(null)}
       draggable
+      data-touch-drag-payload={JSON.stringify({ type: "x-block-id", value: block.id })}
       onDragStart={e => {
         e.stopPropagation();
         e.dataTransfer.setData("application/x-block-id", block.id);

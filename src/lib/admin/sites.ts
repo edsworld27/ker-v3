@@ -46,6 +46,11 @@ export interface Site {
   // SEO-A2: Sitelinks JSON-LD blob (SiteNavigationElement). Auto-seeded
   // from visual-editor pages on /admin/seo, hand-editable.
   siteNavigationJsonLd?: string;
+  // X-1 site-level UX toggles. All optional; off by default so existing
+  // sites keep rendering exactly as before.
+  smoothScroll?: boolean;          // CSS scroll-behavior: smooth on <html>
+  customCursor?: "default" | "dot" | "ring" | "blur";  // global cursor style
+  cursorColor?: string;            // hex applied to the custom cursor
 }
 
 export const DEFAULT_PRIMARY_SITE: Site = {

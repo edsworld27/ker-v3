@@ -36,6 +36,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
       customFoot: page.customFoot,
       seo: page.seo,
       themeId: page.themeId,
+      layoutOverrides: page.layoutOverrides,
     },
     theme,
   });
