@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# portal — local server-side state (tracking config, heartbeats)
+/.data/
+
 # production
 /build
 

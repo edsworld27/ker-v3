@@ -5,15 +5,23 @@
 // clicks a panel, the sidebar drills into it and shows that panel's items.
 // A "back" affordance returns to the top-level view.
 //
-// The layout is fully customisable from /admin/customise → Sidebar:
-// admins can rename panels, reorder/rename items, group items into
-// dropdowns, and add their own custom routes (internal paths or external
-// URLs).
+// Items can be either leaf links or folders (nested groups). Folders may
+// contain further folders, up to MAX_SIDEBAR_DEPTH levels deep — so admins
+// can organise custom links into a small filesystem-like tree.
+//
+// The layout is fully customisable from /admin/customise → Sidebar.
 
 import type { Resource } from "./team";
 
-const KEY = "lk_admin_sidebar_layout_v1";
+const KEY = "lk_admin_sidebar_layout_v2";
+const LEGACY_KEY = "lk_admin_sidebar_layout_v1";
 const CHANGE_EVENT = "lk-admin-sidebar-layout-change";
+
+// Counting the panel as level 1, an item directly under a panel is level 2,
+// a child of a folder there is level 3, and so on up to 5. A folder is only
+// allowed at levels 2-4 — at level 5 the node must be a leaf link, otherwise
+// a folder there could not hold any children within the depth budget.
+export const MAX_SIDEBAR_DEPTH = 5;
 
 export type SidebarItemType = "link" | "group";
 
@@ -29,7 +37,7 @@ export interface SidebarLink {
 export interface SidebarGroup {
   id: string;
   label: string;
-  items: SidebarLink[];        // dropdown children
+  items: SidebarItem[];        // recursive — links or further groups
   defaultOpen?: boolean;
 }
 
@@ -82,10 +90,10 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
           label: "Marketing",
           defaultOpen: true,
           items: [
-            { id: "marketing",  label: "Campaigns",      href: "/admin/marketing",  resource: "marketing", badgeKey: "owedCommissions" },
-            { id: "popup",      label: "Discount popup", href: "/admin/popup",      resource: "marketing" },
-            { id: "split-test", label: "Split test",     href: "/admin/split-test", resource: "split_test", badgeKey: "activeTests" },
-            { id: "funnels",    label: "Funnels",        href: "/admin/funnels",    resource: "funnels",    badgeKey: "activeFunnels" },
+            { type: "link", id: "marketing",  label: "Campaigns",      href: "/admin/marketing",  resource: "marketing", badgeKey: "owedCommissions" },
+            { type: "link", id: "popup",      label: "Discount popup", href: "/admin/popup",      resource: "marketing" },
+            { type: "link", id: "split-test", label: "Split test",     href: "/admin/split-test", resource: "split_test", badgeKey: "activeTests" },
+            { type: "link", id: "funnels",    label: "Funnels",        href: "/admin/funnels",    resource: "funnels",    badgeKey: "activeFunnels" },
           ],
         },
         { type: "link", id: "shipping", label: "Shipping", href: "/admin/shipping", resource: "shipping" },
@@ -108,8 +116,8 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
           label: "Design",
           defaultOpen: true,
           items: [
-            { id: "theme",    label: "Theme",    href: "/admin/theme",    resource: "theme" },
-            { id: "sections", label: "Sections", href: "/admin/sections", resource: "sections" },
+            { type: "link", id: "theme",    label: "Theme",    href: "/admin/theme",    resource: "theme" },
+            { type: "link", id: "sections", label: "Sections", href: "/admin/sections", resource: "sections" },
           ],
         },
         { type: "link", id: "tooltips", label: "Tooltips", href: "/admin/tooltips", resource: "settings" },
@@ -145,25 +153,78 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
 export function getSidebarLayout(): SidebarLayout {
   if (typeof window === "undefined") return DEFAULT_LAYOUT;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     if (!raw) return DEFAULT_LAYOUT;
-    const parsed = JSON.parse(raw) as SidebarLayout;
-    if (!parsed.panels || !Array.isArray(parsed.panels)) return DEFAULT_LAYOUT;
-    return parsed;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.panels)) return DEFAULT_LAYOUT;
+    return {
+      panels: parsed.panels.map(migratePanel),
+    };
   } catch {
     return DEFAULT_LAYOUT;
   }
 }
 
+// v1 stored group children as flat SidebarLink[] (no `type` field). v2 widens
+// that to SidebarItem[] so groups can hold nested groups. Wrap any untyped
+// child into a link so old layouts keep working.
+function migratePanel(panel: unknown): SidebarPanel {
+  const p = panel as SidebarPanel;
+  return {
+    id: p.id,
+    label: p.label,
+    icon: p.icon,
+    description: p.description,
+    items: Array.isArray(p.items) ? p.items.map(migrateItem) : [],
+  };
+}
+
+function migrateItem(raw: unknown): SidebarItem {
+  const it = raw as Partial<SidebarItem> & SidebarLink & SidebarGroup;
+  if (it && it.type === "group") {
+    return {
+      type: "group",
+      id: it.id,
+      label: it.label,
+      defaultOpen: it.defaultOpen,
+      items: Array.isArray(it.items) ? it.items.map(migrateItem) : [],
+    };
+  }
+  if (it && it.type === "link") {
+    return {
+      type: "link",
+      id: it.id,
+      label: it.label,
+      href: it.href,
+      resource: it.resource,
+      external: it.external,
+      badgeKey: it.badgeKey,
+    };
+  }
+  // Untyped — v1 group children were always leaf links.
+  return {
+    type: "link",
+    id: it.id,
+    label: it.label,
+    href: it.href,
+    resource: it.resource,
+    external: it.external,
+    badgeKey: it.badgeKey,
+  };
+}
+
 export function saveSidebarLayout(layout: SidebarLayout) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(layout));
+  // Drop the legacy key once a v2 layout has been written so storage stays tidy.
+  localStorage.removeItem(LEGACY_KEY);
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 export function resetSidebarLayout() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+  localStorage.removeItem(LEGACY_KEY);
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
@@ -179,6 +240,14 @@ export function onSidebarLayoutChange(handler: () => void): () => void {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Walk every leaf link in a tree, depth-first.
+export function* walkLinks(items: SidebarItem[]): IterableIterator<SidebarLink> {
+  for (const it of items) {
+    if (it.type === "link") yield it;
+    else yield* walkLinks(it.items);
+  }
+}
+
 // Find which panel "owns" a given pathname, used to auto-drill the sidebar
 // when the admin navigates directly to a sub-route.
 export function findPanelForPath(layout: SidebarLayout, pathname: string): string | null {
@@ -186,22 +255,26 @@ export function findPanelForPath(layout: SidebarLayout, pathname: string): strin
   let bestPanelId: string | null = null;
   let bestLength = -1;
   for (const panel of layout.panels) {
-    for (const item of panel.items) {
-      const links = item.type === "link" ? [item] : item.items;
-      for (const link of links) {
-        const href = link.href;
-        if (!href || href.startsWith("http")) continue;
-        const matches = href === "/admin"
-          ? pathname === "/admin"
-          : pathname === href || pathname.startsWith(href + "/");
-        if (matches && href.length > bestLength) {
-          bestLength = href.length;
-          bestPanelId = panel.id;
-        }
+    for (const link of walkLinks(panel.items)) {
+      const href = link.href;
+      if (!href || href.startsWith("http")) continue;
+      const matches = href === "/admin"
+        ? pathname === "/admin"
+        : pathname === href || pathname.startsWith(href + "/");
+      if (matches && href.length > bestLength) {
+        bestLength = href.length;
+        bestPanelId = panel.id;
       }
     }
   }
   return bestPanelId;
+}
+
+// True if a folder may be added inside a container at the given depth. The
+// new folder would sit at containerDepth + 1, and need to hold leaves at
+// containerDepth + 2 — which must still be within the depth budget.
+export function canAddFolderInside(containerDepth: number): boolean {
+  return containerDepth + 2 <= MAX_SIDEBAR_DEPTH;
 }
 
 export function newId(prefix: string): string {
