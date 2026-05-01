@@ -103,9 +103,20 @@ interface DiscoveredKey {
   type?: OverrideType;
 }
 
+interface AdminPublishSnapshot {
+  id: string;
+  publishedAt: number;
+  publishedBy?: string;
+  message?: string;
+  overrides: Record<string, ContentOverride>;
+  changedKeys: string[];
+}
+
 interface AdminContentState {
   siteId: string;
-  overrides: Record<string, ContentOverride>;
+  draft: Record<string, ContentOverride>;
+  published: Record<string, ContentOverride>;
+  history: AdminPublishSnapshot[];
   discovered: Record<string, DiscoveredKey>;
   updatedAt: number;
 }
@@ -1052,6 +1063,205 @@ function EmbedRow({ embed, onPatch, onDelete }: {
   );
 }
 
+// ─── Workflow bar (D-2) ─────────────────────────────────────────────────────
+//
+// Shared draft/publish/preview/history controls used by both the flat and
+// schema-grouped editors. Keeps the workflow logic in one place so the two
+// editor variants stay in sync.
+
+function diffOverrideKeys(
+  prev: Record<string, ContentOverride>,
+  next: Record<string, ContentOverride>,
+): string[] {
+  const all = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  const out: string[] = [];
+  for (const k of all) {
+    const a = prev[k];
+    const b = next[k];
+    if (!a && b) { out.push(k); continue; }
+    if (a && !b) { out.push(k); continue; }
+    if (a && b && (a.value !== b.value || a.type !== b.type)) out.push(k);
+  }
+  return out;
+}
+
+function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
+  siteId: string;
+  state: AdminContentState | null;
+  dirty: boolean;
+  saving: boolean;
+  onApplied: (next: AdminContentState) => void;
+}) {
+  const [busy, setBusy] = useState<"" | "publish" | "discard" | "revert" | "preview">("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const unpublishedKeys = state ? diffOverrideKeys(state.published, state.draft) : [];
+  const unpublishedCount = unpublishedKeys.length;
+  const canPublish = !dirty && !saving && unpublishedCount > 0 && !busy;
+  const canDiscard = !saving && unpublishedCount > 0 && !busy;
+
+  async function call(action: "publish" | "discard", body: object = {}): Promise<AdminContentState | null> {
+    setError(null);
+    setBusy(action);
+    try {
+      const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        setError(`${action} failed: ${txt.slice(0, 80)}`);
+        return null;
+      }
+      const data = await res.json() as { content: AdminContentState };
+      return data.content;
+    } catch (e) {
+      setError(`${action} failed: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    } finally { setBusy(""); }
+  }
+
+  async function handlePublish() {
+    const message = prompt("Optional publish note (visible in history):", "") ?? undefined;
+    const next = await call("publish", { message });
+    if (next) onApplied(next);
+  }
+  async function handleDiscard() {
+    if (!confirm(`Discard ${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}?`)) return;
+    const next = await call("discard");
+    if (next) onApplied(next);
+  }
+  async function handleRevert(snapshotId: string, label: string) {
+    if (!confirm(`Revert published content to ${label}?\n\nThe current published state will be saved to history first so you can undo.`)) return;
+    setBusy("revert"); setError(null);
+    try {
+      const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}/revert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snapshotId, message: `Revert to ${label}` }),
+      });
+      if (!res.ok) { setError("Revert failed"); return; }
+      const data = await res.json() as { content: AdminContentState };
+      onApplied(data.content);
+      setHistoryOpen(false);
+    } finally { setBusy(""); }
+  }
+  async function handlePreview() {
+    setBusy("preview"); setError(null); setPreviewUrl(null);
+    try {
+      const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}/preview-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) { setError("Could not mint preview token"); return; }
+      const { token } = await res.json() as { token: string };
+      // Build the preview URL. We only know the host base if the admin set
+      // a domain on the site OR a previewBaseUrl in portal-settings; for
+      // now, copy a query string the admin can paste onto whichever URL
+      // they're testing. The full URL belongs to D-4 once settings.deployment
+      // .previewBaseUrl is wired in.
+      const param = `portal_preview=draft&pt=${encodeURIComponent(token)}`;
+      setPreviewUrl(`?${param}`);
+      try { await navigator.clipboard.writeText(`?${param}`); } catch {}
+    } finally { setBusy(""); }
+  }
+
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-brand-cream/45">Workflow</span>
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider border ${
+            unpublishedCount > 0
+              ? "bg-brand-amber/15 text-brand-amber border-brand-amber/30"
+              : "bg-green-500/10 text-green-400 border-green-500/25"
+          }`}
+        >
+          {unpublishedCount > 0
+            ? `${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}`
+            : "Up to date"}
+        </span>
+        {dirty && <span className="text-[10px] text-brand-cream/40">draft saving…</span>}
+        {!dirty && saving && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={handlePreview}
+            disabled={!!busy}
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+            title="Copies a ?portal_preview=draft&pt=… query string. Paste it onto any URL of the host site to preview the draft."
+          >
+            {busy === "preview" ? "Generating…" : "Preview link"}
+          </button>
+          <button
+            onClick={handleDiscard}
+            disabled={!canDiscard}
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-red-400 hover:border-red-400/40 disabled:opacity-30"
+          >
+            {busy === "discard" ? "Discarding…" : "Discard"}
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={!canPublish}
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold disabled:opacity-30"
+          >
+            {busy === "publish" ? "Publishing…" : "Publish"}
+          </button>
+        </div>
+      </div>
+
+      {previewUrl && (
+        <p className="text-[11px] text-brand-cream/60 px-1">
+          Copied to clipboard:&nbsp;
+          <code className="font-mono text-brand-cream/85 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">{previewUrl}</code>
+          &nbsp;— append to any host URL.
+        </p>
+      )}
+
+      {error && (
+        <p className="text-[11px] text-red-400 px-1">{error}</p>
+      )}
+
+      {state && state.history.length > 0 && (
+        <div>
+          <button
+            onClick={() => setHistoryOpen(o => !o)}
+            className="text-[10px] uppercase tracking-wider text-brand-cream/45 hover:text-brand-cream flex items-center gap-1"
+          >
+            <span>{historyOpen ? "▾" : "▸"}</span>
+            History · {state.history.length}
+          </button>
+          {historyOpen && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto pr-1">
+              {state.history.map(snap => {
+                const label = snap.message ?? `Snapshot ${snap.id.slice(5, 13)}`;
+                return (
+                  <div key={snap.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/5 bg-brand-black/60 text-[11px]">
+                    <span className="text-brand-cream/65 flex-1 truncate">{label}</span>
+                    <span className="text-brand-cream/40 shrink-0">{formatAge(Date.now() - snap.publishedAt)}</span>
+                    <span className="text-brand-cream/30 shrink-0">{snap.changedKeys.length} key{snap.changedKeys.length === 1 ? "" : "s"}</span>
+                    <button
+                      onClick={() => handleRevert(snap.id, label)}
+                      disabled={!!busy}
+                      className="text-[10px] px-2 py-0.5 rounded border border-white/15 text-brand-cream/55 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+                    >
+                      Revert
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Content overrides ─────────────────────────────────────────────────────
 //
 // Displays every key the loader has auto-discovered on the host site
@@ -1123,13 +1333,14 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
     return () => { cancelled = true; };
   }, [siteId]);
 
-  // Debounced save: 750ms after the last edit. Driven by the dirty flag so
-  // the initial fetch doesn't trigger a write.
+  // Debounced save: 750ms after the last edit. Writes go to DRAFT only;
+  // the host site keeps showing the published values until the admin
+  // hits Publish in the workflow bar.
   useEffect(() => {
     if (!dirty || !state) return;
     const id = setTimeout(async () => {
       setSaving(true);
-      const overrides = Object.entries(state.overrides).map(([key, o]) => ({
+      const overrides = Object.entries(state.draft).map(([key, o]) => ({
         key, value: o.value, type: o.type,
       }));
       try {
@@ -1147,10 +1358,10 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
   function patchOverride(key: string, patch: Partial<ContentOverride>) {
     setState(prev => {
       if (!prev) return prev;
-      const existing = prev.overrides[key] ?? { value: "", type: "text" as OverrideType, updatedAt: 0 };
+      const existing = prev.draft[key] ?? { value: "", type: "text" as OverrideType, updatedAt: 0 };
       return {
         ...prev,
-        overrides: { ...prev.overrides, [key]: { ...existing, ...patch, updatedAt: Date.now() } },
+        draft: { ...prev.draft, [key]: { ...existing, ...patch, updatedAt: Date.now() } },
       };
     });
     setDirty(true);
@@ -1159,9 +1370,9 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
   function clearOverride(key: string) {
     setState(prev => {
       if (!prev) return prev;
-      const next = { ...prev.overrides };
+      const next = { ...prev.draft };
       delete next[key];
-      return { ...prev, overrides: next };
+      return { ...prev, draft: next };
     });
     setDirty(true);
   }
@@ -1169,19 +1380,19 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
   function addManual() {
     const k = newKey.trim();
     if (!k || !state) return;
-    if (state.overrides[k]) return;       // already exists
+    if (state.draft[k]) return;       // already exists
     patchOverride(k, { value: "", type: newType });
     setNewKey("");
     setNewType("text");
     setAdding(false);
   }
 
-  // Union of every key the admin should see: any discovered + any with an
-  // override value. Sorted alphabetically.
+  // Union of every key the admin should see: discovered + drafted + published.
   const allKeys = state
     ? Array.from(new Set([
         ...Object.keys(state.discovered),
-        ...Object.keys(state.overrides),
+        ...Object.keys(state.draft),
+        ...Object.keys(state.published),
       ])).sort()
     : [];
 
@@ -1199,6 +1410,14 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
         {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
       </div>
       <div className="p-4 space-y-3">
+        <WorkflowBar
+          siteId={siteId}
+          state={state}
+          dirty={dirty}
+          saving={saving}
+          onApplied={fresh => setState(fresh)}
+        />
+
         {!loading && allKeys.length === 0 && !adding && (
           <p className="text-xs text-brand-cream/40 leading-relaxed px-1">
             No editable regions discovered yet. Add <code className="font-mono text-brand-cream/65">data-portal-edit=&quot;your.key&quot;</code> attributes
@@ -1207,9 +1426,10 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
         )}
 
         {allKeys.map(key => {
-          const o = state?.overrides[key];
+          const o = state?.draft[key];
+          const p = state?.published[key];
           const d = state?.discovered[key];
-          const type: OverrideType = o?.type ?? d?.type ?? "text";
+          const type: OverrideType = o?.type ?? p?.type ?? d?.type ?? "text";
           const value = o?.value ?? "";
           return (
             <OverrideRow
@@ -1217,6 +1437,7 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
               keyName={key}
               type={type}
               value={value}
+              publishedValue={p?.value}
               discovered={d}
               hasOverride={!!o}
               onChangeType={t => patchOverride(key, { type: t })}
@@ -1272,10 +1493,11 @@ function FlatContentOverridesBlock({ siteId }: { siteId: string }) {
   );
 }
 
-function OverrideRow({ keyName, type, value, discovered, hasOverride, onChangeType, onChangeValue, onClear }: {
+function OverrideRow({ keyName, type, value, publishedValue, discovered, hasOverride, onChangeType, onChangeValue, onClear }: {
   keyName: string;
   type: OverrideType;
   value: string;
+  publishedValue: string | undefined;
   discovered: DiscoveredKey | undefined;
   hasOverride: boolean;
   onChangeType: (t: OverrideType) => void;
@@ -1286,12 +1508,21 @@ function OverrideRow({ keyName, type, value, discovered, hasOverride, onChangeTy
   const seenLabel = discovered?.seenOn?.length
     ? `seen on ${discovered.seenOn.slice(0, 3).join(", ")}${discovered.seenOn.length > 3 ? "…" : ""}`
     : "manually added";
+  const isModified = value !== (publishedValue ?? "");
   return (
-    <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+    <div className={`rounded-lg border bg-brand-black/40 p-3 space-y-2 ${isModified ? "border-brand-amber/35" : "border-white/8"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <code className="font-mono text-xs text-brand-cream bg-white/5 px-2 py-1 rounded border border-white/10 flex-1 min-w-0 truncate" title={keyName}>
           {keyName}
         </code>
+        {isModified && (
+          <span
+            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-brand-amber/15 text-brand-amber border border-brand-amber/30 shrink-0"
+            title={publishedValue !== undefined ? `Published: ${publishedValue}` : "Not yet published"}
+          >
+            Modified
+          </span>
+        )}
         <select
           value={type}
           onChange={e => onChangeType(e.target.value as OverrideType)}
@@ -1361,12 +1592,13 @@ function SchemaGroupedOverrides({ siteId, schema }: {
     return () => { cancelled = true; };
   }, [siteId]);
 
-  // Auto-save with the same 750ms debounce as the flat editor.
+  // Auto-save with the same 750ms debounce. Writes target the DRAFT bucket;
+  // publishing is a deliberate action via the workflow bar.
   useEffect(() => {
     if (!dirty || !state) return;
     const id = setTimeout(async () => {
       setSaving(true);
-      const overrides = Object.entries(state.overrides).map(([key, o]) => ({
+      const overrides = Object.entries(state.draft).map(([key, o]) => ({
         key, value: o.value, type: o.type,
       }));
       try {
@@ -1384,13 +1616,13 @@ function SchemaGroupedOverrides({ siteId, schema }: {
   function setOverrideValue(flatKey: string, value: string, type: OverrideType) {
     setState(prev => {
       if (!prev) return prev;
-      const next = { ...prev.overrides };
+      const next = { ...prev.draft };
       if (value === "") {
         delete next[flatKey];           // empty = clear (matches server semantics)
       } else {
         next[flatKey] = { value, type, updatedAt: Date.now() };
       }
-      return { ...prev, overrides: next };
+      return { ...prev, draft: next };
     });
     setDirty(true);
   }
@@ -1401,7 +1633,7 @@ function SchemaGroupedOverrides({ siteId, schema }: {
   let overriddenCount = 0;
   for (const [section, fields] of sections) {
     for (const [key, field] of Object.entries(fields)) {
-      const o = state?.overrides[`${section}.${key}`];
+      const o = state?.draft[`${section}.${key}`];
       if (o && o.value !== "" && o.value !== field.default) overriddenCount += 1;
     }
   }
@@ -1427,12 +1659,21 @@ function SchemaGroupedOverrides({ siteId, schema }: {
           Re-run <code className="font-mono text-brand-cream/65">portal-sync</code> to update.
         </p>
 
+        <WorkflowBar
+          siteId={siteId}
+          state={state}
+          dirty={dirty}
+          saving={saving}
+          onApplied={fresh => setState(fresh)}
+        />
+
         {sections.map(([section, fields]) => (
           <SchemaSectionCard
             key={section}
             section={section}
             fields={fields}
-            overrides={state?.overrides ?? {}}
+            draft={state?.draft ?? {}}
+            published={state?.published ?? {}}
             onChange={setOverrideValue}
           />
         ))}
@@ -1445,10 +1686,11 @@ function SchemaGroupedOverrides({ siteId, schema }: {
   );
 }
 
-function SchemaSectionCard({ section, fields, overrides, onChange }: {
+function SchemaSectionCard({ section, fields, draft, published, onChange }: {
   section: string;
   fields: Record<string, ManifestField>;
-  overrides: Record<string, ContentOverride>;
+  draft: Record<string, ContentOverride>;
+  published: Record<string, ContentOverride>;
   onChange: (flatKey: string, value: string, type: OverrideType) => void;
 }) {
   return (
@@ -1459,13 +1701,13 @@ function SchemaSectionCard({ section, fields, overrides, onChange }: {
       <div className="p-3 space-y-3">
         {Object.entries(fields).map(([key, field]) => {
           const flatKey = `${section}.${key}`;
-          const override = overrides[flatKey];
           return (
             <SchemaFieldRow
               key={flatKey}
               flatKey={flatKey}
               field={field}
-              override={override}
+              override={draft[flatKey]}
+              publishedValue={published[flatKey]?.value}
               onChange={(v) => onChange(flatKey, v, field.type)}
               onReset={() => onChange(flatKey, "", field.type)}
             />
@@ -1476,10 +1718,11 @@ function SchemaSectionCard({ section, fields, overrides, onChange }: {
   );
 }
 
-function SchemaFieldRow({ flatKey, field, override, onChange, onReset }: {
+function SchemaFieldRow({ flatKey, field, override, publishedValue, onChange, onReset }: {
   flatKey: string;
   field: ManifestField;
   override: ContentOverride | undefined;
+  publishedValue: string | undefined;
   onChange: (value: string) => void;
   onReset: () => void;
 }) {
@@ -1487,13 +1730,23 @@ function SchemaFieldRow({ flatKey, field, override, onChange, onReset }: {
   const isDifferent = hasOverride && override.value !== field.default;
   const value = hasOverride ? override.value : field.default;
   const useTextarea = field.type === "text" || field.type === "html" || field.multiline;
+  const draftValue = override?.value ?? "";
+  const isModified = draftValue !== (publishedValue ?? "");
 
   return (
-    <div className="rounded-lg border border-white/5 bg-brand-black/40 p-3 space-y-2">
+    <div className={`rounded-lg border bg-brand-black/40 p-3 space-y-2 ${isModified ? "border-brand-amber/35" : "border-white/5"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <code className="font-mono text-xs text-brand-cream bg-white/5 px-2 py-1 rounded border border-white/10 flex-1 min-w-0 truncate" title={flatKey}>
           {flatKey}
         </code>
+        {isModified && (
+          <span
+            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-brand-amber/15 text-brand-amber border border-brand-amber/30 shrink-0"
+            title={publishedValue !== undefined ? `Published: ${publishedValue}` : "Not yet published"}
+          >
+            Modified
+          </span>
+        )}
         <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/65 border border-white/10 shrink-0">
           {OVERRIDE_TYPE_LABEL[field.type]}
         </span>

@@ -45,7 +45,7 @@ function load(): PortalState {
       cache = {
         heartbeats: parsed.heartbeats ?? {},
         configs: parsed.configs ?? {},
-        content: parsed.content ?? {},
+        content: migrateContent(parsed.content),
         schemas: parsed.schemas ?? {},
         embeds: parsed.embeds ?? {},
       };
@@ -56,6 +56,30 @@ function load(): PortalState {
     cache = empty();
   }
   return cache;
+}
+
+// Phase C wrote a single `overrides` map per site. D-2 splits that into
+// `draft` and `published`, with the legacy bucket retired but readable.
+// Promote any legacy field into both draft and published so existing
+// state files keep working without manual intervention.
+function migrateContent(raw: Record<string, SiteContentState> | undefined):
+  Record<string, SiteContentState> {
+  if (!raw) return {};
+  const out: Record<string, SiteContentState> = {};
+  for (const [siteId, s] of Object.entries(raw)) {
+    if (!s) continue;
+    const legacy = s.overrides;
+    out[siteId] = {
+      siteId: s.siteId ?? siteId,
+      draft: s.draft ?? legacy ?? {},
+      published: s.published ?? legacy ?? {},
+      history: Array.isArray(s.history) ? s.history : [],
+      discovered: s.discovered ?? {},
+      updatedAt: s.updatedAt ?? 0,
+      // Drop the legacy field once we've materialised it into draft/published.
+    };
+  }
+  return out;
 }
 
 function flush(): void {

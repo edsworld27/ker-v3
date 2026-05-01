@@ -97,12 +97,37 @@ export interface DiscoveredKey {
   type?: OverrideType;   // last reported type (host-declared)
 }
 
+// A point-in-time snapshot of the published overrides — kept for revert.
+// We write a snapshot every time the admin publishes; oldest entries are
+// dropped beyond PUBLISH_HISTORY_CAP.
+export interface PublishSnapshot {
+  id: string;                                 // stable id, e.g. "snap_<ts>_<rand>"
+  publishedAt: number;
+  publishedBy?: string;                       // admin email if available
+  message?: string;                           // optional commit-style message
+  overrides: Record<string, ContentOverride>; // exact overrides at publish time
+  // Diff against the *previous* published state at publish time, for the UI.
+  changedKeys: string[];
+}
+
 export interface SiteContentState {
   siteId: string;
-  overrides: Record<string, ContentOverride>;
+  // Workflow split (D-2):
+  //  • draft     — admin's working copy. setOverrides writes here.
+  //  • published — what the host site sees. Created via publish().
+  //  • history   — past published snapshots, capped, used for revert.
+  draft: Record<string, ContentOverride>;
+  published: Record<string, ContentOverride>;
+  history: PublishSnapshot[];
   discovered: Record<string, DiscoveredKey>;
   updatedAt: number;
+  // Legacy single-bucket field (Phase C). Kept readable for one major
+  // version so callers that haven't migrated still work; new writes always
+  // hit draft/published.
+  overrides?: Record<string, ContentOverride>;
 }
+
+export const PUBLISH_HISTORY_CAP = 30;
 
 export const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
   "text":      "Text",

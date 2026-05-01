@@ -22,6 +22,7 @@ export async function GET() {
       manifest: true,             // GET/POST /api/portal/schema/[siteId] (D-1)
       embeds: true,               // GET/POST /api/portal/embeds/[siteId] (D-5)
       settings: true,             // /admin/portal-settings (GitHub + DB backend + deployment, D-4-prep)
+      workflow: true,             // draft/publish/preview/history on content overrides (D-2)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

@@ -46,6 +46,24 @@ export async function GET(req: NextRequest) {
     var configUrl    = portal + "/api/portal/config/"  + encodeURIComponent(siteId);
     var contentUrl   = portal + "/api/portal/content/" + encodeURIComponent(siteId);
 
+    // Preview mode (D-2): when the page URL carries portal_preview=draft and
+    // a signed pt token, point the content fetch at the draft endpoint. The
+    // token is captured at boot so it survives client-side navigation that
+    // strips query params from the address bar.
+    var previewMode  = (function() {
+      try {
+        var p = new URLSearchParams(location.search);
+        var mode = p.get("portal_preview");
+        var token = p.get("pt");
+        if (mode === "draft" && token) return { mode: "draft", token: token };
+      } catch (e) {}
+      return null;
+    })();
+    if (previewMode) {
+      contentUrl += "?preview=" + encodeURIComponent(previewMode.mode)
+                  + "&pt="     + encodeURIComponent(previewMode.token);
+    }
+
     // ── DOM scan ─────────────────────────────────────────────────────
     // Collect every [data-portal-edit] key on the page, with its declared
     // type. Used both for heartbeat-driven auto-discovery and for the
@@ -271,9 +289,12 @@ export async function GET(req: NextRequest) {
     window.__portal.consent = consent;
     window.__portal.applyOverrides = applyOverrides;
     window.__portal.refresh = refresh;
-    window.__portal.version = 3;
+    window.__portal.preview = previewMode;
+    window.__portal.version = 4;
 
-    if (window.console && console.log) console.log("[portal] tag v3 ready (site=" + siteId + ")");
+    if (window.console && console.log) {
+      console.log("[portal] tag v4 ready (site=" + siteId + (previewMode ? ", preview=" + previewMode.mode : "") + ")");
+    }
   } catch (e) { /* tag must never throw onto host site */ }
 })();`;
 
