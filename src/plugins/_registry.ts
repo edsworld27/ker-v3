@@ -16,11 +16,39 @@
 
 import type { AquaPlugin } from "./_types";
 
-// First-party plugins ship empty in this PR — Phase 1 lands the
-// foundation only. Subsequent PRs wrap each existing feature
-// (Brand Kit, Website, E-commerce, Blog, Chatbot, …) into a manifest
-// and add it here.
-const PLUGINS: AquaPlugin[] = [];
+import brand from "./brand";
+import website from "./website";
+import ecommerce from "./ecommerce";
+import blog from "./blog";
+import chatbot from "./chatbot";
+import forms from "./forms";
+import funnels from "./funnels";
+import seo from "./seo";
+import auditor from "./auditor";
+import compliance from "./compliance";
+import support from "./support";
+import repo from "./repo";
+import analytics from "./analytics";
+import email from "./email";
+
+// First-party plugins. Order is presentation-only (marketplace
+// rendering); install dependencies are enforced by the runtime.
+const PLUGINS: AquaPlugin[] = [
+  brand,
+  website,
+  ecommerce,
+  blog,
+  email,
+  forms,
+  chatbot,
+  seo,
+  analytics,
+  funnels,
+  compliance,
+  support,
+  auditor,
+  repo,
+];
 
 export function registerPlugin(plugin: AquaPlugin): void {
   if (PLUGINS.some(p => p.id === plugin.id)) {

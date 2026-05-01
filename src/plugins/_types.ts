@@ -200,6 +200,7 @@ export interface SettingsField {
   default?: string | number | boolean;
   options?: { value: string; label: string }[];
   helpText?: string;
+  placeholder?: string;
   // Plan gating per-field — enterprise-only field on a pro plugin.
   plans?: PlanId[];
 }

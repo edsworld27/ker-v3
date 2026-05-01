@@ -128,6 +128,13 @@ export default function AquaDashboard() {
                 </button>
                 <div className="flex gap-1.5">
                   <Link
+                    href={`/aqua/${encodeURIComponent(org.id)}/marketplace`}
+                    className="flex-1 text-center px-3 py-1.5 rounded-lg border border-cyan-400/20 text-[11px] text-cyan-300/80 hover:text-cyan-200 hover:bg-cyan-500/10"
+                    title="Install / configure plugins"
+                  >
+                    Plugins
+                  </Link>
+                  <Link
                     href={`/aqua/${encodeURIComponent(org.id)}/configure`}
                     className="flex-1 text-center px-3 py-1.5 rounded-lg border border-white/15 text-[11px] text-brand-cream/65 hover:text-brand-cream hover:bg-white/5"
                   >
