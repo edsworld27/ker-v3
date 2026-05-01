@@ -350,6 +350,46 @@ function ActiveOverlay({ siteId }: { siteId: string }) {
     });
   }, []);
 
+  // True when this overlay is rendered inside the /admin/editor iframe.
+  // In host mode the parent owns the editing UI (right-side properties
+  // sidebar) and we suppress our local popover, posting `select` events
+  // up to the host instead.
+  const inHost = typeof window !== "undefined" && window.parent !== window;
+
+  // Build a `select` payload for the host without actually opening a popover.
+  const postSelect = useCallback((el: HTMLElement) => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    const key = el.getAttribute("data-portal-edit");
+    if (!key) return;
+    const declaredType = (el.getAttribute("data-portal-type") as OverrideType) || "text";
+    let value = "";
+    switch (declaredType) {
+      case "image-src": value = el.getAttribute("src") ?? ""; break;
+      case "href":      value = el.getAttribute("href") ?? ""; break;
+      case "html":      value = el.innerHTML ?? ""; break;
+      default:          value = el.textContent ?? ""; break;
+    }
+    const existing = draftRef.current[key];
+    if (existing) value = existing.value;
+    const r = el.getBoundingClientRect();
+    const tag = el.tagName.toLowerCase();
+    const excerpt = (el.textContent ?? "").trim().slice(0, 40);
+    const label = excerpt
+      ? `${tag} · "${excerpt}${(el.textContent ?? "").length > 40 ? "…" : ""}"`
+      : tag;
+    try {
+      window.parent.postMessage({
+        source: "portal-edit-overlay",
+        type: "select",
+        key,
+        elementType: declaredType,
+        value,
+        rect: { x: r.left, y: r.top, width: r.width, height: r.height },
+        label,
+      }, "*");
+    } catch {}
+  }, []);
+
   // ── Click delegation on [data-portal-edit] elements ────────────────────
   // Single delegated listener catches clicks anywhere — including on
   // nodes that get added to the DOM after mount (SPA navigations).
@@ -363,11 +403,12 @@ function ActiveOverlay({ siteId }: { siteId: string }) {
       if (target.closest("[data-portal-overlay-ui]")) return;
       e.preventDefault();
       e.stopPropagation();
-      openPopover(editable);
+      if (inHost) postSelect(editable);
+      else openPopover(editable);
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [openPopover]);
+  }, [openPopover, postSelect, inHost]);
 
   // Hover styling — we ship a single <style> tag rather than mutating
   // each element, so there's nothing to clean up when nodes come/go.
@@ -469,6 +510,70 @@ function ActiveOverlay({ siteId }: { siteId: string }) {
       );
     } catch { /* swallow cross-origin errors */ }
   }, [unsavedCount]);
+
+  // Host → iframe control messages. When the operator types in the
+  // properties sidebar we get a `patch` (live preview, no network), and
+  // when they hit Save/Revert we get a `save`/`revert` (commit/rollback).
+  useEffect(() => {
+    if (!inHost) return;
+    function onHost(e: MessageEvent) {
+      const data = e.data as
+        | { source?: string; type?: string; key?: string; value?: string }
+        | null;
+      if (!data || data.source !== "editor-host") return;
+      if (data.type === "patch" && data.key && typeof data.value === "string") {
+        const el = document.querySelector<HTMLElement>(
+          `[data-portal-edit="${cssEscape(data.key)}"]`,
+        );
+        if (!el) return;
+        const t = (el.getAttribute("data-portal-type") as OverrideType) || "text";
+        try {
+          switch (t) {
+            case "image-src": el.setAttribute("src", data.value); break;
+            case "href":      el.setAttribute("href", data.value); break;
+            case "html":      el.innerHTML = data.value; break;
+            default:          el.textContent = data.value; break;
+          }
+        } catch {}
+        // Mirror into local draft state so unsaved counter + later saves
+        // see the new value.
+        setDraft(d => ({ ...d, [data.key!]: { value: data.value!, type: t } }));
+        return;
+      }
+      if (data.type === "save" && data.key) {
+        const cur = draftRef.current[data.key];
+        if (!cur) return;
+        void saveDraft(data.key, cur.value, cur.type);
+        return;
+      }
+      if (data.type === "revert" && data.key) {
+        const pub = published[data.key];
+        const el = document.querySelector<HTMLElement>(
+          `[data-portal-edit="${cssEscape(data.key)}"]`,
+        );
+        if (el) {
+          const t = (el.getAttribute("data-portal-type") as OverrideType) || pub?.type || "text";
+          const v = pub?.value ?? "";
+          try {
+            switch (t) {
+              case "image-src": el.setAttribute("src", v); break;
+              case "href":      el.setAttribute("href", v); break;
+              case "html":      el.innerHTML = v; break;
+              default:          el.textContent = v; break;
+            }
+          } catch {}
+        }
+        setDraft(d => {
+          const next = { ...d };
+          delete next[data.key!];
+          return next;
+        });
+        return;
+      }
+    }
+    window.addEventListener("message", onHost);
+    return () => window.removeEventListener("message", onHost);
+  }, [inHost, saveDraft, published]);
 
   // ── Exit ────────────────────────────────────────────────────────────────
   const onExit = useCallback(() => {
