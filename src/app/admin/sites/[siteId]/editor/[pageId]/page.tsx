@@ -21,6 +21,8 @@ import Canvas from "@/components/editor/canvas/Canvas";
 import Sidebar from "@/components/editor/canvas/Sidebar";
 import PropertiesPanel from "@/components/editor/canvas/PropertiesPanel";
 import TouchDndProvider from "@/components/editor/canvas/touchDnd";
+import DevicePreview from "@/components/admin/DevicePreview";
+import { loadDeviceState, saveDeviceState, type DeviceState } from "@/lib/admin/devicePresets";
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -33,7 +35,7 @@ export default function EditorPage() {
   const [page, setPage] = useState<EditorPage | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [deviceState, setDeviceState] = useState<DeviceState>(() => loadDeviceState());
   const [view, setView] = useState<"text" | "visual" | "code">("visual");
   const [themes, setThemes] = useState<ThemeRecord[]>([]);
   const [activeThemeId, setActiveThemeId] = useState<string>("default");
@@ -360,7 +362,7 @@ export default function EditorPage() {
             Pin
           </button>
         )}
-        <DeviceSwitcher device={device} setDevice={setDevice} />
+        <DevicePreview state={deviceState} onChange={s => { setDeviceState(s); saveDeviceState(s); }} />
         <span className="text-[11px] text-brand-cream/45 mx-3">
           {saving ? "Saving…" : savedAt ? "Saved" : page?.status === "published" ? "Published" : "Draft"}
         </span>
@@ -403,7 +405,7 @@ export default function EditorPage() {
           <Canvas
             blocks={blocks}
             selectedId={selectedId}
-            device={device}
+            device={deviceState}
             themeId={activeThemeId}
             onSelect={setSelectedId}
             onDropOnCanvas={handleDropOnCanvas}
@@ -796,24 +798,5 @@ function CodePane({ label, help, value, onChange, height }: { label: string; hel
   );
 }
 
-function DeviceSwitcher({ device, setDevice }: { device: "desktop" | "tablet" | "mobile"; setDevice: (d: "desktop" | "tablet" | "mobile") => void }) {
-  const items: Array<{ id: typeof device; icon: string; label: string }> = [
-    { id: "desktop", icon: "🖥", label: "Desktop" },
-    { id: "tablet",  icon: "📱", label: "Tablet" },
-    { id: "mobile",  icon: "📞", label: "Mobile" },
-  ];
-  return (
-    <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5">
-      {items.map(i => (
-        <button
-          key={i.id}
-          onClick={() => setDevice(i.id)}
-          title={i.label}
-          className={`w-8 h-7 text-[14px] rounded ${device === i.id ? "bg-white/10 text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream"}`}
-        >
-          {i.icon}
-        </button>
-      ))}
-    </div>
-  );
-}
+// Legacy DeviceSwitcher removed — replaced by the richer DevicePreview
+// component (see src/components/admin/DevicePreview.tsx).

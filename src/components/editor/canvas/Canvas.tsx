@@ -8,11 +8,17 @@ import { useState } from "react";
 import type { Block, BlockType } from "@/portal/server/types";
 import BlockRenderer from "../BlockRenderer";
 import { getBlockDefinition, listBlocksByCategory, type BlockDefinition } from "../blockRegistry";
+import {
+  effectiveViewport, getDevicePreset, type DeviceState,
+} from "@/lib/admin/devicePresets";
 
 interface CanvasProps {
   blocks: Block[];
   selectedId: string | null;
-  device: "desktop" | "tablet" | "mobile";
+  // Either the legacy enum (kept for back-compat with admin/website
+  // /admin/[pageId] pages that haven't migrated to DevicePreview yet)
+  // OR the full DeviceState from the new toolbar.
+  device: "desktop" | "tablet" | "mobile" | DeviceState;
   themeId?: string;
   onSelect: (id: string) => void;
   onDropOnCanvas: (type: BlockType) => void;
@@ -23,41 +29,79 @@ interface CanvasProps {
 export default function Canvas({ blocks, selectedId, device, themeId, onSelect, onDropOnCanvas, onDropBeside, onMoveBeside }: CanvasProps) {
   const [hover, setHover] = useState<string | null>(null);
 
-  const deviceWidth = device === "desktop" ? "100%" : device === "tablet" ? 768 : 375;
+  // Resolve viewport. Legacy enum maps to width-only (no zoom, no
+  // chrome). New DeviceState reads through effectiveViewport.
+  let frameStyle: React.CSSProperties;
+  let chrome: { bezel: { top: number; right: number; bottom: number; left: number } } | null = null;
+  if (typeof device === "string") {
+    const w = device === "desktop" ? "100%" : device === "tablet" ? 768 : 375;
+    frameStyle = { width: w, maxWidth: "100%", minHeight: "calc(100vh - 96px)" };
+  } else {
+    const spec = getDevicePreset(device.deviceId);
+    const vp = spec ? effectiveViewport(spec, device) : { width: 1280, height: 800 };
+    const responsive = device.deviceId === "responsive";
+    frameStyle = {
+      width: responsive ? "100%" : vp.width,
+      maxWidth: responsive ? "100%" : vp.width,
+      minHeight: responsive ? "calc(100vh - 96px)" : vp.height,
+      transform: `scale(${device.zoom})`,
+      transformOrigin: "top center",
+    };
+    if (device.showChrome && spec?.bezel && (spec.category === "phone" || spec.category === "tablet")) {
+      chrome = { bezel: spec.bezel };
+    }
+  }
+
+  const frame = (
+    <div
+      className="mx-auto my-6 transition-all duration-200 bg-brand-black rounded-lg shadow-2xl shadow-black/40 overflow-hidden"
+      style={frameStyle}
+    >
+      <div
+        className="relative"
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+        onDrop={e => {
+          if (e.target !== e.currentTarget && blocks.length !== 0) return;
+          const type = e.dataTransfer.getData("application/x-block-type") as BlockType;
+          if (type) onDropOnCanvas(type);
+        }}
+      >
+        {blocks.length === 0 ? (
+          <EmptyState onDropType={onDropOnCanvas} />
+        ) : (
+          <BlockTreeWithChrome
+            blocks={blocks}
+            selectedId={selectedId}
+            hover={hover}
+            setHover={setHover}
+            themeId={themeId}
+            onSelect={onSelect}
+            onDropBeside={onDropBeside}
+            onMoveBeside={onMoveBeside}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  // Wrap the frame in a decorative device bezel when "Frame" is on
+  // for a phone/tablet preset. Pure CSS — just a rounded outer shell
+  // sized to bezel coordinates so the screen content sits inside it.
+  const framed = chrome ? (
+    <div
+      className="mx-auto my-6 rounded-[36px] bg-[#1a1a1a] border-4 border-[#2a2a2a] shadow-2xl shadow-black/60"
+      style={{
+        padding: `${chrome.bezel.top}px ${chrome.bezel.right}px ${chrome.bezel.bottom}px ${chrome.bezel.left}px`,
+        width: "max-content",
+      }}
+    >
+      <div className="rounded-[20px] overflow-hidden">{frame}</div>
+    </div>
+  ) : frame;
 
   return (
-    <div className="flex-1 min-w-0 overflow-y-auto bg-[#0a0a0a]">
-      <div
-        className="mx-auto my-6 transition-all duration-200 bg-brand-black rounded-lg shadow-2xl shadow-black/40 overflow-hidden"
-        style={{ width: deviceWidth, maxWidth: "100%", minHeight: "calc(100vh - 96px)" }}
-      >
-        <div
-          className="relative"
-          onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-          onDrop={e => {
-            // Only accept new-block drops at the empty/top-level layer; sibling
-            // drops are handled by the BlockWrapper so the per-block handler runs.
-            if (e.target !== e.currentTarget && blocks.length !== 0) return;
-            const type = e.dataTransfer.getData("application/x-block-type") as BlockType;
-            if (type) onDropOnCanvas(type);
-          }}
-        >
-          {blocks.length === 0 ? (
-            <EmptyState onDropType={onDropOnCanvas} />
-          ) : (
-            <BlockTreeWithChrome
-              blocks={blocks}
-              selectedId={selectedId}
-              hover={hover}
-              setHover={setHover}
-              themeId={themeId}
-              onSelect={onSelect}
-              onDropBeside={onDropBeside}
-              onMoveBeside={onMoveBeside}
-            />
-          )}
-        </div>
-      </div>
+    <div className="flex-1 min-w-0 overflow-auto bg-[#0a0a0a]">
+      {framed}
     </div>
   );
 }
