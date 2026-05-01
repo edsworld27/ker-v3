@@ -4,8 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listPosts, createPost, deletePost, setFeatured, onBlogChange, type BlogPost } from "@/lib/admin/blog";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminBlogIndex() {
+  return <PluginRequired plugin="blog"><AdminBlogIndexInner /></PluginRequired>;
+}
+
+function AdminBlogIndexInner() {
   const router = useRouter();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [filter, setFilter] = useState<"all" | "published" | "draft" | "scheduled">("all");

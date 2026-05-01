@@ -13,12 +13,17 @@ import {
   createGroup, deleteGroup, getGroupResults, listGroups, onSplitTestsChange,
   patchGroup, statusTone,
 } from "@/lib/admin/splitTests";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
 interface ResultRow { variantId: string; exposures: number; conversions: number }
 
 export default function SplitTestsPage() {
+  return <PluginRequired plugin="funnels" feature="splitTests"><SplitTestsPageInner /></PluginRequired>;
+}
+
+function SplitTestsPageInner() {
   const [site, setSite] = useState<Site | null>(null);
   const [groups, setGroups] = useState<SplitTestGroup[]>([]);
   const [results, setResults] = useState<Record<string, ResultRow[]>>({});

@@ -8,10 +8,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import SetupWizardModal from "@/components/aqua/SetupWizardModal";
 
 interface ApiPluginFeature {
   id: string; label: string; description: string | null;
   default: boolean; plans: string[] | null; requires: string[];
+}
+interface ApiSetupField {
+  id: string; label: string;
+  type: "text" | "password" | "url" | "email" | "select" | "boolean" | "textarea";
+  placeholder?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+  helpText?: string;
+}
+interface ApiSetupStep {
+  id: string; title: string; description: string;
+  fields: ApiSetupField[];
+  optional?: boolean;
 }
 interface ApiPlugin {
   id: string; name: string; version: string;
@@ -21,6 +35,7 @@ interface ApiPlugin {
   plans: string[] | null;
   requires: string[]; conflicts: string[];
   features: ApiPluginFeature[];
+  setup: ApiSetupStep[];
 }
 interface OrgPluginInstall {
   pluginId: string; installedAt: number; enabled: boolean;
@@ -42,6 +57,7 @@ export default function MarketplacePage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wizardPlugin, setWizardPlugin] = useState<ApiPlugin | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -64,18 +80,35 @@ export default function MarketplacePage() {
     return installs.find(x => x.pluginId === pluginId);
   }
 
-  async function handleInstall(plugin: ApiPlugin) {
+  async function performInstall(plugin: ApiPlugin, setupAnswers?: Record<string, string>) {
     setBusy(plugin.id); setError(null);
     try {
       const res = await fetch(`/api/portal/orgs/${orgId}/plugins`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pluginId: plugin.id }),
+        body: JSON.stringify({ pluginId: plugin.id, setupAnswers }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) { setError(data.error ?? "Install failed."); return; }
+      if (!res.ok || !data.ok) { setError(data.error ?? "Install failed."); return false; }
       setInstalls(prev => [...prev, data.install]);
+      return true;
     } finally { setBusy(null); }
+  }
+
+  function handleInstall(plugin: ApiPlugin) {
+    // Plugins with setup steps run the wizard first; everything else
+    // installs immediately with default config.
+    if (plugin.setup && plugin.setup.length > 0) {
+      setWizardPlugin(plugin);
+      return;
+    }
+    void performInstall(plugin);
+  }
+
+  async function handleWizardComplete(answers: Record<string, string>) {
+    if (!wizardPlugin) return;
+    const ok = await performInstall(wizardPlugin, answers);
+    if (ok) setWizardPlugin(null);
   }
 
   async function uninstall(pluginId: string) {
@@ -139,6 +172,14 @@ export default function MarketplacePage() {
         <div className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-[12px] text-red-200">
           {error}
         </div>
+      )}
+
+      {wizardPlugin && (
+        <SetupWizardModal
+          plugin={wizardPlugin}
+          onCancel={() => setWizardPlugin(null)}
+          onComplete={handleWizardComplete}
+        />
       )}
 
       {loading ? (

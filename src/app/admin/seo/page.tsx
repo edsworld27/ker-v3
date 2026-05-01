@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { EditorPage } from "@/portal/server/types";
 import { listPages } from "@/lib/admin/editorPages";
 import { listSites, getActiveSite, updateSite, type Site } from "@/lib/admin/sites";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 interface LinkRef {
   url: string;
@@ -40,6 +41,10 @@ function scorePage(p: EditorPage): Score {
 }
 
 export default function SeoDashboard() {
+  return <PluginRequired plugin="seo"><SeoDashboardInner /></PluginRequired>;
+}
+
+function SeoDashboardInner() {
   const [pages, setPages] = useState<EditorPage[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [active, setActive] = useState<Site | null>(null);

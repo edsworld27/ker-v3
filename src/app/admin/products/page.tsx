@@ -6,6 +6,7 @@ import { getProducts, onProductsChange, type Product } from "@/lib/products";
 import { saveOverride } from "@/lib/admin/productOverrides";
 import { deleteCustomProduct } from "@/lib/admin/customProducts";
 import { getCollectionLabel, listCollections, onCollectionsChange } from "@/lib/admin/collections";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 function rangeLabel(range: string): string {
   const map: Record<string, string> = { odo: "Odo · For Her", nkrabea: "Nkrabea · For Him", unisex: "Signature" };
@@ -13,6 +14,10 @@ function rangeLabel(range: string): string {
 }
 
 export default function AdminProductsPage() {
+  return <PluginRequired plugin="ecommerce"><AdminProductsPageInner /></PluginRequired>;
+}
+
+function AdminProductsPageInner() {
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState(() => listCollections());
   const [query, setQuery] = useState("");

@@ -12,6 +12,7 @@ import Link from "next/link";
 import type { SiteAuditReport, AuditFinding } from "@/portal/server/types";
 import { getActiveOrgId, loadOrgs } from "@/lib/admin/orgs";
 import { getActiveSite } from "@/lib/admin/sites";
+import PluginRequired from "@/components/admin/PluginRequired";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[13px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -37,6 +38,10 @@ interface QuotaResponse {
 }
 
 export default function SiteTestPage() {
+  return <PluginRequired plugin="auditor"><SiteTestPageInner /></PluginRequired>;
+}
+
+function SiteTestPageInner() {
   const [orgId, setOrgId] = useState("");
   const [siteId, setSiteId] = useState("");
   const [url, setUrl] = useState("");
