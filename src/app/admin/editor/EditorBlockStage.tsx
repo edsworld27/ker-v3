@@ -36,9 +36,11 @@ interface Props {
   onSavingChange?: (saving: boolean) => void;
   // History controls — wired to the topbar's undo/redo buttons via refs.
   registerHistory?: (api: { undo: () => void; redo: () => void; canUndo: () => boolean; canRedo: () => boolean }) => void;
+  // Push undo/redo availability up so the topbar can disable its buttons.
+  onHistoryChange?: (canUndo: boolean, canRedo: boolean) => void;
 }
 
-export default function EditorBlockStage({ siteId, pageId, device, onSavingChange, registerHistory }: Props) {
+export default function EditorBlockStage({ siteId, pageId, device, onSavingChange, registerHistory, onHistoryChange }: Props) {
   const [page, setPage] = useState<EditorPage | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -88,34 +90,43 @@ export default function EditorBlockStage({ siteId, pageId, device, onSavingChang
     }, SAVE_DEBOUNCE_MS);
   }, [siteId, pageId, onSavingChange]);
 
+  // Push current undo/redo availability to the parent so its topbar
+  // buttons can disable themselves accurately.
+  const announceHistory = useCallback(() => {
+    onHistoryChange?.(undoStack.current.length > 0, redoStack.current.length > 0);
+  }, [onHistoryChange]);
+
   const mutate = useCallback((next: Block[], opts?: { skipHistory?: boolean }) => {
     if (!opts?.skipHistory) {
       undoStack.current.push(blocks);
       if (undoStack.current.length > HISTORY_CAP) undoStack.current.shift();
       redoStack.current = [];
       bumpHistoryRev(r => r + 1);
+      announceHistory();
     }
     setBlocks(next);
     scheduleSave(next);
-  }, [blocks, scheduleSave]);
+  }, [blocks, scheduleSave, announceHistory]);
 
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
     redoStack.current.push(blocks);
     bumpHistoryRev(r => r + 1);
+    announceHistory();
     setBlocks(prev);
     scheduleSave(prev);
-  }, [blocks, scheduleSave]);
+  }, [blocks, scheduleSave, announceHistory]);
 
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
     undoStack.current.push(blocks);
     bumpHistoryRev(r => r + 1);
+    announceHistory();
     setBlocks(next);
     scheduleSave(next);
-  }, [blocks, scheduleSave]);
+  }, [blocks, scheduleSave, announceHistory]);
 
   // Expose history controls to the parent (super-editor's topbar).
   useEffect(() => {
@@ -125,6 +136,10 @@ export default function EditorBlockStage({ siteId, pageId, device, onSavingChang
       canRedo: () => redoStack.current.length > 0,
     });
   }, [registerHistory, undo, redo]);
+
+  // Re-announce on the initial mount + after every load so the topbar
+  // sees the right state when switching pages.
+  useEffect(() => { announceHistory(); }, [announceHistory, blocks]);
 
   // Inline rich-text edits dispatched by Heading/Text blocks.
   useEffect(() => {

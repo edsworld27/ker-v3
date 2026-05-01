@@ -129,7 +129,8 @@ export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props
           <input
             value={draft.name}
             onChange={e => update("name", e.target.value)}
-            className="font-display text-3xl text-brand-cream bg-transparent border-b border-transparent hover:border-white/10 focus:border-cyan-400/40 focus:outline-none w-full"
+            placeholder="Untitled funnel"
+            className="font-display text-3xl text-brand-cream placeholder:text-brand-cream/25 bg-transparent border-b border-transparent hover:border-white/10 focus:border-cyan-400/40 focus:outline-none w-full"
           />
           <textarea
             value={draft.description ?? ""}

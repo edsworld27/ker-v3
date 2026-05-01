@@ -67,6 +67,7 @@ function VisualEditorPageInner() {
   const [newFunnelOpen, setNewFunnelOpen] = useState(false);
   const [pageSettingsId, setPageSettingsId] = useState<string | null>(null);
   const [siteSettingsOpen, setSiteSettingsOpen] = useState(false);
+  const [history, setHistory] = useState<{ canUndo: boolean; canRedo: boolean }>({ canUndo: false, canRedo: false });
   const iframeRef = useRef<HTMLIFrameElement>(null);
   // History controls registered by EditorBlockStage so the topbar's
   // ↶/↷ buttons can drive its internal undo/redo stacks.
@@ -172,6 +173,14 @@ function VisualEditorPageInner() {
   // (Use scalar deps so a fresh `target` object reference doesn't refire each render.)
   useEffect(() => { setSelected(null); }, [target.kind, target.id, mode]);
 
+  // Reset transient counters when context shifts. Otherwise the topbar
+  // shows stale "N unsaved" from a previous mode after the operator
+  // switches contexts.
+  useEffect(() => {
+    setUnsaved(0);
+    setHistory({ canUndo: false, canRedo: false });
+  }, [target.kind, target.id, mode]);
+
   // Cmd/Ctrl + S → open the publish modal. Bail when an input/textarea is
   // focused so the operator can still use the browser's text save shortcuts.
   useEffect(() => {
@@ -271,6 +280,8 @@ function VisualEditorPageInner() {
         funnelLabel={currentFunnel?.name}
         onUndo={mode === "block" ? () => historyApiRef.current?.undo() : undefined}
         onRedo={mode === "block" ? () => historyApiRef.current?.redo() : undefined}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
       />
 
       {isPageTarget && mode === "live" && (
@@ -318,6 +329,9 @@ function VisualEditorPageInner() {
             device={deviceState}
             onSavingChange={s => setUnsaved(s ? 1 : 0)}
             registerHistory={api => { historyApiRef.current = api; }}
+            onHistoryChange={(canUndo, canRedo) => setHistory(prev =>
+              prev.canUndo === canUndo && prev.canRedo === canRedo ? prev : { canUndo, canRedo },
+            )}
           />
         ) : (
           <>
@@ -608,33 +622,50 @@ function PublishModal({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PublishPreview | null>(null);
 
+  // Esc closes — but only when we're not mid-flight (don't strand the user
+  // wondering whether the publish actually went through).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && phase !== "running") { e.preventDefault(); onClose(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, onClose]);
+
   // Preload a diff summary so the operator can see what's about to ship.
+  // Fails open: if either request fails, surface an empty preview so the
+  // operator can still publish (the actual publish chain has its own
+  // error reporting).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Content overrides — diff draft vs published from the admin shape.
-      const contentRes = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}?admin=1`, { cache: "no-store" });
-      const contentJson = contentRes.ok ? await contentRes.json() as {
-        draft?: Record<string, { value: string; type: string }>;
-        published?: Record<string, { value: string; type: string }>;
-      } : { draft: {}, published: {} };
-      const draft     = contentJson.draft ?? {};
-      const published = contentJson.published ?? {};
-      const all = new Set<string>([...Object.keys(draft), ...Object.keys(published)]);
-      const changed: string[] = [];
-      for (const k of all) {
-        const a = draft[k];
-        const b = published[k];
-        if (!a && b) { changed.push(k); continue; }
-        if (a && !b) { changed.push(k); continue; }
-        if (a && b && (a.value !== b.value || a.type !== b.type)) changed.push(k);
-      }
-
-      // Editor pages — fetch all and diff blocks vs publishedBlocks.
-      const pagesAll = await listEditorPages(site.id, true);
-      const changedPages = pagesAll
-        .filter(p => JSON.stringify(p.blocks) !== JSON.stringify(p.publishedBlocks ?? []))
-        .map(p => ({ id: p.id, slug: p.slug, title: p.title || p.slug }));
+      let changed: string[] = [];
+      let changedPages: PublishPreview["changedPages"] = [];
+      try {
+        const contentRes = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}?admin=1`, { cache: "no-store" });
+        if (contentRes.ok) {
+          const contentJson = await contentRes.json() as {
+            draft?: Record<string, { value: string; type: string }>;
+            published?: Record<string, { value: string; type: string }>;
+          };
+          const draft     = contentJson.draft ?? {};
+          const published = contentJson.published ?? {};
+          const all = new Set<string>([...Object.keys(draft), ...Object.keys(published)]);
+          for (const k of all) {
+            const a = draft[k];
+            const b = published[k];
+            if (!a && b) { changed.push(k); continue; }
+            if (a && !b) { changed.push(k); continue; }
+            if (a && b && (a.value !== b.value || a.type !== b.type)) changed.push(k);
+          }
+        }
+      } catch { /* fall through with empty content list */ }
+      try {
+        const pagesAll = await listEditorPages(site.id, true);
+        changedPages = pagesAll
+          .filter(p => JSON.stringify(p.blocks) !== JSON.stringify(p.publishedBlocks ?? []))
+          .map(p => ({ id: p.id, slug: p.slug, title: p.title || p.slug }));
+      } catch { /* fall through with empty pages list */ }
 
       if (cancelled) return;
       setPreview({ changedContentKeys: changed.sort(), changedPages });
@@ -1088,6 +1119,15 @@ function ModalShell({
   children: React.ReactNode;
   wide?: boolean;
 }) {
+  // Esc closes the modal — same expectation as every native dialog.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div

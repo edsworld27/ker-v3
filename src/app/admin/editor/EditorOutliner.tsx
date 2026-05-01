@@ -7,7 +7,7 @@
 // Mirrors the iA-Writer / Figma left rail: collapsible sections, a +
 // button on each section header, and a hover-revealed × on each row.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Funnel } from "@/lib/admin/funnels";
 
 interface PageEntry {
@@ -36,6 +36,22 @@ interface Props {
   onSiteSettings: () => void;
 }
 
+// Persist section open/close state across sessions — small touch but
+// makes the editor feel like it remembers your preferences.
+const STORAGE_KEY = "lk_editor_outliner_v1";
+function readPersisted(): { pagesOpen: boolean; funnelsOpen: boolean } {
+  if (typeof window === "undefined") return { pagesOpen: true, funnelsOpen: true };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { pagesOpen: true, funnelsOpen: true };
+    const parsed = JSON.parse(raw) as { pagesOpen?: boolean; funnelsOpen?: boolean };
+    return {
+      pagesOpen:   parsed.pagesOpen   ?? true,
+      funnelsOpen: parsed.funnelsOpen ?? true,
+    };
+  } catch { return { pagesOpen: true, funnelsOpen: true }; }
+}
+
 export default function EditorOutliner({
   siteName, pages, funnels, target,
   onSelectPage, onSelectFunnel,
@@ -43,9 +59,16 @@ export default function EditorOutliner({
   onDeletePage, onDeleteFunnel,
   onPageSettings, onSiteSettings,
 }: Props) {
-  const [pagesOpen, setPagesOpen]     = useState(true);
-  const [funnelsOpen, setFunnelsOpen] = useState(true);
+  const [persisted] = useState(readPersisted);
+  const [pagesOpen, setPagesOpen]     = useState(persisted.pagesOpen);
+  const [funnelsOpen, setFunnelsOpen] = useState(persisted.funnelsOpen);
   const [query, setQuery] = useState("");
+
+  // Persist whenever sections toggle.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ pagesOpen, funnelsOpen })); } catch {}
+  }, [pagesOpen, funnelsOpen]);
 
   const q = query.trim().toLowerCase();
   const filterMatch = (haystack: string) => !q || haystack.toLowerCase().includes(q);
