@@ -61,6 +61,12 @@
 
 import { NextResponse } from "next/server";
 import { constructWebhookEvent } from "@/lib/stripe/server";
+import { ensureHydrated } from "@/portal/server/storage";
+import {
+  upsertOrderByStripeSession, markOrderRefunded,
+  type ServerOrderItem,
+} from "@/portal/server/orders";
+import { sendEmail } from "@/portal/server/email";
 
 export const runtime = "nodejs";
 
@@ -123,33 +129,85 @@ export async function POST(req: Request) {
   //   2. Decrement inventory on each line item via a transactional adjust
   //   3. Enqueue a confirmation email (Resend / Postmark)
   //   4. Update orders.status to "paid" with a paymentIntent reference
+  await ensureHydrated();
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;
-      console.info("[stripe/webhook] checkout.session.completed", {
-        id: session.id,
-        amount_total: session.amount_total,
-        customer_email: session.customer_details?.email,
-        payment_intent: session.payment_intent,
+      const orgId = session.metadata?.orgId ?? "agency";
+      const items: ServerOrderItem[] = Array.isArray(session.line_items?.data)
+        ? session.line_items.data.map((li: { description: string; quantity: number; price?: { unit_amount?: number; currency?: string } }) => ({
+            name: li.description ?? "Item",
+            quantity: li.quantity ?? 1,
+            unitAmount: li.price?.unit_amount ?? 0,
+            currency: li.price?.currency ?? session.currency ?? "gbp",
+          }))
+        : [];
+
+      const order = upsertOrderByStripeSession({
+        orgId,
+        stripeSessionId: session.id,
+        paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+        amountTotal: session.amount_total ?? 0,
+        currency: session.currency ?? "gbp",
+        customerEmail: session.customer_details?.email,
+        customerName: session.customer_details?.name,
+        shippingAddress: session.shipping_details?.address ? {
+          line1: session.shipping_details.address.line1,
+          line2: session.shipping_details.address.line2,
+          city:  session.shipping_details.address.city,
+          postalCode: session.shipping_details.address.postal_code,
+          country: session.shipping_details.address.country,
+          state: session.shipping_details.address.state,
+        } : undefined,
+        items,
+        metadata: session.metadata as Record<string, string>,
       });
-      // TODO(T1 #7 follow-up) Database: insert order row from
-      // session.line_items + customer_details, and call inventory.consumeStock
-      // for every linked SKU. Both are blocked on cloud-storage migration.
-      // TODO(T1 #7 follow-up) Email: send confirmation via Resend/Postmark.
-      // For now Stripe sends its own receipt because customer_email is
-      // collected on the Checkout page.
+
+      // Best-effort email confirmation. Non-blocking — webhook still
+      // returns 200 if email fails; the operator can resend manually.
+      if (order.customerEmail) {
+        const total = (order.amountTotal / 100).toFixed(2);
+        const currency = order.currency.toUpperCase() === "GBP" ? "£" : order.currency.toUpperCase() === "USD" ? "$" : order.currency.toUpperCase() === "EUR" ? "€" : "";
+        await sendEmail({
+          orgId,
+          to: order.customerEmail,
+          subject: `Your order is confirmed — ${order.id}`,
+          templateId: "order-confirmation",
+          variables: {
+            customerName: order.customerName ?? "there",
+            orderId: order.id,
+            currency,
+            total,
+            orderUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/account/orders/${order.id}`,
+          },
+          tags: ["order-confirmation", `org:${orgId}`],
+        }).catch(err => console.error("[stripe/webhook] order-confirmation email failed:", err));
+      }
+
+      console.info("[stripe/webhook] order persisted", { orderId: order.id, sessionId: session.id });
       break;
     }
     case "charge.refunded": {
       const charge = event.data.object;
-      console.info("[stripe/webhook] charge.refunded", { id: charge.id, amount: charge.amount_refunded });
-      // TODO(T1 #7 follow-up) Database: update orders.status = 'refunded'
-      // where payment_intent = charge.payment_intent, and credit inventory
-      // back via inventory.adjustStock(sku, +qty) per line.
+      const piId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      if (piId) {
+        const refunded = markOrderRefunded(piId);
+        if (refunded?.customerEmail) {
+          await sendEmail({
+            orgId: refunded.orgId,
+            to: refunded.customerEmail,
+            subject: `Refund processed — ${refunded.id}`,
+            html: `<h1>Refund processed</h1><p>Your refund for order <strong>${refunded.id}</strong> has been issued. It may take 5–10 business days to appear on your statement.</p>`,
+            text: `Your refund for order ${refunded.id} has been issued. It may take 5–10 business days to appear on your statement.`,
+            tags: ["refund", `org:${refunded.orgId}`],
+          }).catch(err => console.error("[stripe/webhook] refund email failed:", err));
+        }
+        console.info("[stripe/webhook] charge.refunded", { id: charge.id, orderId: refunded?.id });
+      }
       break;
     }
     default:
-      // Acknowledge — Stripe re-delivers if we 4xx/5xx.
       console.info("[stripe/webhook] unhandled", event.type);
   }
 

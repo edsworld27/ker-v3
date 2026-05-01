@@ -56,6 +56,20 @@ export interface CustomTab {
 
 export function getBranding(): AdminBranding {
   if (typeof window === "undefined") return DEFAULT_BRANDING;
+  // First: per-org branding from the Brand Kit plugin (if installed
+  // for the active org). Falls back to localStorage operator default.
+  try {
+    const orgBranding = readBrandPluginBranding();
+    if (orgBranding) {
+      const local = readLocalBranding();
+      return { ...DEFAULT_BRANDING, ...local, ...orgBranding };
+    }
+  } catch { /* fall through */ }
+  return readLocalBranding();
+}
+
+function readLocalBranding(): AdminBranding {
+  if (typeof window === "undefined") return DEFAULT_BRANDING;
   try {
     const raw = localStorage.getItem(BRAND_KEY);
     if (!raw) return DEFAULT_BRANDING;
@@ -63,6 +77,35 @@ export function getBranding(): AdminBranding {
   } catch {
     return DEFAULT_BRANDING;
   }
+}
+
+// Reads the currently-active org from localStorage (without importing
+// the orgs module to avoid a cycle) and pulls the Brand Kit plugin's
+// config off it. Returns undefined when no org is active or Brand Kit
+// isn't installed (which means the agency operator's local default
+// applies, which is the right behaviour for the primary org).
+function readBrandPluginBranding(): Partial<AdminBranding> | undefined {
+  try {
+    const ACTIVE_KEY = "lk_active_org_v1";
+    const ORGS_CACHE_KEY = "lk_orgs_v1";
+    const orgId = localStorage.getItem(ACTIVE_KEY);
+    const cached = localStorage.getItem(ORGS_CACHE_KEY);
+    if (!orgId || !cached) return undefined;
+    const orgs = JSON.parse(cached) as Array<{ id: string; isPrimary?: boolean; plugins?: Array<{ pluginId: string; config?: Record<string, unknown> }> }>;
+    const org = orgs.find(o => o.id === orgId);
+    if (!org || org.isPrimary) return undefined;     // primary = operator default
+    const brand = (org.plugins ?? []).find(p => p.pluginId === "brand");
+    if (!brand?.config) return undefined;
+    const c = brand.config as Record<string, string | undefined>;
+    const out: Partial<AdminBranding> = {};
+    if (c.panelName) out.panelName = c.panelName;
+    if (c.shortName) out.shortName = c.shortName;
+    if (c.logoUrl)   out.logoUrl = c.logoUrl;
+    if (c.primary)   out.accentColor = c.primary;
+    if (c.background) out.panelBg = c.background;
+    if (c.surface)   out.sidebarBg = c.surface;
+    return out;
+  } catch { return undefined; }
 }
 
 export function saveBranding(patch: Partial<AdminBranding>) {
