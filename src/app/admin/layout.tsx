@@ -12,6 +12,9 @@ import { unpaidCommissionsTotal, onAffiliatesChange } from "@/lib/admin/marketin
 import { listABTests } from "@/lib/admin/abtests";
 import { listFunnels } from "@/lib/admin/funnels";
 import { getTeamMemberByEmail, getPermissionsForEmail, type Resource, type Action } from "@/lib/admin/team";
+import { getBranding, listCustomTabs, onAdminConfigChange, type AdminBranding, type CustomTab } from "@/lib/admin/adminConfig";
+import AdminThemeInjector from "@/components/AdminThemeInjector";
+import AdminModeSwitcher from "@/components/AdminModeSwitcher";
 
 interface NavItem { href: string; label: string; match: (p: string) => boolean; resource?: Resource }
 interface NavGroup { label: string; items: NavItem[] }
@@ -71,6 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/support",      label: "Support",      match: (p) => p.startsWith("/admin/support"),      resource: "support" },
       { href: "/admin/shipping",     label: "Shipping",     match: (p) => p.startsWith("/admin/shipping"),     resource: "shipping" },
       { href: "/admin/settings",     label: "Settings",     match: (p) => p.startsWith("/admin/settings"),     resource: "settings" },
+      { href: "/admin/customise",    label: "Customise",    match: (p) => p.startsWith("/admin/customise"),    resource: "settings" },
     ],
   },
 ];
@@ -90,10 +94,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [owed, setOwed] = useState(0);
   const [activeTests, setActiveTests] = useState(0);
   const [activeFunnels, setActiveFunnels] = useState(0);
+  const [branding, setBranding] = useState<AdminBranding>(() => getBranding());
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
 
   useEffect(() => {
     setSession(getSession());
     setHydrated(true);
+    setBranding(getBranding());
+    setCustomTabs(listCustomTabs());
     const refresh = () => {
       setSession(getSession());
       setPending(pendingOrdersCount());
@@ -105,15 +113,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setActiveFunnels(listFunnels().filter((f) => f.status === "active").length);
     };
     refresh();
+    const refreshAdminConfig = () => {
+      setBranding(getBranding());
+      setCustomTabs(listCustomTabs());
+    };
     window.addEventListener(AUTH_EVENT, refresh);
     window.addEventListener("storage", refresh);
+    const off0 = onAdminConfigChange(refreshAdminConfig);
     const off1 = onContentChange(refresh);
     const off2 = onTicketsChange(refresh);
     const off3 = onAffiliatesChange(refresh);
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
-      off1(); off2(); off3();
+      off0(); off1(); off2(); off3();
     };
   }, [pathname]);
 
@@ -180,15 +193,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     green:  "bg-green-500/25 text-green-400",
   };
 
+  // Group custom tabs by their group label
+  const customGroups = customTabs.reduce<Record<string, CustomTab[]>>((acc, t) => {
+    const g = t.group || "Custom";
+    (acc[g] ??= []).push(t);
+    return acc;
+  }, {});
+
   return (
-    <div className="min-h-screen bg-brand-black text-brand-cream flex">
+    <div data-admin-panel className="min-h-screen bg-brand-black text-brand-cream flex">
+      <AdminThemeInjector />
       {/* Sidebar */}
-      <aside className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col bg-brand-black-soft border-r border-white/5">
-        <Link href="/" className="px-6 py-6 border-b border-white/5 block">
-          <span className="font-display text-base font-bold text-brand-cream">
-            LUV <span className="text-brand-orange">&amp;</span> KER
-          </span>
-          <span className="block text-[10px] tracking-[0.25em] uppercase text-brand-amber mt-0.5">Admin</span>
+      <aside data-admin-sidebar className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col bg-brand-black-soft border-r border-white/5">
+        <Link href="/" className="px-6 py-6 border-b border-white/5 flex items-center gap-3">
+          {branding.logoUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={branding.logoUrl} alt="" className="h-8 w-auto object-contain shrink-0" />
+          )}
+          <div className="min-w-0">
+            <span className="font-display text-base font-bold text-brand-cream block truncate">
+              {branding.panelName.includes("&") ? (
+                branding.panelName.split("&").map((p, i, a) => (
+                  <span key={i}>{p}{i < a.length - 1 && <span className="text-brand-orange"> &amp; </span>}</span>
+                ))
+              ) : branding.panelName}
+            </span>
+            <span className="block text-[10px] tracking-[0.25em] uppercase text-brand-amber mt-0.5">{branding.shortName}</span>
+          </div>
         </Link>
 
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
@@ -223,6 +254,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             );
           })}
+
+          {/* Custom (iframe) tabs, grouped */}
+          {Object.entries(customGroups).map(([groupLabel, tabs]) => (
+            <div key={`custom-${groupLabel}`} className="space-y-0.5">
+              <p className="px-3 text-[10px] tracking-[0.22em] uppercase text-brand-cream/35 mb-1">{groupLabel}</p>
+              {tabs.map(t => {
+                const href = `/admin/tab/${t.id}`;
+                const active = pathname === href;
+                if (t.openInNewTab) {
+                  return (
+                    <a
+                      key={t.id}
+                      href={t.embedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream border border-transparent"
+                    >
+                      <span>{t.icon}</span>
+                      <span className="flex-1 truncate">{t.label}</span>
+                      <span className="text-[10px] text-brand-cream/30">↗</span>
+                    </a>
+                  );
+                }
+                return (
+                  <Link
+                    key={t.id}
+                    href={href}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      active
+                        ? "bg-brand-orange/15 text-brand-cream border border-brand-orange/30"
+                        : "text-brand-cream/65 hover:bg-white/5 hover:text-brand-cream border border-transparent"
+                    }`}
+                  >
+                    <span>{t.icon}</span>
+                    <span className="flex-1 truncate">{t.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 pb-3 space-y-1.5">
@@ -242,9 +313,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               + Write a post
             </Link>
           )}
+          <AdminModeSwitcher />
         </div>
 
-        <div className="p-4 border-t border-white/5 text-[11px] text-brand-cream/40">
+        <div className="p-4 border-t border-white/5 text-[11px] text-brand-cream/40 space-y-1">
           <p className="truncate">{session?.user.email ?? "dev mode"}</p>
           {isSuperAdmin ? (
             <span className="text-brand-orange/60 text-[10px]">Super admin</span>
@@ -255,15 +327,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
             )
           )}
-          <br />
-          <Link href="/" className="hover:text-brand-cream transition-colors">View site →</Link>
+          <div className="flex items-center gap-3 pt-1">
+            <Link href="/" className="hover:text-brand-cream transition-colors">View site →</Link>
+            {branding.githubRepoUrl && (
+              <a href={branding.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="hover:text-brand-cream transition-colors" title="View repository">
+                Repo ↗
+              </a>
+            )}
+          </div>
         </div>
       </aside>
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-30 bg-brand-black-soft border-b border-white/5 px-4 py-3 flex items-center justify-between">
-        <Link href="/admin" className="font-display text-sm font-bold">
-          LUV <span className="text-brand-orange">&amp;</span> KER · Admin
+        <Link href="/admin" className="font-display text-sm font-bold flex items-center gap-2">
+          {branding.logoUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={branding.logoUrl} alt="" className="h-5 w-auto object-contain" />
+          )}
+          <span>{branding.panelName} · {branding.shortName}</span>
         </Link>
         <Link href="/" className="text-xs text-brand-cream/60">Site →</Link>
       </div>
