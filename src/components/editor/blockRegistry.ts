@@ -60,6 +60,14 @@ import BannerBlock from "./blocks/BannerBlock";
 import AuthorBioBlock from "./blocks/AuthorBioBlock";
 import MemberGateBlock from "./blocks/MemberGateBlock";
 import DonationButtonBlock from "./blocks/DonationButtonBlock";
+import TabsBlock from "./blocks/TabsBlock";
+import AccordionBlock from "./blocks/AccordionBlock";
+import TimelineBlock from "./blocks/TimelineBlock";
+import CardGridBlock from "./blocks/CardGridBlock";
+import BeforeAfterBlock from "./blocks/BeforeAfterBlock";
+import MarqueeBlock from "./blocks/MarqueeBlock";
+import AppShowcaseBlock from "./blocks/AppShowcaseBlock";
+import SocialProofBarBlock from "./blocks/SocialProofBarBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -909,6 +917,114 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "amounts",        label: "Amounts (comma-separated)", type: "text" },
       { key: "allowCustom",    label: "Allow custom amount", type: "boolean", default: true },
       { key: "allowRecurring", label: "Show monthly toggle", type: "boolean", default: true },
+    ],
+  },
+  "tabs": {
+    type: "tabs",
+    label: "Tabs",
+    icon: "▤",
+    category: "content",
+    isContainer: false,
+    Component: TabsBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "accordion": {
+    type: "accordion",
+    label: "Accordion",
+    icon: "▭▭",
+    category: "content",
+    isContainer: false,
+    Component: AccordionBlock,
+    defaultProps: {},
+    fields: [],
+  },
+  "timeline": {
+    type: "timeline",
+    label: "Timeline",
+    icon: "│",
+    category: "content",
+    isContainer: false,
+    Component: TimelineBlock,
+    defaultProps: { heading: "Our story" },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+    ],
+  },
+  "card-grid": {
+    type: "card-grid",
+    label: "Card grid",
+    icon: "▥",
+    category: "content",
+    isContainer: false,
+    Component: CardGridBlock,
+    defaultProps: { columns: 3, cards: [] },
+    fields: [
+      { key: "heading",    label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "columns",    label: "Columns", type: "number", default: 3 },
+    ],
+  },
+  "before-after": {
+    type: "before-after",
+    label: "Before / After slider",
+    icon: "↔",
+    category: "media",
+    isContainer: false,
+    Component: BeforeAfterBlock,
+    defaultProps: { beforeLabel: "Before", afterLabel: "After" },
+    fields: [
+      { key: "beforeUrl",   label: "Before image URL", type: "url" },
+      { key: "afterUrl",    label: "After image URL",  type: "url" },
+      { key: "beforeLabel", label: "Before label", type: "text" },
+      { key: "afterLabel",  label: "After label",  type: "text" },
+    ],
+  },
+  "marquee": {
+    type: "marquee",
+    label: "Marquee strip",
+    icon: "→",
+    category: "content",
+    isContainer: false,
+    Component: MarqueeBlock,
+    defaultProps: { speed: 30, items: [] },
+    fields: [
+      { key: "speed", label: "Speed (seconds per loop)", type: "number", default: 30 },
+    ],
+  },
+  "app-showcase": {
+    type: "app-showcase",
+    label: "App showcase",
+    icon: "📱",
+    category: "content",
+    isContainer: false,
+    Component: AppShowcaseBlock,
+    defaultProps: { orientation: "image-right" },
+    fields: [
+      { key: "heading",     label: "Heading", type: "text" },
+      { key: "body",        label: "Body",    type: "textarea" },
+      { key: "screenshotUrl", label: "Screenshot URL", type: "url" },
+      { key: "appStoreUrl",   label: "App Store URL",  type: "url" },
+      { key: "playStoreUrl",  label: "Google Play URL", type: "url" },
+      { key: "orientation",   label: "Orientation", type: "select", default: "image-right",
+        options: [
+          { value: "image-left",  label: "Image left" },
+          { value: "image-right", label: "Image right" },
+        ] },
+    ],
+  },
+  "social-proof-bar": {
+    type: "social-proof-bar",
+    label: "Social proof bar",
+    icon: "★",
+    category: "content",
+    isContainer: false,
+    Component: SocialProofBarBlock,
+    defaultProps: { text: "Join 12,000+ customers loving the change.", avatars: [] },
+    fields: [
+      { key: "text",       label: "Text", type: "text" },
+      { key: "rating",     label: "Average rating (0–5)", type: "number" },
+      { key: "reviewCount", label: "Review count", type: "number" },
     ],
   },
 };
