@@ -19,6 +19,7 @@ export async function GET() {
       heartbeat: true,            // POST /api/portal/heartbeat
       tracking: true,             // GET/POST /api/portal/config/[siteId]
       content: true,              // GET/POST /api/portal/content/[siteId]
+      settings: true,             // /admin/portal-settings (GitHub + DB backend + deployment)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
