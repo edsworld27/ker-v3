@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { list } from "@/portal/server/heartbeats";
+import { ensureHydrated } from "@/portal/server/storage";
 
 // GET /api/portal/heartbeats
 // Same-origin only — used by the admin UI to render connection status.
@@ -9,6 +10,7 @@ import { list } from "@/portal/server/heartbeats";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  await ensureHydrated();
   const heartbeats = list();
   const now = Date.now();
   return NextResponse.json({

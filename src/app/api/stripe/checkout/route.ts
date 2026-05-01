@@ -23,6 +23,9 @@ interface ClientCartItem {
   variant?: string;
   quantity: number;
   unitPrice: number; // £
+  // Optional CDN url. Stripe surfaces this on the hosted checkout page.
+  // Products today render placeholder SVGs so the cart usually omits it.
+  imageUrl?: string;
 }
 
 interface CheckoutBody {
@@ -41,12 +44,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
   }
 
+  // Defensive validation: a tampered client could send a £0 / negative price
+  // and walk away with free product. Reject anything that looks bogus before
+  // we hit Stripe.
+  for (const it of body.items) {
+    if (
+      !it ||
+      typeof it.name !== "string" || !it.name.trim() ||
+      typeof it.unitPrice !== "number" || !isFinite(it.unitPrice) || it.unitPrice <= 0 ||
+      typeof it.quantity !== "number" || !isFinite(it.quantity) || it.quantity < 1
+    ) {
+      return NextResponse.json({ error: "Cart contains an invalid line." }, { status: 400 });
+    }
+  }
+
   const lineItems: StripeLineItem[] = body.items.map(it => ({
     name: it.name,
     description: it.variant,
     amount: Math.round(it.unitPrice * 100),
     currency: "gbp",
     quantity: it.quantity,
+    images: it.imageUrl ? [it.imageUrl] : undefined,
   }));
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL

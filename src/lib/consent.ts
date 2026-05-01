@@ -4,6 +4,9 @@
 // Separate from seoConsent.ts (which handles the simple accept/decline for analytics scripts).
 // This module handles full preference management, data export, and data deletion.
 
+import { loadCompliance, getComplianceModeSync } from "@/lib/admin/portalCompliance";
+import type { ComplianceMode } from "@/portal/server/types";
+
 const PREFS_KEY = "lk_consent_prefs_v2";
 const EVENT = "lk-consent-prefs-change";
 
@@ -22,6 +25,10 @@ export interface ConsentPreferences {
   decided: boolean;
 }
 
+// Permissive defaults are only correct for "none" / "soc2". GDPR + HIPAA
+// require opt-in, so we tighten them at first render via
+// enforceComplianceDefaults() below. The "necessary" + "functional"
+// categories stay on because the site can't operate without them.
 const DEFAULTS: ConsentPreferences = {
   necessary: true,
   functional: true,
@@ -30,6 +37,14 @@ const DEFAULTS: ConsentPreferences = {
   updatedAt: 0,
   decided: false,
 };
+
+// True when the active mode legally requires explicit opt-in for
+// analytics + marketing (i.e. the user has not yet "decided"). GDPR is
+// the canonical example; HIPAA inherits the same rule because PHI
+// processors must be just as conservative.
+export function isStrictConsentMode(mode: ComplianceMode): boolean {
+  return mode === "gdpr" || mode === "hipaa";
+}
 
 export function getConsentPreferences(): ConsentPreferences {
   if (typeof window === "undefined") return DEFAULTS;
@@ -74,6 +89,67 @@ export function onConsentPrefsChange(handler: () => void): () => void {
     window.removeEventListener(EVENT, handler);
     window.removeEventListener("storage", handler);
   };
+}
+
+// ─── Compliance-aware defaults ────────────────────────────────────────────────
+//
+// GDPR + HIPAA both require opt-in: analytics & marketing cookies cannot
+// fire until the user has made an explicit choice. Our DEFAULTS already
+// have analytics + marketing off, but if a previous run left a
+// permissive cache behind we need to rewrite the stored prefs so a mode
+// flip from "none" → "gdpr" can never carry stale opt-outs forward.
+//
+// Idempotent: only writes when stricter rules apply and the persisted
+// prefs are looser than the policy requires. Safe to call repeatedly
+// at first render. We never overwrite a recorded user decision —
+// "decided=true" is the user's lawful basis to process and is sticky
+// across mode flips until the user revisits the modal.
+
+let lastEnforcedMode: ComplianceMode | null = null;
+
+export async function enforceComplianceDefaults(): Promise<ComplianceMode> {
+  if (typeof window === "undefined") return "none";
+  // Probe the live mode (cached in memory by portalCompliance for 60s).
+  await loadCompliance().catch(() => null);
+  const mode = getComplianceModeSync();
+  applyComplianceDefaults(mode);
+  return mode;
+}
+
+// Sync helper — uses whatever's already cached. Useful for components
+// that want to react to mode changes without an extra await.
+export function applyComplianceDefaults(mode: ComplianceMode): ComplianceMode {
+  if (typeof window === "undefined") return mode;
+  if (lastEnforcedMode === mode) return mode;
+  lastEnforcedMode = mode;
+
+  if (!isStrictConsentMode(mode)) return mode;
+
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    const stored: Partial<ConsentPreferences> = raw ? JSON.parse(raw) : {};
+    // Only rewrite when the user hasn't explicitly decided yet. A
+    // recorded decision (decided=true) is the user's lawful basis to
+    // process; we don't second-guess it on a mode flip.
+    if (stored.decided) return mode;
+    // Idempotency check — bail out if the stored state already matches
+    // the strict policy.
+    const current = { ...DEFAULTS, ...stored };
+    if (current.analytics === false && current.marketing === false) return mode;
+    const tightened: ConsentPreferences = {
+      necessary: true,
+      functional: stored.functional ?? true,   // stays on — required for site
+      analytics: false,
+      marketing: false,
+      updatedAt: stored.updatedAt ?? 0,
+      decided: false,
+    };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(tightened));
+    window.dispatchEvent(new Event(EVENT));
+  } catch {
+    /* ignore — corrupt JSON will be replaced on next save */
+  }
+  return mode;
 }
 
 // ─── Data export ──────────────────────────────────────────────────────────────

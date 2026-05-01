@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useCart } from "@/context/CartContext";
 
 export default function CheckoutSuccessPage() {
   return (
@@ -17,6 +18,7 @@ export default function CheckoutSuccessPage() {
 function SuccessContent() {
   const search = useSearchParams();
   const sessionId = search.get("session_id");
+  const { clearCart } = useCart();
 
   useEffect(() => {
     // Mark this browser as a returning customer (suppresses the first-order popup).
@@ -27,9 +29,14 @@ function SuccessContent() {
     // keeps the admin dashboard accurate while we're on localStorage.
     import("@/lib/admin/inventory").then(({ commitPendingSale }) => commitPendingSale());
     import("@/lib/admin/orders").then(({ commitPendingOrder }) => commitPendingOrder(sessionId || undefined));
-    // TODO: hit /api/orders?session=... to fetch the confirmed order details
-    // once the webhook has written them to the DB.
-  }, []);
+    // The bag is now archived as a paid order — drop it so the customer
+    // doesn't return to a stale cart on the next visit.
+    clearCart();
+    // TODO(T1 #7 follow-up): hit /api/orders?session=... to fetch the confirmed
+    // order details once the webhook has written them to the DB. Right now
+    // commitPendingOrder() reads localStorage that was set at checkout-submit,
+    // so an order opened in a different tab/browser won't appear here.
+  }, [sessionId, clearCart]);
 
   return (
     <>

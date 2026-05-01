@@ -97,12 +97,37 @@ export interface DiscoveredKey {
   type?: OverrideType;   // last reported type (host-declared)
 }
 
+// A point-in-time snapshot of the published overrides — kept for revert.
+// We write a snapshot every time the admin publishes; oldest entries are
+// dropped beyond PUBLISH_HISTORY_CAP.
+export interface PublishSnapshot {
+  id: string;                                 // stable id, e.g. "snap_<ts>_<rand>"
+  publishedAt: number;
+  publishedBy?: string;                       // admin email if available
+  message?: string;                           // optional commit-style message
+  overrides: Record<string, ContentOverride>; // exact overrides at publish time
+  // Diff against the *previous* published state at publish time, for the UI.
+  changedKeys: string[];
+}
+
 export interface SiteContentState {
   siteId: string;
-  overrides: Record<string, ContentOverride>;
+  // Workflow split (D-2):
+  //  • draft     — admin's working copy. setOverrides writes here.
+  //  • published — what the host site sees. Created via publish().
+  //  • history   — past published snapshots, capped, used for revert.
+  draft: Record<string, ContentOverride>;
+  published: Record<string, ContentOverride>;
+  history: PublishSnapshot[];
   discovered: Record<string, DiscoveredKey>;
   updatedAt: number;
+  // Legacy single-bucket field (Phase C). Kept readable for one major
+  // version so callers that haven't migrated still work; new writes always
+  // hit draft/published.
+  overrides?: Record<string, ContentOverride>;
 }
+
+export const PUBLISH_HISTORY_CAP = 30;
 
 export const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
   "text":      "Text",
@@ -187,7 +212,7 @@ export interface Embed {
 // Lives in localStorage on the admin side; sensitive fields are not
 // persisted server-side until we have proper auth.
 
-export type DatabaseBackend = "file" | "kv" | "postgres";
+export type DatabaseBackend = "file" | "kv" | "supabase" | "postgres";
 
 export interface PortalSettings {
   github: {
@@ -200,11 +225,162 @@ export interface PortalSettings {
   database: {
     backend: DatabaseBackend;
     kvUrl?: string;
+    supabaseUrl?: string;
+    supabaseServiceKey?: string;
+    // Supabase Personal Access Token (different from the service-role
+    // key) used by the one-time "Sync DB" migration via the Supabase
+    // Management API. Only needed once per project — not used at
+    // runtime, only when the schema needs initialising.
+    supabaseManagementToken?: string;
     postgresUrl?: string;
   };
   deployment: {
     previewBaseUrl?: string;
   };
+  // E-2: 3rd-party integrations the portal uses to auto-detect things
+  // about a host site (currently only Vercel — token used to look up
+  // domain → project → repo so a new heartbeat can register a site
+  // with no manual setup).
+  integrations?: {
+    vercelToken?: string;
+    autoDiscover?: boolean;          // master switch, defaults to true when token present
+  };
+  compliance?: ComplianceSettings;
+}
+
+// Patch type: each top-level section may be supplied partially. Callers
+// can send { github: { repoUrl: "…" } } and keep defaultBranch untouched.
+export type PortalSettingsPatch = {
+  [K in keyof PortalSettings]?: Partial<PortalSettings[K]>;
+};
+
+// ─── Compliance (E-3) ──────────────────────────────────────────────────────
+//
+// Mode selects a baseline policy that gates which third-party providers
+// can be configured, how long the audit log is retained, and what admin
+// actions require extra confirmation. HIPAA is the strictest; "none" is
+// the development default with no restrictions.
+
+export type ComplianceMode = "none" | "gdpr" | "hipaa" | "soc2";
+
+export interface ComplianceSettings {
+  mode: ComplianceMode;
+  // Override the default audit retention for the current mode. 0 = use
+  // the mode's recommended default.
+  auditRetentionDaysOverride?: number;
+  // Admin-acknowledged warnings — used to suppress repeat banners on
+  // settings the admin has accepted as non-compliant in their context.
+  acknowledgedWarnings?: string[];
+}
+
+// Provider lists the modes restrict. Maintained here (rather than at
+// each enforcement site) so the rules are auditable in one place.
+//
+// "BAA" = the provider offers a Business Associate Agreement. Without
+// one, shipping any URL/identifier that could be PHI is a violation.
+// HIPAA blocks every tracker / embed lacking a BAA pathway.
+export const NON_BAA_TRACKER_PROVIDERS: ReadonlyArray<string> = [
+  "ga4",          // Google does not BAA the consumer GA4
+  "gtm",          // Container; can ship anything, blocked conservatively
+  "meta-pixel",
+  "tiktok-pixel",
+  "hotjar",
+  "clarity",
+];
+
+export const NON_BAA_EMBED_PROVIDERS: ReadonlyArray<string> = [
+  "crisp",
+  "intercom",
+  "tidio",
+  "calendly",
+  "cal-com",
+  "youtube",
+  "vimeo",
+];
+
+// Audit log retention (in days) per mode. The activity logger purges
+// entries older than this on each write. Override via
+// compliance.auditRetentionDaysOverride.
+export const RETENTION_DAYS: Record<ComplianceMode, number> = {
+  "none":  90,                  // sensible default, not legally driven
+  "gdpr":  6 * 30,              // 6 months
+  "soc2":  365,                 // 1 year (typical SOC 2 requirement)
+  "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
+};
+
+// ─── Embed theme (G-1) ─────────────────────────────────────────────────────
+//
+// Per-site customisation for the embed widget (chatbot-style sign-in
+// loaded from /portal/embed.js + /embed/login). Lets each tenant style
+// their own portal: brand colour, logo, copy, and a switchable admin-
+// access button that links the operator straight into /admin.
+//
+// All fields optional — the embed falls back to portal defaults
+// (brand orange, "Sign in" label, no logo) when nothing's configured.
+
+export interface EmbedTheme {
+  // Visual
+  brandColor?: string;           // hex, used for the button + accents
+  logoUrl?: string;
+  faviconUrl?: string;
+  // Copy
+  welcomeHeadline?: string;      // big heading inside the iframe
+  welcomeSubtitle?: string;      // smaller line under the heading
+  signInLabel?: string;          // floating button label
+  // Admin-access button (G-1's "two logins" entry point)
+  showAdminLink?: boolean;       // default false
+  adminLinkLabel?: string;       // e.g. "Admin sign-in →"
+  adminUrl?: string;             // override the default /admin URL
+}
+
+// ─── Activity log (cloud-audit) ─────────────────────────────────────────────
+//
+// Mirror of the per-browser localStorage activity log. Server-side so
+// HIPAA / SOC 2 retention windows mean something — entries are purged
+// based on the active compliance mode rather than a fixed cap.
+
+export type ActivityCategory =
+  | "orders" | "products" | "customers" | "marketing" | "content"
+  | "theme"  | "settings" | "features"  | "shipping"  | "support" | "auth";
+
+export interface ActivityEntry {
+  id: string;
+  ts: number;
+  actorEmail: string;
+  actorName: string;
+  category: ActivityCategory;
+  action: string;
+  resourceId?: string;
+  resourceLink?: string;
+  diff?: Record<string, { from: unknown; to: unknown }>;
+}
+
+// Cap per-portal entries to keep the JSON blob bounded even when retention
+// is set to several years. Newest entries kept; oldest evicted on append.
+export const ACTIVITY_HARD_CAP = 50_000;
+
+// ─── Discovery (E-2) ───────────────────────────────────────────────────────
+//
+// Auto-detection records — when a heartbeat arrives from an unknown host
+// the portal queries Vercel (and optionally GitHub) to populate the rest
+// of a site's metadata. Each detection lands as a `Discovery` row the
+// admin can confirm (creates the actual Site) or dismiss (recorded so
+// we don't keep nagging).
+
+export type DiscoveryStatus = "pending" | "confirmed" | "dismissed";
+
+export interface Discovery {
+  host: string;                  // e.g. felicia-skincare.com
+  firstSeenAt: number;
+  lastSeenAt: number;
+  status: DiscoveryStatus;
+  // Detection results — populated when Vercel auth is configured.
+  vercelProjectId?: string;
+  vercelProjectName?: string;
+  repoUrl?: string;              // resolved from vercel.link.repo
+  defaultBranch?: string;
+  // Free-text reason if detection failed (shown in admin UI).
+  detectError?: string;
 }
 
 // ─── Embed provider metadata ───────────────────────────────────────────────

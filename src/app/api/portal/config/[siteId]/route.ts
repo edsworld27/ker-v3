@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPublicConfig, setConfig, getConfig } from "@/portal/server/tracking";
+import { ensureHydrated } from "@/portal/server/storage";
+import { isTrackerProviderAllowed, getComplianceMode } from "@/portal/server/compliance";
 import type { Tracker } from "@/portal/server/types";
 
 // GET  /api/portal/config/[siteId]   — public, CORS-open. Returns the
@@ -24,6 +26,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   // ?admin=1 returns the full config (used by the admin UI). The default
   // is the loader projection — narrower payload, only enabled trackers.
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ siteId: str
 // Admin-side save. Accepts the FULL config (so the admin can replace
 // the tracker list atomically). No CORS headers — same-origin only.
 export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: string }> }) {
+  await ensureHydrated();
   const { siteId } = await ctx.params;
   let body: unknown;
   try {
@@ -46,6 +50,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: st
   const trackers: Tracker[] = Array.isArray(input.trackers)
     ? input.trackers.filter(isTracker).map(normaliseTracker)
     : getConfig(siteId).trackers;
+
+  // Compliance gate (E-3): under HIPAA we forbid enabling any tracker
+  // whose provider lacks a BAA pathway. Disabled trackers can still be
+  // saved (admin can keep historical config without it actually loading).
+  const blocked = trackers.filter(t => t.enabled && !isTrackerProviderAllowed(t.provider));
+  if (blocked.length > 0) {
+    return NextResponse.json({
+      ok: false,
+      error: `Compliance mode "${getComplianceMode()}" forbids enabling these providers: ${blocked.map(b => b.provider).join(", ")}. Disable them or change compliance mode.`,
+      blockedProviders: blocked.map(b => b.provider),
+    }, { status: 412 });
+  }
+
   const saved = setConfig(siteId, {
     requireConsent: typeof input.requireConsent === "boolean" ? input.requireConsent : undefined,
     trackers,

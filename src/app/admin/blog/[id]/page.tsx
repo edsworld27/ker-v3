@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  getPost, updatePost, publishPost, unpublishPost, deletePost, onBlogChange,
+  getPost, updatePost, publishPost, unpublishPost, schedulePost, saveBlogDraft,
+  deletePost, onBlogChange, slugify, parseTags, estimatedReadTime, wordCount,
   type BlogPost,
 } from "@/lib/admin/blog";
 import {
@@ -21,12 +22,42 @@ export default function BlogEditor() {
   const id = (params?.id as string) ?? "";
   const [post, setPost] = useState<BlogPost | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  // The slug auto-derives from the title until the user explicitly edits it.
+  // Tracked locally so the auto-derive doesn't fight against manual overrides.
+  const [slugAuto, setSlugAuto] = useState(true);
+  // Comma-separated tag input is buffered locally so commas don't disappear
+  // between keystrokes; committed to the post on blur.
+  const [tagsInput, setTagsInput] = useState("");
+  // Schedule picker draft, only persisted when the user clicks "Schedule".
+  const [scheduleDraft, setScheduleDraft] = useState("");
 
   useEffect(() => {
-    const refresh = () => setPost(getPost(id));
+    let firstLoad = true;
+    const refresh = () => {
+      const p = getPost(id);
+      setPost(p);
+      if (p) {
+        setTagsInput((p.tags ?? []).join(", "));
+        setScheduleDraft(p.scheduledFor ? toLocalInput(p.scheduledFor) : "");
+        if (firstLoad) {
+          // Treat slug as auto if it still matches the title slugified, or
+          // if the title is the placeholder draft text.
+          setSlugAuto(p.slug === slugify(p.title) || p.title === "Untitled draft");
+          firstLoad = false;
+        }
+      }
+    };
     refresh();
     return onBlogChange(refresh);
   }, [id]);
+
+  const readStats = useMemo(() => {
+    if (!post) return { words: 0, minutes: 1, label: "1 min read" };
+    const words = wordCount(post.bodyHtml);
+    const { minutes, label } = estimatedReadTime(post.bodyHtml);
+    return { words, minutes, label };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.bodyHtml]);
 
   if (!post) {
     return (
@@ -44,23 +75,42 @@ export default function BlogEditor() {
     setTimeout(() => setSavedFlash(false), 700);
   }
 
+  function commitTitle(title: string) {
+    if (!post) return;
+    const next: Partial<BlogPost> = { title };
+    if (slugAuto) next.slug = slugify(title);
+    patch(next);
+  }
+
+  function commitTags() {
+    if (!post) return;
+    const tags = parseTags(tagsInput);
+    setTagsInput(tags.join(", "));
+    patch({ tags });
+  }
+
   function publish() {
     publishPost(post!.id);
-    alert("Published. Live on /blog/" + post!.slug);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 700);
   }
   function unpublish() {
     unpublishPost(post!.id);
   }
-  function schedule(forIso: string) {
-    const ts = forIso ? new Date(forIso).getTime() : NaN;
+  function draft() {
+    saveBlogDraft(post!.id);
+  }
+  function applySchedule() {
+    const ts = scheduleDraft ? new Date(scheduleDraft).getTime() : NaN;
     if (!isFinite(ts) || ts <= Date.now()) {
       alert("Pick a future date and time.");
       return;
     }
-    updatePost(post!.id, { status: "scheduled", scheduledFor: ts, publishedAt: undefined });
+    schedulePost(post!.id, ts);
   }
   function clearSchedule() {
-    updatePost(post!.id, { status: "draft", scheduledFor: undefined });
+    setScheduleDraft("");
+    saveBlogDraft(post!.id);
   }
   function remove() {
     if (!confirm(`Delete "${post!.title}"? This can't be undone.`)) return;
@@ -73,7 +123,11 @@ export default function BlogEditor() {
       <div className="flex items-center justify-between">
         <Link href="/admin/blog" className="text-[11px] text-brand-cream/40 hover:text-brand-cream">← Blog</Link>
         <div className="text-[11px] text-brand-cream/40 flex items-center gap-3">
-          <span className={`px-2 py-0.5 rounded-full font-bold ${post.status === "published" ? "bg-green-400/20 text-green-300" : "bg-white/10 text-brand-cream/55"}`}>{post.status}</span>
+          <span className={`px-2 py-0.5 rounded-full font-bold ${
+            post.status === "published" ? "bg-green-400/20 text-green-300" :
+            post.status === "scheduled" ? "bg-brand-purple/25 text-brand-purple-light" :
+            "bg-white/10 text-brand-cream/55"
+          }`}>{post.status}</span>
           {savedFlash && <span className="text-brand-amber">saved</span>}
           <span>updated {new Date(post.updatedAt).toLocaleString()}</span>
         </div>
@@ -83,17 +137,30 @@ export default function BlogEditor() {
         <input
           value={post.title}
           onChange={e => setPost({ ...post, title: e.target.value })}
-          onBlur={() => patch({ title: post.title })}
+          onBlur={() => commitTitle(post.title)}
           placeholder="Post title"
           className="w-full bg-transparent border-0 px-0 py-2 text-3xl sm:text-4xl font-display font-bold text-brand-cream placeholder:text-brand-cream/25 focus:outline-none"
         />
-        <input
-          value={post.slug}
-          onChange={e => setPost({ ...post, slug: e.target.value })}
-          onBlur={() => patch({ slug: post.slug })}
-          placeholder="post-slug"
-          className="w-full bg-transparent border-0 px-0 py-1 text-xs text-brand-cream/40 font-mono focus:outline-none"
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-brand-cream/35 font-mono">/blog/</span>
+          <input
+            value={post.slug}
+            onChange={e => { setSlugAuto(false); setPost({ ...post, slug: e.target.value }); }}
+            onBlur={() => patch({ slug: post.slug })}
+            placeholder="post-slug"
+            className="flex-1 bg-transparent border-0 px-0 py-1 text-xs text-brand-cream/55 font-mono focus:outline-none"
+          />
+          {!slugAuto && (
+            <button
+              type="button"
+              onClick={() => { setSlugAuto(true); const s = slugify(post.title); setPost({ ...post, slug: s }); patch({ slug: s }); }}
+              className="text-[10px] text-brand-cream/35 hover:text-brand-orange underline underline-offset-4"
+              title="Re-derive slug from title"
+            >
+              auto from title
+            </button>
+          )}
+        </div>
         <textarea
           value={post.excerpt}
           onChange={e => setPost({ ...post, excerpt: e.target.value })}
@@ -124,19 +191,45 @@ export default function BlogEditor() {
             className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
           />
         </Field>
-        <Field label="Read time">
+        <Field label={`Read time (auto: ${readStats.label})`}>
           <input
             value={post.readTime}
             onChange={e => setPost({ ...post, readTime: e.target.value })}
             onBlur={() => patch({ readTime: post.readTime })}
-            placeholder="5 min read"
+            placeholder={readStats.label}
             className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
           />
         </Field>
       </div>
 
+      <Field label="Tags (comma separated)">
+        <input
+          value={tagsInput}
+          onChange={e => setTagsInput(e.target.value)}
+          onBlur={commitTags}
+          placeholder="black soap, ingredients, skincare"
+          className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
+        />
+        {post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {post.tags.map(t => (
+              <span key={t} className="text-[10px] tracking-wide px-2 py-0.5 rounded-full bg-brand-amber/12 text-brand-amber border border-brand-amber/20">
+                #{t}
+              </span>
+            ))}
+          </div>
+        )}
+      </Field>
+
       <div>
-        <p className="text-xs text-brand-cream/60 mb-2">Body</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-brand-cream/60">Body</p>
+          <p className="text-[11px] text-brand-cream/40">
+            <span className="text-brand-cream/65 font-medium">{readStats.words.toLocaleString()}</span> words
+            <span className="mx-2 text-brand-cream/20">·</span>
+            <span className="text-brand-cream/65 font-medium">~{readStats.minutes}</span> min read
+          </p>
+        </div>
         <RichEditor
           value={post.bodyHtml}
           onChange={html => patch({ bodyHtml: html })}
@@ -157,25 +250,34 @@ export default function BlogEditor() {
         </summary>
         <div className="p-5 space-y-3">
           <p className="text-xs text-brand-cream/55 leading-relaxed">
-            Pick a future date &amp; time to auto-publish. The post will start showing on /blog as soon as the time passes (no server cron needed — the public page filters on read).
+            Pick a future date &amp; time and click <em>Schedule</em>. The post becomes visible on /blog as soon as the time passes — no server cron, the public page filters on read.
           </p>
-          <Field label="Publish at">
-            <input
-              type="datetime-local"
-              value={post.scheduledFor ? toLocalInput(post.scheduledFor) : ""}
-              onChange={e => schedule(e.target.value)}
-              min={toLocalInput(Date.now() + 60_000)}
-              className="bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
-            />
-          </Field>
-          {post.status === "scheduled" && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Publish at">
+              <input
+                type="datetime-local"
+                value={scheduleDraft}
+                onChange={e => setScheduleDraft(e.target.value)}
+                min={toLocalInput(Date.now() + 60_000)}
+                className="bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
+              />
+            </Field>
             <button
-              onClick={clearSchedule}
-              className="text-[11px] text-brand-cream/50 hover:text-brand-orange underline underline-offset-4"
+              type="button"
+              onClick={applySchedule}
+              className="text-xs px-4 py-2 rounded-lg bg-brand-purple/30 hover:bg-brand-purple/50 text-brand-purple-light font-semibold border border-brand-purple/40"
             >
-              Clear schedule (revert to draft)
+              Schedule
             </button>
-          )}
+            {(post.status === "scheduled" || scheduleDraft) && (
+              <button
+                onClick={clearSchedule}
+                className="text-[11px] text-brand-cream/50 hover:text-brand-orange underline underline-offset-4"
+              >
+                Clear schedule (revert to draft)
+              </button>
+            )}
+          </div>
         </div>
       </details>
 
@@ -229,13 +331,14 @@ export default function BlogEditor() {
       {/* Action footer */}
       <div className="sticky bottom-0 -mx-6 sm:-mx-8 lg:-mx-10 px-6 sm:px-8 lg:px-10 py-4 bg-brand-black-soft/95 backdrop-blur border-t border-white/8 flex flex-wrap items-center justify-between gap-3">
         <button onClick={remove} className="text-xs text-brand-cream/40 hover:text-brand-orange">Delete post</button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {post.status === "scheduled" && post.scheduledFor && (
             <span className="text-[11px] text-brand-amber px-3 py-2">
               ⏱ Scheduled · {new Date(post.scheduledFor).toLocaleString()}
             </span>
           )}
           <Link href={`/blog/${post.slug}`} target="_blank" className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream">Preview →</Link>
+          <button onClick={draft} className="text-xs px-4 py-2 rounded-lg border border-white/15 text-brand-cream/75 hover:text-brand-cream">Save draft</button>
           {post.status === "published" ? (
             <button onClick={unpublish} className="text-xs px-4 py-2 rounded-lg border border-white/15 text-brand-cream/75 hover:text-brand-cream">Unpublish</button>
           ) : (
@@ -286,23 +389,35 @@ function CoverImageEditor({ post, onChange }: { post: BlogPost; onChange: (src: 
     } finally { setUploading(false); }
   }
 
+  // Paste a data: URI directly into the field — useful for quick screenshots
+  // without going through the file dialog.
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text") || "";
+    if (text.startsWith("data:image/")) {
+      e.preventDefault();
+      const item = addMedia("pasted-image", text, text.length, text.slice(5, text.indexOf(";")));
+      onChange(`media:${item.id}`);
+    }
+  }
+
   return (
     <div className="space-y-2">
-      <p className="text-[11px] tracking-widest uppercase text-brand-cream/45">Cover image</p>
+      <p className="text-[11px] tracking-widest uppercase text-brand-cream/45">Featured image</p>
       <div className="flex gap-3 items-start">
         <div className="w-32 h-20 rounded-lg overflow-hidden bg-brand-black border border-white/10 shrink-0">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[10px] text-brand-cream/30">no cover</div>
+            <div className="w-full h-full flex items-center justify-center text-[10px] text-brand-cream/30">no image</div>
           )}
         </div>
         <div className="flex-1 space-y-2">
           <input
             value={post.coverImage}
             onChange={e => onChange(e.target.value)}
-            placeholder="/path.png · media:abc · https://…"
+            onPaste={handlePaste}
+            placeholder="/path.png · media:abc · https://… · paste data: URI"
             className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-xs text-brand-cream font-mono"
           />
           <div className="flex flex-wrap gap-2">

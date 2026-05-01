@@ -20,6 +20,9 @@
 # portal — local server-side state (tracking config, heartbeats)
 /.data/
 
+# claude code — agent worktrees and harness state
+/.claude/
+
 # production
 /build
 
