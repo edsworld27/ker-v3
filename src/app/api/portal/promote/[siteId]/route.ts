@@ -4,12 +4,16 @@ import { ensureHydrated } from "@/portal/server/storage";
 import { getSettings } from "@/portal/server/settings";
 
 // POST /api/portal/promote/[siteId]
-// Body (all optional): { message?: string, filePath?: string, prefix?: string }
+// Body (all optional): {
+//   message?, filePath?, prefix?,
+//   customHead?, customBody?, siteName?,    — forwarded from the admin client
+//   includePages?, includeContent?, includeSite?,
+// }
 //
-// GitHub credentials and target repo are read from the server-side settings
-// store (saved via /api/portal/settings, NOT from the request body). This
-// keeps the PAT off the wire on every promote and lets us add proper
-// admin auth without touching call sites.
+// GitHub credentials + target repo come from the server-side settings
+// store (saved via /api/portal/settings, NOT from the request body).
+// Per-site head/body code lives in admin localStorage on the Site record,
+// so the client passes it in.
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +25,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: st
     message?: string;
     filePath?: string;
     prefix?: string;
+    customHead?: string;
+    customBody?: string;
+    siteName?: string;
+    includePages?: boolean;
+    includeContent?: boolean;
+    includeSite?: boolean;
   } = {};
   try { body = await req.json(); }
   catch { /* empty body is fine */ }
@@ -49,6 +59,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: st
     filePath: typeof body.filePath === "string" ? body.filePath : undefined,
     message: typeof body.message === "string" ? body.message : undefined,
     prefix: typeof body.prefix === "string" ? body.prefix : undefined,
+    customHead: typeof body.customHead === "string" ? body.customHead : undefined,
+    customBody: typeof body.customBody === "string" ? body.customBody : undefined,
+    siteName: typeof body.siteName === "string" ? body.siteName : undefined,
+    includePages: body.includePages,
+    includeContent: body.includeContent,
+    includeSite: body.includeSite,
   });
 
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });

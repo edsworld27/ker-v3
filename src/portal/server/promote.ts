@@ -1,32 +1,46 @@
-// Promote-to-repo orchestrator (D-3).
+// Promote-to-repo orchestrator (D-3 + W-1 expanded).
 //
-// Reads the currently-published overrides for a site, serialises them into
-// the canonical portal.overrides.json shape, and opens a PR against the
-// repo configured in admin settings. The host site can import the JSON
-// at build time so the rendered HTML always reflects the last-published
-// state — runtime override fetching still works on top, but the SSR
-// snapshot is now durable and SEO-friendly.
+// Bundles every piece of portal-managed state for a site into a single
+// PR against the configured repo:
 //
-// We commit a single file at the repo root (path configurable). One PR
-// per call; if a PR already exists for the head branch we return the
-// existing one instead of creating a duplicate.
+//   portal.overrides.json   — published content overrides (D-3)
+//   portal.pages.json       — visual editor pages (W-1)
+//   portal.site.json        — per-site head/body code, identity (W-1)
+//
+// Vercel (or any host) builds from the merged PR, so the live site
+// reflects the portal state without runtime API calls. Runtime fetches
+// still work as a fast-iterate path; the committed JSON is the durable,
+// SEO-friendly source of truth.
 
 import { getContentState } from "./content";
+import { listPages } from "./pages";
 import { openPullRequest, parseRepoUrl, type OpenPullRequestResult } from "./github";
+import type { EditorPage } from "./types";
 
 export interface PromoteInput {
   siteId: string;
   repoUrl: string;
   baseBranch?: string;             // default "main"
   pat: string;                     // GitHub Personal Access Token
-  filePath?: string;               // default "portal.overrides.json"
+  filePath?: string;               // override portal.overrides.json path
   message?: string;                // optional admin-written commit msg
   prefix?: string;                 // branch prefix; default "portal/sync"
+  // W-1: per-site custom code injected into <head> + before </body>.
+  // Lives on the Site record (admin localStorage) — passed in by the
+  // route handler so this module stays free of admin-store imports.
+  customHead?: string;
+  customBody?: string;
+  siteName?: string;
+  // W-1: opt-out flags for partial promotes. Defaults to "include all".
+  includePages?: boolean;          // default true
+  includeContent?: boolean;        // default true
+  includeSite?: boolean;           // default true (head/body/identity)
 }
 
 export interface PromoteResult extends OpenPullRequestResult {
   filePath?: string;
-  fileContent?: string;            // useful for the UI to show a diff later
+  fileContent?: string;            // back-compat — first file's content
+  files?: Array<{ path: string; content: string }>;
 }
 
 export async function promoteSiteToRepo(input: PromoteInput): Promise<PromoteResult> {
@@ -34,39 +48,73 @@ export async function promoteSiteToRepo(input: PromoteInput): Promise<PromoteRes
   if (!repo) return { ok: false, error: "Invalid GitHub repo URL" };
   if (!input.pat) return { ok: false, error: "Missing GitHub PAT" };
 
-  const state = getContentState(input.siteId);
-  if (Object.keys(state.published).length === 0) {
-    return { ok: false, error: "Nothing published yet — Publish first, then Promote." };
-  }
+  const includeContent = input.includeContent !== false;
+  const includePages = input.includePages !== false;
+  const includeSite = input.includeSite !== false;
 
   const filePath = input.filePath ?? "portal.overrides.json";
   const baseBranch = input.baseBranch ?? "main";
   const prefix = (input.prefix ?? "portal/sync").replace(/\/$/, "");
   // Stable branch name per site so repeated promotes update the same PR
-  // rather than spawning a new branch on every push. The day stamp keeps
-  // it human-readable when re-opened weeks later.
+  // rather than spawning a new branch on every push.
   const stamp = new Date().toISOString().slice(0, 10);
   const headBranch = `${prefix}/${input.siteId}-${stamp}`;
 
-  const fileContent = serialisePublishedState(input.siteId, state.published, state.history[0]?.publishedAt);
+  const files: Array<{ path: string; content: string }> = [];
+  let summaryParts: string[] = [];
 
-  const summary = describeChanges(state.published);
+  if (includeContent) {
+    const state = getContentState(input.siteId);
+    if (Object.keys(state.published).length > 0) {
+      const fileContent = serialisePublishedState(input.siteId, state.published, state.history[0]?.publishedAt);
+      files.push({ path: filePath, content: fileContent });
+      summaryParts.push(`${Object.keys(state.published).length} keys`);
+    }
+  }
+
+  if (includePages) {
+    const pages = listPages(input.siteId);
+    if (pages.length > 0) {
+      files.push({ path: "portal.pages.json", content: serialisePages(input.siteId, pages) });
+      summaryParts.push(`${pages.length} pages`);
+    }
+  }
+
+  if (includeSite) {
+    const hasSiteCode = (input.customHead?.trim() || "") || (input.customBody?.trim() || "") || input.siteName;
+    if (hasSiteCode) {
+      files.push({ path: "portal.site.json", content: serialiseSite(input.siteId, {
+        name: input.siteName,
+        customHead: input.customHead,
+        customBody: input.customBody,
+      }) });
+      summaryParts.push("site config");
+    }
+  }
+
+  if (files.length === 0) {
+    return { ok: false, error: "Nothing to promote — publish content/pages first or set per-site custom code." };
+  }
+
+  const summary = summaryParts.join(", ");
   const commitMessage = input.message
-    ? `chore(portal): sync ${input.siteId} content (${summary})\n\n${input.message}`
-    : `chore(portal): sync ${input.siteId} content (${summary})`;
-  const prTitle = `Portal: sync ${input.siteId} content (${summary})`;
-  const prBody = renderPrBody(input.siteId, state.published, state.history[0]?.message);
+    ? `chore(portal): sync ${input.siteId} (${summary})\n\n${input.message}`
+    : `chore(portal): sync ${input.siteId} (${summary})`;
+  const prTitle = `Portal: sync ${input.siteId} (${summary})`;
+  const prBody = renderPrBody(input.siteId, files, getContentState(input.siteId).history[0]?.message);
 
-  return await openPullRequest({
+  const pr = await openPullRequest({
     repoUrl: input.repoUrl,
     baseBranch,
     headBranch,
-    files: [{ path: filePath, content: fileContent }],
+    files,
     commitMessage,
     prTitle,
     prBody,
     auth: { pat: input.pat },
-  }).then(r => ({ ...r, filePath, fileContent }));
+  });
+
+  return { ...pr, filePath, fileContent: files[0]?.content, files };
 }
 
 // Serialise the published overrides into the canonical portal.overrides.json
@@ -91,37 +139,62 @@ function serialisePublishedState(
   return JSON.stringify(doc, null, 2) + "\n";
 }
 
-function describeChanges(published: Record<string, unknown>): string {
-  const n = Object.keys(published).length;
-  return n === 1 ? "1 key" : `${n} keys`;
+function serialisePages(siteId: string, pages: EditorPage[]): string {
+  // Snapshot the published blocks (or draft if no publish exists yet) so
+  // the host build can render the visual-editor tree at SSR time.
+  const out = pages.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    title: p.title,
+    description: p.description,
+    blocks: p.publishedBlocks ?? p.blocks,
+    customHead: p.customHead,
+    customFoot: p.customFoot,
+    publishedAt: p.publishedAt,
+    updatedAt: p.updatedAt,
+  }));
+  const doc = {
+    $schema: "https://schemas.portal.dev/portal-pages.v1.json",
+    siteId,
+    syncedAt: Date.now(),
+    pages: out,
+  };
+  return JSON.stringify(doc, null, 2) + "\n";
 }
 
-function renderPrBody(
-  siteId: string,
-  published: Record<string, { value: string; type: string }>,
-  lastNote?: string,
-): string {
-  const keys = Object.keys(published).sort();
-  const top = keys.slice(0, 12);
-  const more = keys.length - top.length;
+function serialiseSite(siteId: string, site: { name?: string; customHead?: string; customBody?: string }): string {
+  const doc = {
+    $schema: "https://schemas.portal.dev/portal-site.v1.json",
+    siteId,
+    syncedAt: Date.now(),
+    name: site.name,
+    customHead: site.customHead ?? "",
+    customBody: site.customBody ?? "",
+  };
+  return JSON.stringify(doc, null, 2) + "\n";
+}
 
+function renderPrBody(siteId: string, files: Array<{ path: string; content: string }>, lastNote?: string): string {
   const lines: string[] = [];
   lines.push(`Site: \`${siteId}\``);
   lines.push("");
   lines.push("Auto-generated by the portal admin. Merging this PR commits the");
-  lines.push("currently-published content overrides into the repo so the next");
-  lines.push("build picks them up at SSR time.");
+  lines.push("currently-published portal state into the repo so the next");
+  lines.push("build (Vercel et al.) picks it up at SSR/build time.");
   lines.push("");
   if (lastNote) {
     lines.push(`> ${lastNote.replace(/\n/g, "\n> ")}`);
     lines.push("");
   }
-  lines.push("**Keys included (" + keys.length + "):**");
-  for (const k of top) lines.push(`- \`${k}\` *(${published[k].type})*`);
-  if (more > 0) lines.push(`- …and ${more} more`);
+  lines.push("**Files included:**");
+  for (const f of files) {
+    lines.push(`- \`${f.path}\` (${f.content.length} bytes)`);
+  }
   lines.push("");
   lines.push("---");
-  lines.push("This file lives at `portal.overrides.json` at the repo root. The");
-  lines.push("portal client reads it at build time — see `src/portal/client/index.ts`.");
+  lines.push("Read these files at build time from the host site:");
+  lines.push("- `portal.overrides.json` → `src/portal/client/index.ts`");
+  lines.push("- `portal.pages.json` → render via `<PortalPageRenderer slug=\"…\" />`");
+  lines.push("- `portal.site.json` → inject head/body code in your root layout");
   return lines.join("\n");
 }

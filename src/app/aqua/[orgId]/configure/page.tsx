@@ -115,6 +115,64 @@ export default function ConfigurePortalPage() {
         </div>
       </section>
 
+      <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+        <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45">Database</p>
+        <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+          Optional — point this client&apos;s portal state at its own database for data sovereignty / GDPR / HIPAA.
+          Leave blank to inherit the agency-wide backend ({"PORTAL_BACKEND"}).
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="Label">
+            <input
+              value={org.database?.label ?? ""}
+              onChange={e => save({ database: { ...org.database, label: e.target.value || undefined } })}
+              placeholder="e.g. felicia-eu-supabase"
+              className={INPUT}
+            />
+          </Field>
+          <Field label="Backend">
+            <select
+              value={org.database?.backend ?? ""}
+              onChange={e => save({ database: { ...org.database, backend: (e.target.value || undefined) as "kv" | "supabase" | "postgres" | undefined } })}
+              className={INPUT}
+            >
+              <option value="">Inherit (agency default)</option>
+              <option value="supabase">Supabase</option>
+              <option value="kv">KV (Upstash)</option>
+              <option value="postgres">Postgres</option>
+            </select>
+          </Field>
+          {org.database?.backend === "supabase" && (
+            <>
+              <Field label="Supabase URL">
+                <input value={org.database?.supabaseUrl ?? ""} onChange={e => save({ database: { ...org.database, supabaseUrl: e.target.value || undefined } })} placeholder="https://<ref>.supabase.co" className={INPUT + " font-mono"} />
+              </Field>
+              <Field label="Service role key">
+                <input type="password" value={org.database?.supabaseServiceKey ?? ""} onChange={e => save({ database: { ...org.database, supabaseServiceKey: e.target.value || undefined } })} className={INPUT + " font-mono"} />
+              </Field>
+            </>
+          )}
+          {org.database?.backend === "kv" && (
+            <>
+              <Field label="KV URL">
+                <input value={org.database?.kvUrl ?? ""} onChange={e => save({ database: { ...org.database, kvUrl: e.target.value || undefined } })} placeholder="https://<region>.upstash.io" className={INPUT + " font-mono"} />
+              </Field>
+              <Field label="REST token">
+                <input type="password" value={org.database?.kvToken ?? ""} onChange={e => save({ database: { ...org.database, kvToken: e.target.value || undefined } })} className={INPUT + " font-mono"} />
+              </Field>
+            </>
+          )}
+          {org.database?.backend === "postgres" && (
+            <Field label="Postgres URL">
+              <input type="password" value={org.database?.postgresUrl ?? ""} onChange={e => save({ database: { ...org.database, postgresUrl: e.target.value || undefined } })} placeholder="postgres://…" className={INPUT + " font-mono"} />
+            </Field>
+          )}
+        </div>
+        <p className="text-[10px] text-brand-cream/40 leading-relaxed">
+          The agency-wide bootstrap backend (set via <code className="font-mono text-brand-cream/65">PORTAL_BACKEND</code>) stores the org records themselves. Per-tenant routing reads these credentials at request time to read/write that org&apos;s state from the configured backend. Switching backends never migrates data; export from the old DB first.
+        </p>
+      </section>
+
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
         <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-3">Sites in this portal</p>
         {sites.length === 0 ? (
