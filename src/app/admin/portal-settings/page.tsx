@@ -323,6 +323,24 @@ export default function AdminPortalSettingsPage() {
         </div>
       </Card>
 
+      {/* ── TOOLS (site auditor + LLM formatter) ─────────────────────────── */}
+      <Card id="setup-tools" title="Tools" tip="Optional API keys for the site auditor + the Claude-powered report formatter. Leave blank to use the free PageSpeed Insights endpoint with anonymous rate limits.">
+        <SensitiveField
+          label="PageSpeed Insights key"
+          tip="Lifts the per-org 5-report quota. Get one at console.developers.google.com (enable PageSpeed Insights API)."
+          value={live.integrations?.pagespeedKey ?? ""}
+          onChange={v => patch({ integrations: { pagespeedKey: v } })}
+          placeholder="AIza…"
+        />
+        <SensitiveField
+          label="Anthropic API key"
+          tip="When set, every audit gets a no-BS markdown report formatted by Claude (sonnet-4-6). Without it, you only see the raw findings table."
+          value={live.integrations?.anthropicKey ?? ""}
+          onChange={v => patch({ integrations: { anthropicKey: v } })}
+          placeholder="sk-ant-…"
+        />
+      </Card>
+
       {/* ── SECURITY (admin login mode) ───────────────────────────────────── */}
       <SecurityCard />
 

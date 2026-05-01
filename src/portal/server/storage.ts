@@ -24,7 +24,7 @@ import type {
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
   EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage, PortalAsset,
   ThemeRecord, FeatureRequest, MeetingBooking, SupportInvoice,
-  SplitTestGroup, SplitTestResult,
+  SplitTestGroup, SplitTestResult, SiteAuditReport, AuditQuota,
 } from "./types";
 
 interface PortalState {
@@ -48,6 +48,8 @@ interface PortalState {
   invoices: Record<string, SupportInvoice>;            // S-1 aqua support (mock until Stripe wired)
   splitTests: Record<string, SplitTestGroup>;          // X-2 split-test groups, keyed by group id
   splitTestResults: Record<string, SplitTestResult>;   // X-2 results, keyed by `${groupId}:${variantId}`
+  audits: Record<string, SiteAuditReport>;             // A-1 site audits keyed by report id
+  auditQuotas: Record<string, AuditQuota>;             // A-1 per-org quota counters
 }
 
 const empty = (): PortalState => ({
@@ -67,6 +69,8 @@ const empty = (): PortalState => ({
   invoices: {},
   splitTests: {},
   splitTestResults: {},
+  audits: {},
+  auditQuotas: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -434,6 +438,8 @@ function parseBlob(raw: string): PortalState {
       invoices: parsed.invoices ?? {},
       splitTests: parsed.splitTests ?? {},
       splitTestResults: parsed.splitTestResults ?? {},
+      audits: parsed.audits ?? {},
+      auditQuotas: parsed.auditQuotas ?? {},
     };
   } catch {
     return empty();

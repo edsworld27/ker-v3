@@ -107,6 +107,8 @@ export function getAdminSettings(): PortalSettings {
     integrations: {
       vercelToken: s.integrations?.vercelToken ? SECRET_PLACEHOLDER : "",
       autoDiscover: s.integrations?.autoDiscover,
+      pagespeedKey: s.integrations?.pagespeedKey ? SECRET_PLACEHOLDER : "",
+      anthropicKey: s.integrations?.anthropicKey ? SECRET_PLACEHOLDER : "",
     },
     compliance: s.compliance,
   };
@@ -133,6 +135,8 @@ export function applyAdminPatch(patch: PortalSettingsPatch): PortalSettings {
   if (patch.integrations) {
     const i: NonNullable<PortalSettingsPatch["integrations"]> = { ...patch.integrations };
     if (i.vercelToken === SECRET_PLACEHOLDER) delete i.vercelToken;
+    if (i.pagespeedKey === SECRET_PLACEHOLDER) delete i.pagespeedKey;
+    if (i.anthropicKey === SECRET_PLACEHOLDER) delete i.anthropicKey;
     cleaned.integrations = i;
   }
   if (patch.compliance) cleaned.compliance = { ...patch.compliance };

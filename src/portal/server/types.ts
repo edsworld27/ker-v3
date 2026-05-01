@@ -244,6 +244,11 @@ export interface PortalSettings {
   integrations?: {
     vercelToken?: string;
     autoDiscover?: boolean;          // master switch, defaults to true when token present
+    // A-1 site audit external services. PageSpeed Insights is Google's
+    // free Lighthouse-as-a-service (no chrome on our server needed).
+    // Anthropic key drives the LLM-formatted no-BS report.
+    pagespeedKey?: string;
+    anthropicKey?: string;
   };
   compliance?: ComplianceSettings;
 }
@@ -619,7 +624,9 @@ export type BlockType =
   | "hero" | "cta" | "testimonials" | "navbar" | "footer" | "form"
   // E-commerce blocks
   | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
-  | "variant-picker" | "product-search";
+  | "variant-picker" | "product-search"
+  // Auth blocks (A-2)
+  | "login-form" | "signup-form" | "theme-selector" | "social-auth";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the
@@ -733,6 +740,72 @@ export interface SplitTestResult {
   exposures: number;           // how many visitors saw it
   conversions: number;         // how many fired the goal event
   updatedAt: number;
+}
+
+// ─── Site audit (A-1) ──────────────────────────────────────────────────────
+//
+// One-button "test my website" — runs PageSpeed Insights, normalises the
+// findings, and (when an Anthropic key is configured) formats them via
+// Claude into a structured no-BS report. Quota: 5 free reports per org;
+// admins supply their own keys to lift the cap.
+
+export type AuditFindingCategory = "performance" | "seo" | "accessibility" | "best-practices";
+export type AuditFindingSeverity = "critical" | "warning" | "info" | "passed";
+
+export interface AuditFinding {
+  id: string;                  // Lighthouse audit id, e.g. "render-blocking-resources"
+  category: AuditFindingCategory;
+  severity: AuditFindingSeverity;
+  title: string;
+  description: string;
+  scoreDisplay?: string;       // "1.2 s", "12 kB" etc.
+  weight?: number;             // Lighthouse weight in the category (0..1 of category total)
+  numericValue?: number;
+}
+
+export interface AuditScores {
+  performance?: number;        // 0..100
+  seo?: number;
+  accessibility?: number;
+  bestPractices?: number;
+}
+
+export interface AuditMetrics {
+  fcp?: number;                // First Contentful Paint (ms)
+  lcp?: number;                // Largest Contentful Paint (ms)
+  cls?: number;                // Cumulative Layout Shift (unitless)
+  tbt?: number;                // Total Blocking Time (ms)
+  speedIndex?: number;
+  ttfb?: number;
+}
+
+export interface SiteAuditReport {
+  id: string;
+  orgId: string;
+  siteId: string;
+  url: string;
+  strategy: "mobile" | "desktop";
+  status: "queued" | "running" | "succeeded" | "failed";
+  scores: AuditScores;
+  metrics: AuditMetrics;
+  findings: AuditFinding[];
+  // De-duplicated category counts after normalisation.
+  summary: { critical: number; warnings: number; passed: number };
+  llmReportMarkdown?: string;  // populated when Anthropic key was configured
+  llmModel?: string;
+  llmTokensIn?: number;
+  llmTokensOut?: number;
+  error?: string;
+  createdAt: number;
+  finishedAt?: number;
+}
+
+export interface AuditQuota {
+  orgId: string;
+  freeUsed: number;            // total runs counted against the free tier
+  freeLimit: number;           // default 5
+  totalRuns: number;
+  lastRunAt?: number;
 }
 
 // Accessibility attributes applied to the block's outer DOM element.

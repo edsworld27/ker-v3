@@ -79,6 +79,9 @@ export async function GET() {
       mobileEditor: true,         // X-1 — responsive editor (sidebar collapses, properties panel docks bottom)
       splitTesting: true,         // X-2 — Block.variantsByGroup + SplitTestGroup + Split tab + /admin/split-tests results
       responsiveBlocks: true,     // X-2 — Footer + Navbar emit per-instance @media breakpoint CSS
+      siteAuditor: true,          // A-1 — /admin/site-test runs PSI + dedup + LLM-formatted no-BS report
+      claudeReports: true,        // A-1 — Anthropic SDK formatter (claude-sonnet-4-6) with prompt caching on system prompt
+      authBlocks: true,           // A-2 — login-form + signup-form + theme-selector + social-auth blocks
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
