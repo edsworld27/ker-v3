@@ -23,8 +23,9 @@ import {
   loadDeviceState, saveDeviceState, getDevicePreset, effectiveViewport,
   type DeviceState,
 } from "@/lib/admin/devicePresets";
-import { listPages as listEditorPages, getPage as getEditorPage, updatePage as updateEditorPage } from "@/lib/admin/editorPages";
+import { listPages as listEditorPages, getPage as getEditorPage, updatePage as updateEditorPage, publishPage as publishEditorPage } from "@/lib/admin/editorPages";
 import { listSites, getActiveSite, type Site } from "@/lib/admin/sites";
+import { promoteSiteToGitHub, type PromoteResult } from "@/lib/admin/promote";
 import type { EditorPage } from "@/portal/server/types";
 
 interface PageEntry {
@@ -50,6 +51,7 @@ function VisualEditorPageInner() {
   const [iframeReady, setIframeReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Load sites + pages on mount.
@@ -176,6 +178,7 @@ function VisualEditorPageInner() {
         onReload={reloadIframe}
         iframeReady={iframeReady}
         unsaved={unsaved}
+        onPublish={() => setPublishOpen(true)}
       />
 
       {mode === "live" && (
@@ -269,6 +272,14 @@ function VisualEditorPageInner() {
         <div className="flex-1" />
         <span>{currentPage?.slug}</span>
       </footer>
+
+      {publishOpen && site && (
+        <PublishModal
+          site={site}
+          activePageId={currentPage?.source === "editor" ? currentPage.id : null}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
     </main>
   );
 }
@@ -378,6 +389,190 @@ function CodeStage({
         spellCheck={false}
         className="flex-1 w-full font-mono text-[12px] leading-relaxed bg-[#0a0e1a] border border-white/10 rounded-lg p-4 text-brand-cream focus:outline-none focus:border-cyan-400/40"
       />
+    </div>
+  );
+}
+
+// ── Publish modal ───────────────────────────────────────────────────────────
+//
+// One-click "ship to GitHub". Three steps run in sequence:
+//   1. POST /api/portal/content/<siteId>/publish      — drafts → published
+//   2. POST /api/portal/pages/<siteId>/<pageId>/publish — current editor page
+//      (best-effort; ignored if no draft exists)
+//   3. POST /api/portal/promote/<siteId>              — bundles published
+//      overrides + pages + per-site config into a GitHub PR
+// On success the operator sees the PR URL and can click through.
+
+function PublishModal({
+  site, activePageId, onClose,
+}: {
+  site: Site;
+  activePageId: string | null;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [phase, setPhase] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [step, setStep] = useState<string>("");
+  const [result, setResult] = useState<PromoteResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setPhase("running");
+    setError(null);
+
+    // 1. Publish content drafts. 409 means no changes — that's fine.
+    setStep("Publishing content drafts…");
+    try {
+      const res = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}/publish`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok && res.status !== 409) {
+        const body = await res.text();
+        setError(`Content publish failed: ${body.slice(0, 200)}`);
+        setPhase("error");
+        return;
+      }
+    } catch (e) {
+      setError(`Content publish failed: ${e instanceof Error ? e.message : String(e)}`);
+      setPhase("error");
+      return;
+    }
+
+    // 2. Publish active editor page if one is selected. Best effort.
+    if (activePageId) {
+      setStep("Publishing active page…");
+      try {
+        await publishEditorPage(site.id, activePageId);
+      } catch { /* ignore — promote will still pick up published state */ }
+    }
+
+    // 3. Bundle into a GitHub PR.
+    setStep("Opening GitHub pull request…");
+    try {
+      const out = await promoteSiteToGitHub(site.id, { message });
+      setResult(out);
+      setPhase(out.ok ? "done" : "error");
+      if (!out.ok) setError(out.error ?? "Unknown promote error");
+    } catch (e) {
+      setError(`Promote failed: ${e instanceof Error ? e.message : String(e)}`);
+      setPhase("error");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={phase === "running" ? undefined : onClose}
+    >
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-2xl border border-cyan-400/20 bg-[#0a0e1a] p-5 space-y-4">
+        <header className="flex items-center justify-between">
+          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400">Publish</p>
+          <button onClick={onClose} disabled={phase === "running"} className="text-brand-cream/55 hover:text-brand-cream text-lg leading-none disabled:opacity-30">×</button>
+        </header>
+
+        {phase === "idle" && (
+          <>
+            <h2 className="font-display text-xl text-brand-cream">Ship {site.name} to GitHub</h2>
+            <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+              Promotes any draft content edits + the active page to <strong>published</strong>,
+              then opens a pull request against your configured repo with{" "}
+              <code className="font-mono text-brand-cream/85">portal.overrides.json</code>,{" "}
+              <code className="font-mono text-brand-cream/85">portal.pages.json</code>, and{" "}
+              <code className="font-mono text-brand-cream/85">portal.site.json</code>.
+            </p>
+            <label className="block">
+              <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Commit note (optional)</span>
+              <textarea
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                rows={2}
+                placeholder="e.g. Updated hero copy + new product photo"
+                className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+              />
+            </label>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button onClick={onClose} className="text-[11px] text-brand-cream/55 hover:text-brand-cream px-3 py-1.5">
+                Cancel
+              </button>
+              <button
+                onClick={() => void run()}
+                className="px-3 py-1.5 rounded-md text-[11px] font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20"
+              >
+                Publish →
+              </button>
+            </div>
+            <p className="text-[10px] text-brand-cream/35 leading-relaxed">
+              GitHub credentials come from <Link href="/admin/portal-settings" className="text-cyan-300 hover:text-cyan-200">Portal settings</Link>.
+              Need to set them? Open that page first.
+            </p>
+          </>
+        )}
+
+        {phase === "running" && (
+          <div className="text-center py-6 space-y-3">
+            <div className="w-8 h-8 mx-auto border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
+            <p className="text-[12px] text-brand-cream/85">{step}</p>
+          </div>
+        )}
+
+        {phase === "done" && result?.ok && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center text-[12px]">✓</span>
+              <h2 className="font-display text-lg text-brand-cream">Pull request opened</h2>
+            </div>
+            <p className="text-[12px] text-brand-cream/65">
+              Review and merge to ship. Your host (Vercel et al.) will pick up the new content on the next build.
+            </p>
+            {result.prUrl && (
+              <a
+                href={result.prUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-3 py-2 rounded-md text-[12px] bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20 text-center font-medium"
+              >
+                View PR #{result.prNumber} on GitHub →
+              </a>
+            )}
+            {result.files && result.files.length > 0 && (
+              <details className="text-[11px] text-brand-cream/55">
+                <summary className="cursor-pointer hover:text-brand-cream/85">{result.files.length} file{result.files.length === 1 ? "" : "s"} included</summary>
+                <ul className="mt-2 space-y-0.5 font-mono text-brand-cream/65">
+                  {result.files.map(f => <li key={f.path}>{f.path}</li>)}
+                </ul>
+              </details>
+            )}
+            <div className="flex justify-end pt-1">
+              <button onClick={onClose} className="px-3 py-1.5 rounded-md text-[11px] text-brand-cream/65 hover:text-brand-cream">
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {phase === "error" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-red-500/15 border border-red-400/30 text-red-300 flex items-center justify-center text-[12px]">!</span>
+              <h2 className="font-display text-lg text-brand-cream">Publish failed</h2>
+            </div>
+            <p className="text-[12px] text-red-300 break-words">{error}</p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button onClick={onClose} className="text-[11px] text-brand-cream/55 hover:text-brand-cream px-3 py-1.5">
+                Close
+              </button>
+              <button
+                onClick={() => { setPhase("idle"); setError(null); }}
+                className="px-3 py-1.5 rounded-md text-[11px] bg-white/5 hover:bg-white/10 text-brand-cream/85"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
