@@ -28,6 +28,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/orders",       label: "Orders",       match: (p) => p.startsWith("/admin/orders"),       resource: "orders" },
       { href: "/admin/customers",    label: "Customers",    match: (p) => p.startsWith("/admin/customers"),    resource: "customers" },
       { href: "/admin/marketing",    label: "Marketing",    match: (p) => p.startsWith("/admin/marketing"),    resource: "marketing" },
+      { href: "/admin/popup",        label: "Discount popup", match: (p) => p.startsWith("/admin/popup"),     resource: "marketing" },
     ],
   },
   {
