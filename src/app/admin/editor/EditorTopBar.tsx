@@ -38,6 +38,11 @@ interface Props {
   onRedo?: () => void;
   onSave?: () => void;
   onPublish?: () => void;
+  // What the operator is currently editing. Page-targets get the full
+  // page picker / mode switcher / preview controls; funnels just show
+  // the site picker + a context badge so the chrome stays calm.
+  targetKind?: "page" | "funnel";
+  funnelLabel?: string;
 }
 
 export default function EditorTopBar({
@@ -47,7 +52,9 @@ export default function EditorTopBar({
   edit, onEditChange,
   onReload, iframeReady, unsaved,
   onUndo, onRedo, onSave, onPublish,
+  targetKind = "page", funnelLabel,
 }: Props) {
+  const isPage = targetKind === "page";
   return (
     <header className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-brand-black-soft">
       {/* Back chip */}
@@ -58,7 +65,7 @@ export default function EditorTopBar({
 
       <span className="w-px h-5 bg-white/10" />
 
-      {/* Site picker */}
+      {/* Site picker — always visible */}
       <SelectChip
         icon="◉"
         label="Site"
@@ -68,36 +75,48 @@ export default function EditorTopBar({
         title="Active site"
       />
 
-      {/* Page picker */}
-      <SelectChip
-        icon="📄"
-        label="Page"
-        value={pageId ?? ""}
-        onChange={onPageChange}
-        options={pages.map(p => ({ value: p.id, label: `${p.title} · ${p.slug}` }))}
-        title="Page being edited"
-        wide
-      />
+      {isPage ? (
+        <>
+          {/* Page picker */}
+          <SelectChip
+            icon="📄"
+            label="Page"
+            value={pageId ?? ""}
+            onChange={onPageChange}
+            options={pages.map(p => ({ value: p.id, label: `${p.title} · ${p.slug}` }))}
+            title="Page being edited"
+            wide
+            allowEmpty={pageId === null}
+          />
 
-      <span className="w-px h-5 bg-white/10" />
+          <span className="w-px h-5 bg-white/10" />
 
-      {/* Mode switcher */}
-      <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
-        <ModeBtn current={mode} value="live"  onClick={onModeChange} icon="◧" label="Live" title="Live editor (iframe + click-to-edit)" />
-        <ModeBtn current={mode} value="block" onClick={onModeChange} icon="▦" label="Block" title="Block-based drag-drop builder" />
-        <ModeBtn current={mode} value="code"  onClick={onModeChange} icon="</>" label="Code" title="JSON tree / code view" />
-      </div>
+          {/* Mode switcher */}
+          <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
+            <ModeBtn current={mode} value="live"  onClick={onModeChange} icon="◧" label="Live" title="Live editor (iframe + click-to-edit)" />
+            <ModeBtn current={mode} value="block" onClick={onModeChange} icon="▦" label="Block" title="Block-based drag-drop builder" />
+            <ModeBtn current={mode} value="code"  onClick={onModeChange} icon="</>" label="Code" title="JSON tree / code view" />
+          </div>
 
-      {/* Edit / View */}
-      {mode === "live" && (
-        <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
-          <ToggleBtn active={edit === "edit"} onClick={() => onEditChange("edit")} icon="✎" title="Edit mode" />
-          <ToggleBtn active={edit === "view"} onClick={() => onEditChange("view")} icon="👁" title="Preview mode" />
-        </div>
+          {/* Edit / View */}
+          {mode === "live" && (
+            <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
+              <ToggleBtn active={edit === "edit"} onClick={() => onEditChange("edit")} icon="✎" title="Edit mode" />
+              <ToggleBtn active={edit === "view"} onClick={() => onEditChange("view")} icon="👁" title="Preview mode" />
+            </div>
+          )}
+
+          {/* Reload */}
+          <IconBtn onClick={onReload} title="Reload preview" aria-label="Reload preview">↻</IconBtn>
+        </>
+      ) : (
+        <span
+          className="px-2.5 py-1 rounded-md text-[11px] bg-cyan-500/10 text-cyan-200 border border-cyan-400/20 truncate max-w-[280px]"
+          title={funnelLabel ?? "Funnel"}
+        >
+          ⤳ {funnelLabel ?? "Funnel"}
+        </span>
       )}
-
-      {/* Reload */}
-      <IconBtn onClick={onReload} title="Reload preview" aria-label="Reload preview">↻</IconBtn>
 
       <div className="flex-1" />
 
@@ -153,7 +172,7 @@ export default function EditorTopBar({
 }
 
 function SelectChip({
-  icon, label, value, onChange, options, title, wide,
+  icon, label, value, onChange, options, title, wide, allowEmpty,
 }: {
   icon: string;
   label: string;
@@ -162,6 +181,7 @@ function SelectChip({
   options: { value: string; label: string }[];
   title?: string;
   wide?: boolean;
+  allowEmpty?: boolean;
 }) {
   return (
     <label className="flex items-center gap-1.5" title={title}>
@@ -171,7 +191,7 @@ function SelectChip({
         onChange={e => onChange(e.target.value)}
         className={`bg-white/5 border border-white/10 rounded-md px-2 py-1 text-[12px] text-brand-cream focus:outline-none focus:border-cyan-400/40 ${wide ? "min-w-[200px]" : ""}`}
       >
-        {options.length === 0 && <option value="">(none)</option>}
+        {(options.length === 0 || allowEmpty) && <option value="">(none)</option>}
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </label>

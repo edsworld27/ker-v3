@@ -23,16 +23,22 @@ interface Props {
 
 export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props) {
   const [draft, setDraft] = useState<Funnel>(funnel);
+  const [savingState, setSavingState] = useState<"idle" | "pending" | "saved">("idle");
   const dirtyRef = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep a ref to the latest onChange so the debounce effect doesn't re-arm
+  // every parent render (which would never let the timer fire).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   // Re-seed when a different funnel is selected.
-  useEffect(() => { setDraft(funnel); dirtyRef.current = false; }, [funnel.id]);
+  useEffect(() => { setDraft(funnel); dirtyRef.current = false; setSavingState("idle"); }, [funnel.id]);
 
   // Debounced save: when draft changes mark dirty + schedule a patch.
   useEffect(() => {
     if (!dirtyRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSavingState("pending");
     saveTimer.current = setTimeout(async () => {
       await patchFunnel(draft.id, {
         name: draft.name,
@@ -41,14 +47,21 @@ export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props
         steps: draft.steps,
       });
       dirtyRef.current = false;
-      onChange(draft);
+      setSavingState("saved");
+      onChangeRef.current(draft);
     }, 500);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [draft, onChange]);
+  }, [draft]);
 
   function update<K extends keyof Funnel>(key: K, value: Funnel[K]) {
     dirtyRef.current = true;
     setDraft(d => ({ ...d, [key]: value }));
+  }
+
+  // Stats refresh — apply directly without going through `update` so it
+  // doesn't mark the funnel dirty / trigger a save round-trip.
+  function applyStats(steps: FunnelStep[]) {
+    setDraft(d => ({ ...d, steps }));
   }
 
   function cycleStatus() {
@@ -84,7 +97,7 @@ export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props
   async function refreshStats() {
     const stats = await fetchFunnelStats(draft.id);
     if (!stats) return;
-    update("steps", draft.steps.map(s => ({
+    applyStats(draft.steps.map(s => ({
       ...s,
       reached: stats.steps.find(x => x.stepId === s.id)?.reached ?? s.reached,
       completed: stats.steps.find(x => x.stepId === s.id)?.completed ?? s.completed,
@@ -108,7 +121,11 @@ export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props
     <div className="w-full max-w-4xl mx-auto py-6 space-y-6">
       <header className="flex items-start gap-3 flex-wrap">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Funnel</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400">Funnel</p>
+            {savingState === "pending" && <span className="text-[10px] text-amber-300/85">saving…</span>}
+            {savingState === "saved"   && <span className="text-[10px] text-emerald-300/65">saved</span>}
+          </div>
           <input
             value={draft.name}
             onChange={e => update("name", e.target.value)}

@@ -30,7 +30,7 @@ import {
   updatePage as updateEditorPage, publishPage as publishEditorPage,
   createPage as createEditorPage, deletePage as deleteEditorPage,
 } from "@/lib/admin/editorPages";
-import { listSites, getActiveSite, type Site } from "@/lib/admin/sites";
+import { listSites, getActiveSite, getSite, updateSite, type Site } from "@/lib/admin/sites";
 import { promoteSiteToGitHub, type PromoteResult } from "@/lib/admin/promote";
 import {
   type Funnel, listFunnels, refreshFunnels, createFunnel, onFunnelsChange,
@@ -65,6 +65,7 @@ function VisualEditorPageInner() {
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [newFunnelOpen, setNewFunnelOpen] = useState(false);
   const [pageSettingsId, setPageSettingsId] = useState<string | null>(null);
+  const [siteSettingsOpen, setSiteSettingsOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loadPages = useCallback(async (siteId: string): Promise<PageEntry[]> => {
@@ -165,7 +166,8 @@ function VisualEditorPageInner() {
   }, []);
 
   // Reset selected when the target / mode changes — its keys won't be in the new doc.
-  useEffect(() => { setSelected(null); }, [target, mode]);
+  // (Use scalar deps so a fresh `target` object reference doesn't refire each render.)
+  useEffect(() => { setSelected(null); }, [target.kind, target.id, mode]);
 
   function reloadIframe() {
     setIframeReady(false);
@@ -246,6 +248,8 @@ function VisualEditorPageInner() {
         iframeReady={iframeReady}
         unsaved={unsaved}
         onPublish={() => setPublishOpen(true)}
+        targetKind={target.kind}
+        funnelLabel={currentFunnel?.name}
       />
 
       {isPageTarget && mode === "live" && (
@@ -265,6 +269,7 @@ function VisualEditorPageInner() {
           onDeletePage={id => void handleDeletePage(id)}
           onDeleteFunnel={id => void handleDeleteFunnel(id)}
           onPageSettings={id => setPageSettingsId(id)}
+          onSiteSettings={() => setSiteSettingsOpen(true)}
         />
 
         {/* Stage */}
@@ -410,6 +415,17 @@ function VisualEditorPageInner() {
           onSaved={async () => {
             const next = await loadPages(site.id);
             setPages(next);
+          }}
+        />
+      )}
+
+      {siteSettingsOpen && site && (
+        <SiteSettingsModal
+          site={site}
+          onClose={() => setSiteSettingsOpen(false)}
+          onSaved={updated => {
+            setSite(updated);
+            setSites(ss => ss.map(s => s.id === updated.id ? updated : s));
           }}
         />
       )}
@@ -994,5 +1010,133 @@ function ModalActions({
         {submitLabel}
       </button>
     </div>
+  );
+}
+
+// ── Site settings modal ────────────────────────────────────────────────────
+
+function SiteSettingsModal({
+  site, onClose, onSaved,
+}: {
+  site: Site;
+  onClose: () => void;
+  onSaved: (next: Site) => void;
+}) {
+  const [name, setName]               = useState(site.name);
+  const [tagline, setTagline]         = useState(site.tagline ?? "");
+  const [description, setDescription] = useState(site.description ?? "");
+  const [primaryDomain, setPrimaryDomain] = useState(site.primaryDomain ?? "");
+  const [domainsText, setDomainsText] = useState((site.domains ?? []).join("\n"));
+  const [customHead, setCustomHead]   = useState(site.customHead ?? "");
+  const [customBody, setCustomBody]   = useState(site.customBody ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    setError(null);
+    const n = name.trim();
+    if (!n) { setError("Site name is required."); return; }
+    const domains = domainsText
+      .split(/\n|,/)
+      .map(d => d.trim())
+      .filter(Boolean);
+    updateSite(site.id, {
+      name: n,
+      tagline: tagline.trim() || undefined,
+      description: description.trim() || undefined,
+      primaryDomain: primaryDomain.trim() || undefined,
+      domains,
+      customHead: customHead || undefined,
+      customBody: customBody || undefined,
+    });
+    const updated = getSite(site.id);
+    if (!updated) { setError("Save failed."); return; }
+    onSaved(updated);
+    onClose();
+  }
+
+  return (
+    <ModalShell title="Site settings" onClose={onClose} wide>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Name</span>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-brand-cream focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Tagline</span>
+          <input
+            value={tagline}
+            onChange={e => setTagline(e.target.value)}
+            placeholder="Natural soap from Ghana"
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+      </div>
+      <label className="block">
+        <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Description</span>
+        <textarea
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Default meta description for SEO."
+          className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+        />
+      </label>
+      <div className="grid grid-cols-1 gap-3">
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Primary domain</span>
+          <input
+            value={primaryDomain}
+            onChange={e => setPrimaryDomain(e.target.value)}
+            placeholder="luvandker.com"
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">All domains (one per line)</span>
+          <textarea
+            value={domainsText}
+            onChange={e => setDomainsText(e.target.value)}
+            rows={3}
+            placeholder={"luvandker.com\nwww.luvandker.com"}
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+      </div>
+      <details>
+        <summary className="text-[11px] text-brand-cream/55 cursor-pointer hover:text-brand-cream">Site-wide custom head / body scripts</summary>
+        <p className="mt-2 text-[10px] text-brand-cream/45 leading-relaxed">
+          Injected into every page on this site — useful for analytics, hotjar, custom CSS,
+          Meta Pixel, etc.
+        </p>
+        <div className="mt-2 space-y-2">
+          <label className="block">
+            <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Custom head</span>
+            <textarea
+              value={customHead}
+              onChange={e => setCustomHead(e.target.value)}
+              rows={3}
+              placeholder="<script>…</script> or <link rel=…>"
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Custom body</span>
+            <textarea
+              value={customBody}
+              onChange={e => setCustomBody(e.target.value)}
+              rows={3}
+              placeholder="<script>…</script>"
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+            />
+          </label>
+        </div>
+      </details>
+      {error && <p className="text-[11px] text-red-300">{error}</p>}
+      <ModalActions onCancel={onClose} onSubmit={submit} submitLabel="Save" />
+    </ModalShell>
   );
 }

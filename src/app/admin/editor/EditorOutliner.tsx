@@ -33,6 +33,7 @@ interface Props {
   onDeletePage: (id: string) => void;
   onDeleteFunnel: (id: string) => void;
   onPageSettings: (id: string) => void;
+  onSiteSettings: () => void;
 }
 
 export default function EditorOutliner({
@@ -40,16 +41,26 @@ export default function EditorOutliner({
   onSelectPage, onSelectFunnel,
   onCreatePage, onCreateFunnel,
   onDeletePage, onDeleteFunnel,
-  onPageSettings,
+  onPageSettings, onSiteSettings,
 }: Props) {
   const [pagesOpen, setPagesOpen]     = useState(true);
   const [funnelsOpen, setFunnelsOpen] = useState(true);
 
   return (
     <aside className="w-64 shrink-0 border-r border-white/5 bg-brand-black-soft hidden md:flex flex-col overflow-hidden">
-      <header className="px-4 py-3 border-b border-white/5">
-        <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-0.5">Structure</p>
-        <p className="text-[13px] text-brand-cream font-medium truncate" title={siteName}>{siteName}</p>
+      <header className="px-4 py-3 border-b border-white/5 flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-0.5">Structure</p>
+          <p className="text-[13px] text-brand-cream font-medium truncate" title={siteName}>{siteName}</p>
+        </div>
+        <button
+          onClick={onSiteSettings}
+          title="Site settings"
+          aria-label="Site settings"
+          className="w-7 h-7 rounded-md text-brand-cream/55 hover:text-cyan-300 hover:bg-cyan-500/10 flex items-center justify-center text-[12px]"
+        >
+          ⚙
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto py-2">
@@ -187,7 +198,7 @@ function Row({
           {badge}
         </span>
       )}
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 shrink-0 opacity-25 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         {actions.map((a, i) => (
           <button
             key={i}
@@ -195,8 +206,8 @@ function Row({
             title={a.title}
             className={`w-5 h-5 rounded flex items-center justify-center text-[11px] ${
               a.danger
-                ? "text-brand-cream/55 hover:text-red-300 hover:bg-red-500/10"
-                : "text-brand-cream/55 hover:text-cyan-300 hover:bg-cyan-500/10"
+                ? "text-brand-cream/65 hover:text-red-300 hover:bg-red-500/10"
+                : "text-brand-cream/65 hover:text-cyan-300 hover:bg-cyan-500/10"
             }`}
           >
             {a.icon}
