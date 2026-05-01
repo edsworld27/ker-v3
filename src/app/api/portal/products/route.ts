@@ -13,10 +13,15 @@ export async function GET(req: NextRequest) {
   const format = url.searchParams.get("format");
   const includeHidden = url.searchParams.get("includeHidden") === "1";
 
+  const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   const all = ecommerce.getProducts({ includeHidden });
   const filtered = all.filter(p => {
     if (range && p.range !== range) return false;
     if (format && !p.formats.includes(format as ecommerce.ProductFormat)) return false;
+    if (q) {
+      const haystack = `${p.name} ${p.tagline} ${p.range} ${p.fragrances.join(" ")} ${p.shortBullets.join(" ")}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
   });
 

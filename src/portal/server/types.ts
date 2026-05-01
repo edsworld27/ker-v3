@@ -603,7 +603,7 @@ export type BlockType =
   | "hero" | "cta" | "testimonials" | "navbar" | "footer" | "form"
   // E-commerce blocks
   | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
-  | "variant-picker";
+  | "variant-picker" | "product-search";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the
@@ -633,8 +633,11 @@ export interface BlockStyles {
   gridTemplateColumns?: string; // for `grid` blocks
   customCss?: string;          // raw CSS escape-hatch (advanced users)
   // Responsive overrides — applied via media queries when set
-  mobile?: Partial<Omit<BlockStyles, "mobile" | "tablet">>;
-  tablet?: Partial<Omit<BlockStyles, "mobile" | "tablet">>;
+  mobile?: Partial<Omit<BlockStyles, "mobile" | "tablet" | "animate">>;
+  tablet?: Partial<Omit<BlockStyles, "mobile" | "tablet" | "animate">>;
+  // On-scroll entrance animation. Only applied at runtime — the editor
+  // canvas always renders the resting state so layout work is precise.
+  animate?: "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in";
 }
 
 export interface Block {
@@ -660,4 +663,24 @@ export interface EditorPage {
   // Last-published snapshot. Lets the runtime serve the published version
   // even while the admin edits a draft, and lets the editor revert.
   publishedBlocks?: Block[];
+}
+
+// ─── Asset library (P-2) ───────────────────────────────────────────────────
+//
+// Per-portal media library. Images uploaded by the admin land here and
+// surface in any image-typed property field via the AssetPicker.
+// Storage is base64 data URIs in the cloud state — small footprint, works
+// on Vercel's read-only filesystem, swappable for a real CDN later.
+
+export interface PortalAsset {
+  id: string;
+  filename: string;
+  contentType: string;          // e.g. "image/jpeg"
+  size: number;                 // bytes
+  dataUrl: string;              // "data:<contentType>;base64,…"
+  uploadedAt: number;
+  uploadedBy?: string;          // admin email
+  width?: number;               // optional, set when client measures
+  height?: number;
+  alt?: string;
 }

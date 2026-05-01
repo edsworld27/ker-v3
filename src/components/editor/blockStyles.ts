@@ -34,6 +34,45 @@ export function blockStylesToCss(styles?: BlockStyles): CSSProperties {
   return css;
 }
 
+// Convert one device override to a CSS property string suitable for a
+// scoped @media block. Used by the host renderer to build per-block
+// responsive style tags. Keys map to the same CSS property names as
+// blockStylesToCss above, but in kebab-case.
+const KEY_TO_CSS: Partial<Record<keyof BlockStyles, string>> = {
+  padding: "padding",
+  margin: "margin",
+  background: "background",
+  textColor: "color",
+  align: "text-align",
+  width: "width",
+  maxWidth: "max-width",
+  minHeight: "min-height",
+  borderRadius: "border-radius",
+  border: "border",
+  boxShadow: "box-shadow",
+  fontFamily: "font-family",
+  fontSize: "font-size",
+  fontWeight: "font-weight",
+  lineHeight: "line-height",
+  letterSpacing: "letter-spacing",
+  display: "display",
+  flexDirection: "flex-direction",
+  justifyContent: "justify-content",
+  alignItems: "align-items",
+  gap: "gap",
+  gridTemplateColumns: "grid-template-columns",
+};
+
+export function overridesToCssText(override?: Partial<BlockStyles>): string {
+  if (!override) return "";
+  const out: string[] = [];
+  for (const [key, value] of Object.entries(override)) {
+    const prop = KEY_TO_CSS[key as keyof BlockStyles];
+    if (prop && value !== undefined && value !== "") out.push(`${prop}:${value}`);
+  }
+  return out.join(";");
+}
+
 // Stable list of style keys the editor's properties panel supports. Used
 // by the styles tab of the panel to render inputs without a per-block
 // schema (every block accepts the same style fields).

@@ -8,6 +8,7 @@ import { useState } from "react";
 import type { Block, BlockStyles } from "@/portal/server/types";
 import { getBlockDefinition, type PropField } from "../blockRegistry";
 import { STYLE_FIELD_GROUPS } from "../blockStyles";
+import AssetPicker from "../AssetPicker";
 
 interface PropertiesPanelProps {
   block: Block | null;
@@ -79,10 +80,15 @@ function PropFieldRow({ field, value, onChange }: { field: PropField; value: unk
   switch (field.type) {
     case "text":
     case "url":
-    case "image":
       return (
         <Field label={field.label} help={field.help}>
           <input type={field.type === "url" ? "url" : "text"} value={String(v ?? "")} placeholder={field.placeholder} onChange={e => onChange(e.target.value)} className={INPUT} />
+        </Field>
+      );
+    case "image":
+      return (
+        <Field label={field.label} help={field.help}>
+          <AssetPicker value={String(v ?? "")} onChange={onChange} placeholder={field.placeholder} />
         </Field>
       );
     case "textarea":
@@ -127,27 +133,80 @@ function PropFieldRow({ field, value, onChange }: { field: PropField; value: unk
 }
 
 function StyleEditor<K extends keyof BlockStyles>({ styles, onChange }: { styles: BlockStyles; onChange: (key: K, value: BlockStyles[K]) => void }) {
+  const [device, setDevice] = useState<"base" | "mobile" | "tablet">("base");
+  const activeStyles: BlockStyles | Partial<BlockStyles> = device === "base" ? styles : (styles[device] ?? {}) as Partial<BlockStyles>;
+
+  function setActive<K2 extends keyof BlockStyles>(key: K2, value: BlockStyles[K2]) {
+    if (device === "base") { onChange(key as unknown as K, value as unknown as BlockStyles[K]); return; }
+    const nextOverride = { ...((styles[device] as Partial<BlockStyles>) ?? {}), [key]: value };
+    if (value === undefined) delete (nextOverride as Record<string, unknown>)[key as string];
+    onChange(device as unknown as K, nextOverride as unknown as BlockStyles[K]);
+  }
+
   return (
     <div className="space-y-3">
+      {/* Device tabs for responsive overrides */}
+      <div className="flex border border-white/10 rounded-lg p-0.5 text-[10px]">
+        {(["base", "tablet", "mobile"] as const).map(d => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => setDevice(d)}
+            className={`flex-1 py-1 rounded ${device === d ? "bg-brand-orange text-white" : "text-brand-cream/55 hover:text-brand-cream"}`}
+          >
+            {d === "base" ? "Desktop" : d === "tablet" ? "Tablet" : "Mobile"}
+          </button>
+        ))}
+      </div>
+      {device !== "base" && (
+        <p className="text-[10px] text-brand-cream/45 leading-relaxed">
+          Override values for {device}. Empty fields fall back to the desktop value.
+        </p>
+      )}
+
       {STYLE_FIELD_GROUPS.map(group => (
         <details key={group.label} className="rounded-lg border border-white/5 bg-white/[0.02] overflow-hidden" open>
           <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-brand-cream/55 hover:text-brand-cream">{group.label}</summary>
           <div className="p-2.5 pt-0 space-y-2">
-            {group.fields.map(key => (
-              <Field key={String(key)} label={String(key)}>
-                {String(key) === "background" || String(key) === "textColor" ? (
-                  <div className="flex gap-2">
-                    <input type="color" value={typeof styles[key] === "string" && (styles[key] as string).startsWith("#") ? (styles[key] as string) : "#000000"} onChange={e => onChange(key as K, e.target.value as BlockStyles[K])} className="w-10 h-8 rounded cursor-pointer bg-transparent border border-white/10" />
-                    <input type="text" value={(styles[key] ?? "") as string} onChange={e => onChange(key as K, (e.target.value || undefined) as BlockStyles[K])} className={`${INPUT} font-mono`} />
-                  </div>
-                ) : (
-                  <input type="text" value={(styles[key] ?? "") as string} onChange={e => onChange(key as K, (e.target.value || undefined) as BlockStyles[K])} placeholder="—" className={`${INPUT} font-mono`} />
-                )}
-              </Field>
-            ))}
+            {group.fields.map(key => {
+              const valueRaw = (activeStyles as Record<string, unknown>)[key as string];
+              const valueStr = (valueRaw ?? "") as string;
+              return (
+                <Field key={String(key)} label={String(key)}>
+                  {String(key) === "background" || String(key) === "textColor" ? (
+                    <div className="flex gap-2">
+                      <input type="color" value={typeof valueRaw === "string" && (valueRaw as string).startsWith("#") ? (valueRaw as string) : "#000000"} onChange={e => setActive(key, e.target.value as BlockStyles[typeof key])} className="w-10 h-8 rounded cursor-pointer bg-transparent border border-white/10" />
+                      <input type="text" value={valueStr} onChange={e => setActive(key, (e.target.value || undefined) as BlockStyles[typeof key])} className={`${INPUT} font-mono`} />
+                    </div>
+                  ) : (
+                    <input type="text" value={valueStr} onChange={e => setActive(key, (e.target.value || undefined) as BlockStyles[typeof key])} placeholder="—" className={`${INPUT} font-mono`} />
+                  )}
+                </Field>
+              );
+            })}
           </div>
         </details>
       ))}
+
+      {/* Animation picker — only on the base device tab */}
+      {device === "base" && (
+        <details className="rounded-lg border border-white/5 bg-white/[0.02] overflow-hidden" open>
+          <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-brand-cream/55 hover:text-brand-cream">Animation</summary>
+          <div className="p-2.5 pt-0 space-y-2">
+            <Field label="On scroll into view">
+              <select value={(styles.animate as string | undefined) ?? ""} onChange={e => onChange("animate" as K, (e.target.value || undefined) as BlockStyles[K])} className={INPUT}>
+                <option value="">None</option>
+                <option value="fade-in">Fade in</option>
+                <option value="slide-up">Slide up</option>
+                <option value="slide-left">Slide from left</option>
+                <option value="slide-right">Slide from right</option>
+                <option value="zoom-in">Zoom in</option>
+              </select>
+            </Field>
+            <p className="text-[10px] text-brand-cream/40 leading-relaxed">Plays once when the block enters the viewport on the live site. The editor canvas shows the resting state.</p>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

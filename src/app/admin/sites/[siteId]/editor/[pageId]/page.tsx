@@ -112,6 +112,24 @@ export default function EditorPage() {
     showToast("Redone");
   }
 
+  // Inline rich-text edits dispatched by Heading/Text blocks. Patches
+  // the matching block's prop without re-rendering the contentEditable
+  // (the block already shows the user's typed value).
+  useEffect(() => {
+    function onCommit(e: Event) {
+      const detail = (e as CustomEvent).detail as { id: string; key: string; value: unknown } | undefined;
+      if (!detail) return;
+      const target = findBlock(blocks, detail.id);
+      if (!target) return;
+      mutate(updateBlock(blocks, detail.id, {
+        props: { ...target.block.props, [detail.key]: detail.value },
+      }));
+    }
+    window.addEventListener("lk-block-text-commit", onCommit);
+    return () => window.removeEventListener("lk-block-text-commit", onCommit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks]);
+
   // Keyboard shortcuts: ⌘Z / ⌘⇧Z (undo/redo), Backspace+Delete (remove
   // selected), ⌘D (duplicate). All scoped to the editor — bail out when
   // an input/textarea is focused so typing isn't hijacked.
