@@ -38,6 +38,7 @@ export async function GET() {
       embedLoader: true,          // /portal/embed.js chatbot-style JS loader for floating + inline widgets
       embedTheme: true,           // /api/portal/embed-theme/[siteId] per-site customisation (G-1)
       aiConvert: true,            // AI Convert prompt modal in the setup checklist (F-2)
+      tagStability: true,         // T1 #9 — tag rate cap, sampling, backoff, abort timeout, disable() + heartbeat 8KB body cap, 60/min/siteId limit, discoveredKeys cap
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
