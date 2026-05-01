@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getSchema, GLOBAL_SETTINGS_SCHEMA, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
+import { getSchema, GLOBAL_SETTINGS_SCHEMA, getDefault, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
 import {
   getDraftValue, getPublishedValue, hasDraft, setValue, clearValue,
   publishKey, discardDraft, onContentChange, isPreviewMode, setPreviewMode,
@@ -12,6 +12,7 @@ import {
   listMedia, addMedia, fileToDataUrl, formatBytes, resolveMediaRef,
   onMediaChange, type MediaItem,
 } from "@/lib/admin/media";
+import { scoreSeo, gradeFromScore, type SeoGrade } from "@/lib/seoScore";
 
 const MAX_BYTES = 1.5 * 1024 * 1024;
 
@@ -118,8 +119,77 @@ export default function PageEditor() {
       {schema.sections.map(section => (
         <SectionEditor key={section.id} section={section} pageSchema={schema} />
       ))}
+
+      {schema.sections.some(s => s.id === "seo") && (
+        <SeoScoreCard pageId={schema.id} />
+      )}
     </div>
   );
+}
+
+// Lightweight badge that summarises how good the SEO fields are for the
+// current page. Scoring runs entirely client-side — no network — and reads
+// the same draft values the editor is mutating, so the score updates as the
+// user types (via the parent's content-change subscription).
+function SeoScoreCard({ pageId }: { pageId: string }) {
+  // Read the "live admin view" of each SEO field (draft → published →
+  // schema default) so the score reflects what the editor is currently
+  // staging, not just what's been published.
+  const read = (key: string) => getDraftValue(key) ?? getDefault(key) ?? "";
+  const title = read(`seo.${pageId}.title`);
+  const description = read(`seo.${pageId}.description`);
+  const keywords = read(`seo.${pageId}.keywords`);
+  const ogImage = read(`seo.${pageId}.ogImage`);
+  const jsonld = read(`seo.${pageId}.jsonld`);
+  const hasJsonLd = jsonld.trim().length > 0;
+
+  const result = scoreSeo({
+    title, description, keywords, ogImage,
+    hasJsonLd,
+    slug: pageId,
+  });
+  const grade = gradeFromScore(result.score);
+  const palette = gradePalette(grade);
+  const top = result.suggestions.slice(0, 3);
+
+  return (
+    <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/5 bg-brand-black-soft/40 flex items-center justify-between">
+        <h2 className="text-xs tracking-[0.22em] uppercase text-brand-cream/60">SEO score</h2>
+        <span className="text-[10px] text-brand-cream/35">{result.passed} / {result.total} checks pass</span>
+      </div>
+      <div className="p-5 flex flex-col sm:flex-row gap-5 items-start">
+        <div className={`shrink-0 rounded-xl border ${palette.border} ${palette.bg} px-5 py-4 text-center min-w-[110px]`}>
+          <div className={`text-3xl font-semibold ${palette.fg}`}>{result.score}<span className="text-base text-brand-cream/40">/100</span></div>
+          <div className={`text-[10px] tracking-[0.2em] uppercase mt-1 ${palette.fg}`}>{grade}</div>
+        </div>
+        <div className="flex-1 min-w-0">
+          {top.length === 0 ? (
+            <p className="text-sm text-brand-cream/70">All key checks passing — looking solid.</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-brand-cream/40 mb-2">Top suggestions</p>
+              <ul className="space-y-1.5 text-sm text-brand-cream/75 list-disc pl-4">
+                {top.map((s, i) => (<li key={i}>{s}</li>))}
+              </ul>
+              {result.suggestions.length > top.length && (
+                <p className="text-[11px] text-brand-cream/35 mt-2">+ {result.suggestions.length - top.length} more — fix the SEO fields above to raise the score.</p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function gradePalette(g: SeoGrade): { fg: string; bg: string; border: string } {
+  switch (g) {
+    case "excellent": return { fg: "text-emerald-300", bg: "bg-emerald-500/10", border: "border-emerald-400/30" };
+    case "good":      return { fg: "text-brand-amber", bg: "bg-brand-amber/10", border: "border-brand-amber/30" };
+    case "okay":      return { fg: "text-brand-orange", bg: "bg-brand-orange/10", border: "border-brand-orange/30" };
+    case "poor":      return { fg: "text-rose-300", bg: "bg-rose-500/10", border: "border-rose-400/30" };
+  }
 }
 
 function SectionEditor({ section }: { section: PageSchema["sections"][number]; pageSchema: PageSchema }) {

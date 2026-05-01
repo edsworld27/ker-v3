@@ -68,7 +68,13 @@ export default function SiteHead() {
   const ogTitle = seoAB?.ogTitle || valOr(`seo.${pageId}.ogTitle`) || pageTitle;
   const ogDesc = seoAB?.ogDescription || valOr(`seo.${pageId}.ogDescription`) || desc;
   const ogImageRaw = valOr(`seo.${pageId}.ogImage`) || valOr("global.site.defaultOgImage");
-  const ogImage = ogImageRaw ? resolveMediaRef(ogImageRaw) : "";
+  // When no CMS override + no global default is set, fall back to the
+  // dynamic OG generator at /api/og. That route renders a 1200x630 branded
+  // card from the title + description so every page has a passable social
+  // preview instead of a bare link. Custom CMS images still win.
+  const ogImage = ogImageRaw
+    ? resolveMediaRef(ogImageRaw)
+    : buildFallbackOgImage(ogTitle || pageTitle || siteName, ogDesc || desc);
   const twitterCard = valOr(`seo.${pageId}.twitterCard`, "summary_large_image");
   const locale = valOr("global.site.locale", "en_GB");
 
@@ -186,6 +192,20 @@ export default function SiteHead() {
       <CookieBanner />
     </>
   );
+}
+
+// Build a relative URL into the dynamic OG image generator. Used as a
+// fallback when no CMS-provided social card is set on the page. We pass
+// the title + description through as query params so the generator can
+// render a branded preview matching the live page.
+function buildFallbackOgImage(title: string, subtitle: string): string {
+  const t = (title || "").trim();
+  const s = (subtitle || "").trim();
+  if (!t && !s) return "";
+  const params = new URLSearchParams();
+  if (t) params.set("title", t);
+  if (s) params.set("subtitle", s);
+  return `/api/og?${params.toString()}`;
 }
 
 function setMeta(name: string, content: string) {
