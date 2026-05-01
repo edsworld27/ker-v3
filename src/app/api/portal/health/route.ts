@@ -30,6 +30,8 @@ export async function GET() {
       customerEdit: true,         // Edit-profile alternative + impersonation auto-stop on mode flip (E-4)
       autoDiscover: true,         // Vercel-driven site auto-discovery on first heartbeat (E-2)
       cloudAudit: true,           // server-side activity log with retention purge by compliance mode
+      supabase: true,             // Supabase backend with auto-detected schema + inline migration SQL
+      quickSetup: true,           // /admin/sites “Quick setup” → /admin/portal-settings checklist
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

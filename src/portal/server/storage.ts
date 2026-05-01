@@ -44,7 +44,7 @@ const empty = (): PortalState => ({
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
 
-export type BackendKind = "file" | "memory" | "kv" | "postgres";
+export type BackendKind = "file" | "memory" | "kv" | "supabase" | "postgres";
 
 interface Backend {
   kind: BackendKind;
@@ -88,6 +88,156 @@ const memoryBackend: Backend = {
   async loadBlob() { return memoryBlob; },
   async saveBlob(content) { memoryBlob = content; },
 };
+
+// ─── Supabase backend (PostgREST) ──────────────────────────────────────────
+//
+// Supabase exposes a PostgREST API at https://<ref>.supabase.co/rest/v1.
+// We treat one row in a `portal_state` table as the single JSON blob —
+// same shape as the KV backend, just persisted to Postgres so admins who
+// already use Supabase don't have to add Redis.
+//
+// Auth: a service-role key in PORTAL_SUPABASE_SERVICE_KEY (or settings
+// when bootstrapped via FILE first). Service role bypasses RLS, which
+// is what we want — the portal owns this table.
+//
+// Auto-bootstrap: on first read we detect a missing table (PostgreSQL
+// error 42P01 surfaced as 404 by PostgREST when the table isn't in the
+// API schema cache). We expose the migration SQL via getMigrationSql()
+// so the admin can paste it into Supabase's SQL editor with one click.
+
+const SUPABASE_TABLE = "portal_state";
+const SUPABASE_ROW_ID = "singleton";
+
+let supabaseSchemaState: "ok" | "missing" | "unknown" | "error" = "unknown";
+let supabaseLastError: string | null = null;
+
+function makeSupabaseBackend(): Backend {
+  const url = (process.env.PORTAL_SUPABASE_URL ?? "").replace(/\/$/, "");
+  const key = process.env.PORTAL_SUPABASE_SERVICE_KEY ?? "";
+  const configured = !!(url && key);
+
+  return {
+    kind: "supabase",
+    persistent: configured,
+    description: configured
+      ? `Supabase Postgres at ${url} (table=${SUPABASE_TABLE})`
+      : "Supabase backend selected but PORTAL_SUPABASE_URL / PORTAL_SUPABASE_SERVICE_KEY are missing",
+    async loadBlob() {
+      if (!configured) {
+        throw new Error("PORTAL_BACKEND=supabase requires PORTAL_SUPABASE_URL and PORTAL_SUPABASE_SERVICE_KEY");
+      }
+      // Read the singleton row. PostgREST returns an array; we pick the
+      // single row's `blob` column. ?select=blob narrows the response.
+      const res = await fetch(
+        `${url}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_ROW_ID)}&select=blob`,
+        {
+          method: "GET",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        },
+      );
+      if (res.status === 404 || res.status === 406) {
+        // 404 here typically means the table isn't in the PostgREST
+        // schema cache — i.e. it doesn't exist. We surface that
+        // explicitly so the admin sees the migration banner instead
+        // of an empty state masking the real issue.
+        supabaseSchemaState = "missing";
+        supabaseLastError = `Table "${SUPABASE_TABLE}" not found in Supabase schema. Run the migration SQL below.`;
+        return null;
+      }
+      if (!res.ok) {
+        const txt = await safeText(res);
+        // Postgres "undefined_table" comes through as 42P01 in the
+        // body when the table is missing.
+        if (txt.includes("42P01") || /relation .* does not exist/i.test(txt)) {
+          supabaseSchemaState = "missing";
+          supabaseLastError = `Table "${SUPABASE_TABLE}" does not exist. Run the migration SQL below.`;
+          return null;
+        }
+        supabaseSchemaState = "error";
+        supabaseLastError = `Supabase load failed: ${res.status} ${txt}`;
+        throw new Error(supabaseLastError);
+      }
+      supabaseSchemaState = "ok";
+      supabaseLastError = null;
+      const rows = await res.json() as Array<{ blob: unknown }>;
+      if (rows.length === 0) return null;
+      const blob = rows[0].blob;
+      // Postgres jsonb column comes back as a parsed object; we re-stringify
+      // because the higher-level cache expects a string blob.
+      return typeof blob === "string" ? blob : JSON.stringify(blob);
+    },
+    async saveBlob(content) {
+      if (!configured) {
+        throw new Error("PORTAL_BACKEND=supabase requires PORTAL_SUPABASE_URL and PORTAL_SUPABASE_SERVICE_KEY");
+      }
+      // Upsert the singleton row. Prefer: resolution=merge-duplicates
+      // tells PostgREST to ON CONFLICT UPDATE on the primary key.
+      const body = [{
+        id: SUPABASE_ROW_ID,
+        blob: JSON.parse(content),
+        updated_at: new Date().toISOString(),
+      }];
+      const res = await fetch(`${url}/rest/v1/${SUPABASE_TABLE}`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await safeText(res);
+        if (txt.includes("42P01") || /relation .* does not exist/i.test(txt)) {
+          supabaseSchemaState = "missing";
+          throw new Error(`Supabase table missing — run migration SQL`);
+        }
+        supabaseSchemaState = "error";
+        supabaseLastError = `Supabase save failed: ${res.status} ${txt}`;
+        throw new Error(supabaseLastError);
+      }
+      supabaseSchemaState = "ok";
+      supabaseLastError = null;
+    },
+  };
+}
+
+// SQL the admin pastes into Supabase's SQL editor when the schema is
+// missing. Idempotent — safe to re-run. Kept here next to the backend
+// implementation so the table shape and the migration are one source.
+export function getMigrationSql(): string {
+  return `-- Portal state: single-row JSON blob, plus a touched timestamp.
+-- Service role bypasses RLS, which is what we want here — the portal
+-- owns this table. Idempotent: safe to re-run.
+
+CREATE TABLE IF NOT EXISTS ${SUPABASE_TABLE} (
+  id          text        PRIMARY KEY DEFAULT '${SUPABASE_ROW_ID}',
+  blob        jsonb       NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO ${SUPABASE_TABLE} (id) VALUES ('${SUPABASE_ROW_ID}')
+ON CONFLICT (id) DO NOTHING;
+
+-- Optional but recommended: enable RLS and lock the table down. The
+-- portal uses the service-role key which bypasses RLS, but enabling
+-- RLS prevents any anon/authed key you might also have from reading
+-- secrets out of the blob.
+ALTER TABLE ${SUPABASE_TABLE} ENABLE ROW LEVEL SECURITY;`;
+}
+
+export function getSupabaseSchemaState(): {
+  state: "ok" | "missing" | "unknown" | "error";
+  lastError: string | null;
+} {
+  return { state: supabaseSchemaState, lastError: supabaseLastError };
+}
 
 // ─── KV backend (Upstash Redis REST) ───────────────────────────────────────
 //
@@ -168,8 +318,11 @@ const postgresBackend: Backend = {
 function pickBackend(): Backend {
   const explicit = (process.env.PORTAL_BACKEND ?? "").toLowerCase();
   if (!explicit) {
-    // Auto-promote to KV when its env vars are present — typical
-    // production deploy pattern. Otherwise fall back to file.
+    // Auto-promote based on which env vars are present. Order matters:
+    // Supabase wins over KV (Supabase users typically have both for
+    // different things; portal state belongs alongside their existing
+    // Postgres). Otherwise fall back to file.
+    if (process.env.PORTAL_SUPABASE_URL && process.env.PORTAL_SUPABASE_SERVICE_KEY) return makeSupabaseBackend();
     if (process.env.PORTAL_KV_URL && process.env.PORTAL_KV_TOKEN) return makeKvBackend();
     return fileBackend;
   }
@@ -177,6 +330,7 @@ function pickBackend(): Backend {
     case "file":     return fileBackend;
     case "memory":   return memoryBackend;
     case "kv":       return makeKvBackend();
+    case "supabase": return makeSupabaseBackend();
     case "postgres": return postgresBackend;
     default:
       if (process.env.NODE_ENV !== "test") {
@@ -336,9 +490,26 @@ export interface BackendInfo {
   envVar: string;
   writable: boolean;
   hydrated: boolean;
+  // Schema-init state for backends that need a migration. Today only
+  // supabase reports anything other than "ok" / "n/a"; KV needs no
+  // schema and file just creates the dir on demand.
+  schemaState: "ok" | "missing" | "unknown" | "error" | "n/a";
+  schemaError?: string | null;
+  migrationSql?: string;
 }
 
 export function getBackendInfo(): BackendInfo {
+  let schemaState: BackendInfo["schemaState"] = "n/a";
+  let schemaError: string | null | undefined;
+  let migrationSql: string | undefined;
+  if (backend.kind === "supabase") {
+    const s = getSupabaseSchemaState();
+    schemaState = s.state;
+    schemaError = s.lastError;
+    if (s.state === "missing" || s.state === "unknown") {
+      migrationSql = getMigrationSql();
+    }
+  }
   return {
     kind: backend.kind,
     persistent: backend.persistent,
@@ -346,5 +517,8 @@ export function getBackendInfo(): BackendInfo {
     envVar: "PORTAL_BACKEND",
     writable,
     hydrated,
+    schemaState,
+    schemaError,
+    migrationSql,
   };
 }

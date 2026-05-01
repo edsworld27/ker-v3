@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   listSites, createSite, updateSite, deleteSite, setPrimarySite,
   addDomain, removeDomain, setPrimaryDomain, getActiveSiteId,
@@ -195,9 +196,11 @@ export default function AdminSitesPage() {
   const [active, setActive] = useState<string>("");
   const [variants, setVariants] = useState<ThemeVariant[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDomain, setNewDomain] = useState("");
+  const [quickSetup, setQuickSetup] = useState(true);
   const [heartbeats, setHeartbeats] = useState<Record<string, Heartbeat>>({});
   const [now, setNow] = useState<number>(() => Date.now());
   const [portalOrigin, setPortalOrigin] = useState<string>("");
@@ -248,7 +251,14 @@ export default function AdminSitesPage() {
     setNewName("");
     setNewDomain("");
     setCreating(false);
-    setEditingId(created.id);
+    if (quickSetup) {
+      // Quick setup: send the admin straight to portal-settings with a
+      // checklist scoped to this new site. They drop the keys, every
+      // green tick lights up, the portal is ready end-to-end.
+      router.push(`/admin/portal-settings?setup=${encodeURIComponent(created.id)}`);
+    } else {
+      setEditingId(created.id);
+    }
   }
 
   return (
@@ -289,9 +299,30 @@ export default function AdminSitesPage() {
               <input value={newDomain} onChange={e => setNewDomain(e.target.value)} placeholder="e.g. felicia.com" className={INPUT + " font-mono"} />
             </Field>
           </div>
+
+          {/* Quick setup toggle */}
+          <label className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-brand-black/40 border border-white/5 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => setQuickSetup(q => !q)}
+              className={`mt-0.5 w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+                quickSetup ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"
+              }`}
+              aria-pressed={quickSetup}
+            >
+              <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-brand-cream">Quick setup mode</p>
+              <p className="text-[11px] text-brand-cream/45 leading-relaxed mt-0.5">
+                Take me to portal-settings after the site is created with a checklist of everything that needs configuring (GitHub creds, Vercel token, storage backend). Each item lights up green as you fill it in.
+              </p>
+            </div>
+          </label>
+
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={!newName.trim()} className="text-xs px-4 py-2 rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-40">
-              Create site
+              {quickSetup ? "Create + set up keys" : "Create site"}
             </button>
             <button onClick={() => { setCreating(false); setNewName(""); setNewDomain(""); }} className="text-xs px-4 py-2 text-brand-cream/55 hover:text-brand-cream">
               Cancel

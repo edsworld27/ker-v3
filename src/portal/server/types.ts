@@ -212,7 +212,7 @@ export interface Embed {
 // Lives in localStorage on the admin side; sensitive fields are not
 // persisted server-side until we have proper auth.
 
-export type DatabaseBackend = "file" | "kv" | "postgres";
+export type DatabaseBackend = "file" | "kv" | "supabase" | "postgres";
 
 export interface PortalSettings {
   github: {
@@ -225,6 +225,8 @@ export interface PortalSettings {
   database: {
     backend: DatabaseBackend;
     kvUrl?: string;
+    supabaseUrl?: string;
+    supabaseServiceKey?: string;
     postgresUrl?: string;
   };
   deployment: {
