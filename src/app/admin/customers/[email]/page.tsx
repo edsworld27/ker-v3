@@ -318,7 +318,7 @@ function OrderRow({ order, onStatusChange }: {
           <div className="flex items-center gap-1.5 flex-wrap">
             <Link
               href={`/admin/orders/${order.id}`}
-              onClick={e => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
               className="text-[11px] px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream transition-colors"
             >
               View
