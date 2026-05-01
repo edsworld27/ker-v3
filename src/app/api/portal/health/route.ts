@@ -46,13 +46,14 @@ export async function GET() {
       billing: true,              // G-3 plan registry + Stripe-billed feature flags
       dashboards: true,           // G-4 per-tenant dashboard layout customisation
       visualEditor: true,         // T1 #8 — in-place editor overlay for [data-portal-edit] regions
+      visualBuilder: true,        // V-1 — block-based drag-drop page builder + PortalPageRenderer
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
       customers: false,
       theme: false,
-      pages: false,
+      pages: true,                // V-1 — page CRUD lives at /api/portal/pages/[siteId]
       flags: false,
       activity: false,
     },

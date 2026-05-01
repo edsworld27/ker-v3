@@ -580,3 +580,83 @@ export interface DashboardLayout {
   widgets: DashboardWidget[];
   updatedAt: number;
 }
+
+// ─── Visual editor — block schema (V-A) ────────────────────────────────────
+//
+// The portal's visual page builder. Each tenant authors pages as trees of
+// typed blocks. Pages are stored per-site, keyed by slug. The host site
+// renders them via <PortalPageRenderer slug="…" /> — the same registry
+// of React components the editor uses, so what you see in the canvas is
+// what the visitor sees on the live page.
+//
+// Block tree mirrors HTML semantics loosely: sections / rows / columns /
+// grids are containers; everything else is a leaf. Children are recursive
+// to support arbitrary nesting (4–5 levels is the practical cap before
+// usability suffers, but we don't enforce it).
+
+export type BlockType =
+  // Layout primitives
+  | "container" | "section" | "row" | "column" | "grid" | "spacer" | "divider"
+  // Content primitives
+  | "heading" | "text" | "image" | "button" | "video" | "icon" | "html"
+  // Composite content blocks
+  | "hero" | "cta" | "testimonials" | "navbar" | "footer" | "form"
+  // E-commerce blocks
+  | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success";
+
+// Per-block style overrides. Optional — empty object means inherit. The
+// renderer maps these to inline styles so the editor preview matches the
+// host site exactly without per-block CSS classes.
+export interface BlockStyles {
+  padding?: string;            // e.g. "24px" or "16px 32px"
+  margin?: string;
+  background?: string;         // hex / rgb / gradient
+  textColor?: string;
+  align?: "left" | "center" | "right";
+  width?: string;
+  maxWidth?: string;
+  minHeight?: string;
+  borderRadius?: string;
+  border?: string;
+  boxShadow?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  fontWeight?: string | number;
+  lineHeight?: string | number;
+  letterSpacing?: string;
+  display?: "block" | "flex" | "grid" | "inline-block";
+  flexDirection?: "row" | "column";
+  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
+  alignItems?: "flex-start" | "center" | "flex-end" | "stretch";
+  gap?: string;
+  gridTemplateColumns?: string; // for `grid` blocks
+  customCss?: string;          // raw CSS escape-hatch (advanced users)
+  // Responsive overrides — applied via media queries when set
+  mobile?: Partial<Omit<BlockStyles, "mobile" | "tablet">>;
+  tablet?: Partial<Omit<BlockStyles, "mobile" | "tablet">>;
+}
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  // Type-specific props. Untyped here for tree flexibility; each block
+  // component validates the keys it needs at render time.
+  props: Record<string, unknown>;
+  styles?: BlockStyles;
+  children?: Block[];          // present for container/section/row/column/grid blocks
+}
+
+export interface EditorPage {
+  id: string;
+  siteId: string;
+  slug: string;                // "/" or "/about" or "/products/[handle]"
+  title: string;
+  description?: string;        // for SEO meta
+  blocks: Block[];
+  status: "draft" | "published";
+  updatedAt: number;
+  publishedAt?: number;
+  // Last-published snapshot. Lets the runtime serve the published version
+  // even while the admin edits a draft, and lets the editor revert.
+  publishedBlocks?: Block[];
+}
