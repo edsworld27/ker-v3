@@ -8,6 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { ensureHydrated } from "@/portal/server/storage";
 import { trackEvent, type AnalyticsEventType } from "@/portal/server/analytics";
+import { recordStepVisit, isFunnelsPluginInstalled } from "@/portal/server/funnels";
+import "@/portal/server/webhooks";
+import "@/portal/server/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -59,6 +62,12 @@ export async function POST(req: NextRequest) {
     referrer: body.referrer,
     userAgent: ua,
   });
+
+  // Funnel matching — every pageview attempts to advance any active
+  // funnel for this org. No-op when the Funnels plugin isn't installed.
+  if (body.type === "pageview" && isFunnelsPluginInstalled(body.orgId)) {
+    try { recordStepVisit(body.orgId, body.path, body.sessionId); } catch { /* swallow */ }
+  }
 
   return NextResponse.json({ ok: result.ok, reason: result.reason });
 }
