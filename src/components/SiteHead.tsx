@@ -16,9 +16,20 @@ import { usePathname } from "next/navigation";
 import { getValue, onContentChange } from "@/lib/admin/content";
 import { resolveMediaRef, onMediaChange } from "@/lib/admin/media";
 import { getConsent, onConsentChange, type ConsentState } from "@/lib/admin/seoConsent";
-import { getConsentPreferences, onConsentPrefsChange, acceptAll, declineAll } from "@/lib/consent";
+import {
+  getConsentPreferences,
+  onConsentPrefsChange,
+  acceptAll,
+  declineAll,
+  enforceComplianceDefaults,
+  isStrictConsentMode,
+} from "@/lib/consent";
 import CookiePreferencesModal from "@/components/CookiePreferencesModal";
 import { getActiveSeoOverride } from "@/lib/admin/abtests";
+import { getComplianceModeSync, onComplianceChange } from "@/lib/admin/portalCompliance";
+import type { ComplianceMode } from "@/portal/server/types";
+import { logActivity } from "@/lib/admin/activity";
+import { resolveSiteByHost } from "@/lib/admin/sites";
 
 function valOr(key: string, fb = "") { return (getValue(key) ?? fb).trim(); }
 function boolVal(key: string, fb = false): boolean {
@@ -268,16 +279,72 @@ function HtmlInjector({ target, html }: { target: "head" | "body-start" | "body-
   return null;
 }
 
+// Resolve siteId from the PortalTagInjector script attribute or fall
+// back to host-based resolution. Mirrors CookiePreferencesModal so both
+// surfaces ask the embed-theme endpoint for the same site.
+function resolveSiteIdForBanner(): string {
+  if (typeof document !== "undefined") {
+    const tag = document.querySelector<HTMLScriptElement>("script[data-portal-site]");
+    const attr = tag?.getAttribute("data-portal-site");
+    if (attr) return attr;
+  }
+  if (typeof window !== "undefined") {
+    try { return resolveSiteByHost(window.location.host).id; } catch { /* ignore */ }
+  }
+  return "luvandker";
+}
+
+// Small inline pill — same vocabulary as the modal's so the banner
+// matches at a glance. Kept compact (initials only) so it fits in the
+// banner's tight header.
+function ComplianceBadge({ mode }: { mode: ComplianceMode }) {
+  if (mode === "none") return null;
+  const labels: Record<Exclude<ComplianceMode, "none">, { text: string; cls: string }> = {
+    gdpr:  { text: "GDPR",  cls: "bg-brand-amber/15 text-brand-amber border-brand-amber/30" },
+    hipaa: { text: "HIPAA", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
+    soc2:  { text: "SOC 2", cls: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
+  };
+  const s = labels[mode];
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border ${s.cls}`}>
+      {s.text}
+    </span>
+  );
+}
+
 function CookieBanner() {
   const [, setTick] = useState(0);
   const [consent, setConsentLocal] = useState<ConsentState>("unknown");
   const [showPrefs, setShowPrefs] = useState(false);
+  const [mode, setMode] = useState<ComplianceMode>(() => getComplianceModeSync());
+  const [brandColor, setBrandColor] = useState<string>("");
+
   useEffect(() => {
     setConsentLocal(getConsent());
     const o = onConsentChange(() => { setConsentLocal(getConsent()); setTick(t => t + 1); });
     const o2 = onContentChange(() => setTick(t => t + 1));
     const o3 = onConsentPrefsChange(() => { setConsentLocal(getConsent()); setTick(t => t + 1); });
-    return () => { o(); o2(); o3(); };
+    const o4 = onComplianceChange(() => { setMode(getComplianceModeSync()); setTick(t => t + 1); });
+    return () => { o(); o2(); o3(); o4(); };
+  }, []);
+
+  // Probe compliance + tighten stored prefs if the live mode is stricter
+  // than the cached state. Idempotent — safe to call on every mount.
+  useEffect(() => {
+    let cancelled = false;
+    enforceComplianceDefaults().then(m => { if (!cancelled) setMode(m); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Per-site brand colour — recolours the Accept button.
+  useEffect(() => {
+    const siteId = resolveSiteIdForBanner();
+    let cancelled = false;
+    fetch(`/api/portal/embed-theme/${encodeURIComponent(siteId)}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() as Promise<{ brandColor?: string }> : null)
+      .then(theme => { if (!cancelled && theme?.brandColor) setBrandColor(theme.brandColor); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const enabled = boolVal("global.cookies.enabled", true);
@@ -293,10 +360,45 @@ function CookieBanner() {
   const message = valOr("global.cookies.message", "We use cookies to improve your experience and for analytics.");
   const policyHref = valOr("global.cookies.policyHref", "/privacy");
 
+  const strict = isStrictConsentMode(mode);
+
+  // Under GDPR / HIPAA the Decline button has to be as prominent as
+  // Accept — dark-pattern accept-walls are a documented violation. We
+  // give both equal weight (filled vs subtle) so neither dominates.
+  const acceptLabel = strict ? "Accept" : "Accept all";
+  const declineLabel = strict ? "Decline" : "Decline all";
+
+  function onAccept() {
+    acceptAll();
+    logActivity({
+      category: "settings",
+      action: "Cookie consent: accept-all",
+      diff: { complianceMode: { from: undefined, to: mode }, surface: { from: undefined, to: "banner" } },
+    });
+  }
+  function onDecline() {
+    declineAll();
+    logActivity({
+      category: "settings",
+      action: "Cookie consent: decline-all",
+      diff: { complianceMode: { from: undefined, to: mode }, surface: { from: undefined, to: "banner" } },
+    });
+  }
+
+  // Brand-colour styling for the Accept button. Strict mode keeps the
+  // Decline button visually equal (filled neutral background) so neither
+  // CTA nudges the user — this is the GDPR-correct pattern.
+  const acceptStyle = brandColor ? { backgroundColor: brandColor, color: "white" } : undefined;
+  const declineStrictCls = "flex-1 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-brand-cream text-xs font-semibold border border-white/20";
+  const declineLooseCls = "flex-1 px-3 py-2 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream text-xs";
+
   return (
     <>
       <div className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-sm z-[350] rounded-2xl bg-brand-black-soft border border-white/10 shadow-2xl p-5">
-        <p className="text-[11px] tracking-[0.22em] uppercase text-brand-amber mb-2">{headline}</p>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-[11px] tracking-[0.22em] uppercase text-brand-amber">{headline}</p>
+          <ComplianceBadge mode={mode} />
+        </div>
         <p className="text-sm text-brand-cream/75 leading-relaxed mb-4">
           {message}{" "}
           <a href={policyHref} className="text-brand-orange hover:underline">Privacy policy</a>.
@@ -304,16 +406,17 @@ function CookieBanner() {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button
-              onClick={acceptAll}
+              onClick={onAccept}
               className="flex-1 px-3 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white text-xs font-semibold"
+              style={acceptStyle}
             >
-              Accept all
+              {acceptLabel}
             </button>
             <button
-              onClick={declineAll}
-              className="flex-1 px-3 py-2 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream text-xs"
+              onClick={onDecline}
+              className={strict ? declineStrictCls : declineLooseCls}
             >
-              Decline all
+              {declineLabel}
             </button>
           </div>
           <button
