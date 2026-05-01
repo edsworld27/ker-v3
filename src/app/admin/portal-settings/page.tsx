@@ -287,6 +287,13 @@ export default function AdminPortalSettingsPage() {
         </Field>
       </Card>
 
+      {/* ── DEPLOYMENT GUIDE (T1 #1) ─────────────────────────────────────── */}
+      <DeploymentGuide
+        backendInfo={backendInfo}
+        previewBaseUrl={live.deployment.previewBaseUrl ?? ""}
+        supabaseUrl={live.database.supabaseUrl ?? ""}
+      />
+
       {/* ── INTEGRATIONS ──────────────────────────────────────────────────── */}
       <Card id="setup-integrations" title="Integrations" tip="Connect the portal to your hosting + repo provider so a brand-new site auto-fills its admin row when the tag first phones home. Vercel maps domain → project → linked repo; that repo becomes the default for promote PRs (D-3).">
         <SensitiveField
@@ -592,9 +599,19 @@ function SetupChecklist({ settings, backendInfo, setupSite, setupMode }: {
       scrollTo: "setup-deployment",
       hint: "Used to build full preview links to draft content. Optional.",
     },
+    {
+      id: "deployment-guide",
+      label: "Choose your deploy target",
+      // Informational — always shown as done so it doesn't block the bar.
+      // Just scrolls down to the deploy paths card with the env-var snippets
+      // for Vercel, self-host, and managed-host with KV.
+      done: true,
+      scrollTo: "setup-deployment-guide",
+      hint: "Pick where to deploy this portal — Vercel, your own VM, or a managed host with KV — and grab the env vars + repo zip.",
+    },
   ];
 
-  const required = items.filter(i => i.id !== "deployment");
+  const required = items.filter(i => i.id !== "deployment" && i.id !== "deployment-guide");
   const doneCount = required.filter(i => i.done).length;
   const total = required.length;
   const allDone = doneCount === total;
@@ -1245,4 +1262,379 @@ ${target}
 3. **Optional**: a one-paragraph note on encryption-at-rest, backups, and which Supabase-style "service role" equivalent (if any) the portal needs to bypass RLS.
 
 Format the migration SQL in a single \`\`\`sql code block so I can paste it straight into my SQL client. Keep the explanation short — I just need the SQL + env vars.`;
+}
+
+// ─── Deployment guide (T1 #1) ───────────────────────────────────────────────
+//
+// Surfaces the three concrete deploy paths so going from "this works in dev"
+// to "this is live" stops being a mystery:
+//
+//   1. Vercel (recommended) — pre-filled env-var snippet with PORTAL_SUPABASE_*
+//      + PORTAL_PREVIEW_SECRET, copy-button.
+//   2. Self-host (VM / Docker) — .env block + `next start` + a note about
+//      file-backend persistence requiring a writable disk.
+//   3. Managed host with KV — env vars for PORTAL_KV_URL + PORTAL_KV_TOKEN.
+//
+// Plus a prominent "Download repo zip" button (calls /api/admin/export-code,
+// mirrors what /admin/customise does — fetch → blob → anchor click) and a
+// deployment-readiness status row at the top.
+//
+// Pre-fills any Supabase URL the admin already typed into the Database card
+// so the snippets are immediately useful for their actual project.
+
+type DeployTab = "vercel" | "self-host" | "managed-kv";
+
+function DeploymentGuide({
+  backendInfo, previewBaseUrl, supabaseUrl,
+}: {
+  backendInfo: BackendInfoResponse | null;
+  previewBaseUrl: string;
+  supabaseUrl: string;
+}) {
+  const [tab, setTab] = useState<DeployTab>("vercel");
+  const [healthSecret, setHealthSecret] = useState<boolean | null>(null);
+
+  // Health endpoint may expose `capabilities.previewSecret` once that flag
+  // ships; if not, fall back to "is the active backend at least persistent?"
+  // as a coarse readiness check.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/portal/health", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { capabilities?: { previewSecret?: boolean } } | null) => {
+        if (cancelled) return;
+        const flag = data?.capabilities?.previewSecret;
+        setHealthSecret(typeof flag === "boolean" ? flag : null);
+      })
+      .catch(() => { /* offline — leave as null */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const tabs: Array<{ id: DeployTab; label: string; sub: string }> = [
+    { id: "vercel",     label: "Vercel",          sub: "Recommended" },
+    { id: "self-host",  label: "Self-host",       sub: "VM / Docker" },
+    { id: "managed-kv", label: "Managed + KV",    sub: "Edge / Upstash" },
+  ];
+
+  return (
+    <Card
+      id="setup-deployment-guide"
+      title="Deployment paths"
+      tip="Three pre-filled paths from dev to live. Pick your host, paste the env-var block into its dashboard, and download the source as a zip if you want to push it to your own repo."
+    >
+      <DeployStatusRow backendInfo={backendInfo} healthSecret={healthSecret} />
+
+      <DownloadRepoZip />
+
+      {/* Tab strip — same visual language as the BACKENDS picker */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`text-left px-3 py-3 rounded-xl border transition-colors ${
+                active
+                  ? "border-brand-orange bg-brand-orange/10 text-brand-cream"
+                  : "border-white/10 text-brand-cream/55 hover:border-white/25"
+              }`}
+            >
+              <p className="text-sm font-medium">{t.label}</p>
+              <p className="text-[11px] text-brand-cream/45 mt-0.5">{t.sub}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "vercel" && (
+        <DeployPaneVercel previewBaseUrl={previewBaseUrl} supabaseUrl={supabaseUrl} />
+      )}
+      {tab === "self-host" && (
+        <DeployPaneSelfHost previewBaseUrl={previewBaseUrl} supabaseUrl={supabaseUrl} />
+      )}
+      {tab === "managed-kv" && (
+        <DeployPaneManagedKv previewBaseUrl={previewBaseUrl} />
+      )}
+    </Card>
+  );
+}
+
+// ─── Deploy-readiness status row ───────────────────────────────────────────
+//
+// Combines the active-backend flag with the preview-secret signal into a
+// single dot so the admin can tell at a glance whether this portal is
+// actually safe to point a real domain at.
+//
+//   green  — persistent backend AND preview secret known to be set
+//   amber  — persistent backend but preview secret unknown / missing
+//   red    — backend is memory (no persistence) — anything saved evaporates
+
+function DeployStatusRow({
+  backendInfo, healthSecret,
+}: {
+  backendInfo: BackendInfoResponse | null;
+  healthSecret: boolean | null;
+}) {
+  if (!backendInfo) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/45">
+        Probing deploy readiness…
+      </div>
+    );
+  }
+
+  const persistent = backendInfo.kind !== "memory" && backendInfo.persistent;
+  // Treat unknown (health endpoint didn't expose the flag) as "looks fine"
+  // so we don't scare admins on hosts where env-checks aren't reflected.
+  const secretOk = healthSecret === null ? persistent : healthSecret;
+
+  let dot = "bg-red-400";
+  let label = "Not ready — pick a persistent backend";
+  let detail = "Active backend is memory or non-persistent. Anything you save here will be lost on the next restart. Set PORTAL_BACKEND + the matching credentials before pointing a real domain at this deploy.";
+
+  if (persistent && secretOk) {
+    dot = "bg-green-400";
+    label = "Ready to deploy";
+    detail = `Active backend: ${backendInfo.kind} (persistent${backendInfo.writable ? "" : ", read-only fs"}). Preview-link signing secret looks configured.`;
+  } else if (persistent) {
+    dot = "bg-brand-amber";
+    label = "Almost ready — set PORTAL_PREVIEW_SECRET";
+    detail = `Active backend: ${backendInfo.kind} (persistent). Preview-link signing secret isn't set, or its status couldn't be read — preview share links will use a dev fallback that's forgeable across deploys.`;
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-[11px] text-brand-cream/65 leading-relaxed">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+        <span className="text-brand-cream/85 font-semibold">{label}</span>
+        <code className="font-mono text-brand-cream bg-white/5 px-1.5 py-0.5 rounded border border-white/10 ml-auto">
+          {backendInfo.kind}
+        </code>
+        <span className="text-brand-cream/45">
+          {backendInfo.persistent ? "persistent" : "ephemeral"}
+        </span>
+      </div>
+      <p className="text-brand-cream/45 mt-1">{detail}</p>
+    </div>
+  );
+}
+
+// ─── Download repo zip button ──────────────────────────────────────────────
+//
+// Mirrors /admin/customise's exportCode pattern: fetch the zip, turn it
+// into a blob, click an anchor. Adds file-size + last-modified readout
+// from the response Content-Length / Last-Modified headers (or the local
+// "downloaded at" timestamp if the server omits them).
+
+function DownloadRepoZip() {
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<{ size: number; modifiedAt: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch("/api/admin/export-code");
+      if (!res.ok) {
+        setError(`Export failed (${res.status} ${res.statusText})`);
+        return;
+      }
+      const blob = await res.blob();
+      const lastMod = res.headers.get("last-modified");
+      setInfo({ size: blob.size, modifiedAt: lastMod ? Date.parse(lastMod) : Date.now() });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `luv-ker-source-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-sm font-semibold text-brand-cream">Download repo zip</p>
+        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border bg-brand-orange/15 text-brand-orange border-brand-orange/30">
+          Self-host kit
+        </span>
+        <button
+          onClick={download}
+          disabled={busy}
+          className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {busy ? "Building zip…" : "Download zip"}
+        </button>
+      </div>
+      <p className="text-[11px] text-brand-cream/55 leading-relaxed">
+        Bundles <code className="font-mono text-brand-cream/85">src/</code>, <code className="font-mono text-brand-cream/85">package.json</code>, and the build configs into a single archive. Push it to your own GitHub repo, point Vercel / your VM at it, set the env vars below, and you&apos;re live.
+      </p>
+      {info && (
+        <p className="text-[11px] text-green-400">
+          ✓ Downloaded {formatBytes(info.size)} · {formatRelativeTime(info.modifiedAt)}
+        </p>
+      )}
+      {error && (
+        <p className="text-[11px] text-red-400">✗ {error}</p>
+      )}
+    </div>
+  );
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatRelativeTime(ts: number): string {
+  if (!Number.isFinite(ts)) return "just now";
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return new Date(ts).toLocaleString();
+}
+
+// ─── Deploy-tab panes ──────────────────────────────────────────────────────
+//
+// Each pane is a self-contained recipe: a short pitch, the pre-filled env
+// block (copy-button), and any framework-specific notes. The env block
+// is built on the client so we can pre-fill the admin's Supabase URL
+// and preview base URL without round-tripping to the server.
+
+function DeployPaneVercel({ previewBaseUrl, supabaseUrl }: { previewBaseUrl: string; supabaseUrl: string }) {
+  const env =
+`# Paste into Vercel → Project Settings → Environment Variables
+PORTAL_BACKEND=supabase
+PORTAL_SUPABASE_URL=${supabaseUrl || "https://<project-ref>.supabase.co"}
+PORTAL_SUPABASE_SERVICE_KEY=<your service_role key>
+PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
+NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+# Optional — only if you want preview share links to point at the live URL
+PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}`;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+        <strong className="text-brand-cream/85">Recommended.</strong>{" "}
+        Push the repo to GitHub, connect Vercel, paste these env vars, and deploy. Vercel&apos;s read-only filesystem means
+        the file backend won&apos;t persist — Supabase is the safest default.
+      </p>
+      <CopyableEnvBlock label="Vercel env vars" content={env} />
+      <ol className="text-[11px] text-brand-cream/55 leading-relaxed list-decimal list-inside space-y-1">
+        <li>Push the source (or use the zip above) to a GitHub repo.</li>
+        <li>Vercel → Add New → Project → Import the repo.</li>
+        <li>Project Settings → Environment Variables → paste the block above.</li>
+        <li>Deploy. The first heartbeat from your tagged site will auto-discover the project.</li>
+      </ol>
+    </div>
+  );
+}
+
+function DeployPaneSelfHost({ previewBaseUrl, supabaseUrl }: { previewBaseUrl: string; supabaseUrl: string }) {
+  const env =
+`# Save as .env at the repo root before \`next start\`
+PORTAL_BACKEND=file
+# (or =supabase / =postgres if you want a real database)
+PORTAL_SUPABASE_URL=${supabaseUrl || "https://<project-ref>.supabase.co"}
+PORTAL_SUPABASE_SERVICE_KEY=<your service_role key>
+PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
+PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}
+NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+PORT=3000`;
+
+  const cmd =
+`# Build + boot
+npm ci
+npm run build
+npm run start
+# (or: node node_modules/next/dist/bin/next start -p 3000)`;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+        Run on your own VM, container, or bare-metal. Any node host with persistent disk works —
+        Docker, Fly, Railway, a Raspberry Pi, anything.
+      </p>
+      <CopyableEnvBlock label=".env" content={env} />
+      <CopyableEnvBlock label="Build + start" content={cmd} />
+      <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/5 px-3 py-2.5 text-[11px] text-brand-cream/65 leading-relaxed">
+        <p className="font-medium text-brand-amber mb-1">File backend persistence</p>
+        <p>
+          <code className="font-mono">PORTAL_BACKEND=file</code> writes JSON to <code className="font-mono">.data/portal-state.json</code> next to the running process.
+          On Docker, mount a volume at <code className="font-mono">/app/.data</code> or the state vanishes on container restart.
+          On read-only filesystems, switch to Supabase or KV.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DeployPaneManagedKv({ previewBaseUrl }: { previewBaseUrl: string }) {
+  const env =
+`# Paste into your host's environment-variables panel
+PORTAL_BACKEND=kv
+PORTAL_KV_URL=https://<your-upstash-region>.upstash.io
+PORTAL_KV_TOKEN=<your Upstash REST token>
+PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
+PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}
+NEXT_PUBLIC_PORTAL_DEV_BYPASS=`;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+        Edge-style hosts (Cloudflare Pages with Workers, Netlify Edge Functions, Vercel Edge…) can&apos;t talk to Postgres directly.
+        Upstash Redis over REST — wired in via <code className="font-mono">PORTAL_KV_URL</code> + <code className="font-mono">PORTAL_KV_TOKEN</code> — works
+        from any node or edge runtime.
+      </p>
+      <CopyableEnvBlock label="Managed-host env vars" content={env} />
+      <ol className="text-[11px] text-brand-cream/55 leading-relaxed list-decimal list-inside space-y-1">
+        <li>Create an Upstash Redis database (any region close to your host).</li>
+        <li>Copy its REST URL + REST token from the database&apos;s &ldquo;REST API&rdquo; tab.</li>
+        <li>Paste them into your host&apos;s env-vars panel along with <code className="font-mono">PORTAL_BACKEND=kv</code>.</li>
+        <li>Redeploy. The portal auto-promotes to the KV backend whenever both env vars are set.</li>
+      </ol>
+    </div>
+  );
+}
+
+// ─── Copyable env-block ────────────────────────────────────────────────────
+//
+// Same visual + copy-button pattern as MigrationBanner / IframeLoginSnippet
+// — `navigator.clipboard.writeText` with a 2s "Copied" pill.
+
+function CopyableEnvBlock({ label, content }: { label: string; content: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked — admin can still select-copy from the pre */ }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50">{label}</label>
+        <button
+          onClick={copy}
+          className="text-[11px] px-2.5 py-1 rounded-md bg-brand-orange/20 border border-brand-orange/40 text-brand-orange hover:bg-brand-orange/30 font-semibold"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 overflow-x-auto text-brand-cream/85 whitespace-pre">
+{content}
+      </pre>
+    </div>
+  );
 }
