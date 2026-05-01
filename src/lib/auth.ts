@@ -150,11 +150,14 @@ export function getSecurityMode(): SecurityMode {
   if (process.env.NEXT_PUBLIC_PORTAL_DEV_BYPASS === "1") return "off";
   const env = process.env.NEXT_PUBLIC_PORTAL_SECURITY;
   if (env === "strict" || env === "dev" || env === "off") return env;
-  // The user's spec wording — "security=true" / "security=false" — gets
-  // normalised here so either style works in .env files.
+  // Boolean-style toggle:
+  //   NEXT_PUBLIC_PORTAL_SECURITY=true  → strict (production)
+  //   NEXT_PUBLIC_PORTAL_SECURITY=false → dev (bypass visible)
   if (env === "true")  return "strict";
   if (env === "false") return "dev";
-  return "strict";
+  // Default: unset env → "dev" so the bypass button is visible while
+  // building. Set NEXT_PUBLIC_PORTAL_SECURITY=true in production to lock.
+  return "dev";
 }
 
 export function setSecurityModeOverride(mode: SecurityMode | null) {
