@@ -100,6 +100,23 @@ export async function runDiscovery(host: string): Promise<Discovery | null> {
         if (project.link.productionBranch) {
           result.defaultBranch = project.link.productionBranch;
         }
+        // Optional GitHub enrichment — confirms the repo exists and
+        // grabs the true default branch (in case productionBranch
+        // wasn't set on the Vercel project). Uses the configured PAT
+        // when present; falls back to the unauthenticated GitHub API
+        // for public repos. Best-effort: a GitHub failure here doesn't
+        // wipe out the Vercel-derived data we already have.
+        try {
+          const enrichment = await enrichFromGitHub(
+            project.link.org,
+            project.link.repo,
+            settings.github.pat,
+          );
+          if (enrichment.defaultBranch) result.defaultBranch = enrichment.defaultBranch;
+          if (enrichment.notFound) {
+            result.detectError = "Vercel mentions a GitHub repo but it's not reachable (private without the configured PAT, or deleted).";
+          }
+        } catch { /* non-fatal — keep the Vercel-only result */ }
       }
     } else {
       result.detectError = "No Vercel project owns this domain";
@@ -169,4 +186,41 @@ function normaliseHost(host: string): string {
     .replace(/\/$/, "")
     .split("/")[0]                  // strip path if present
     .split(":")[0];                 // strip port
+}
+
+// ─── GitHub API enrichment ─────────────────────────────────────────────────
+
+interface GitHubRepoResponse {
+  name: string;
+  full_name: string;
+  default_branch: string;
+  private: boolean;
+}
+
+async function enrichFromGitHub(
+  owner: string,
+  repo: string,
+  pat: string | undefined,
+): Promise<{ defaultBranch?: string; isPrivate?: boolean; notFound?: boolean }> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (pat) headers.Authorization = `Bearer ${pat}`;
+
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const res = await fetch(url, { headers, cache: "no-store" });
+  if (res.status === 404) return { notFound: true };
+  if (!res.ok) {
+    // 401/403 on a private repo with no/insufficient PAT scope. Treat as
+    // "not found" so the admin gets a clear "configure your PAT" hint
+    // rather than a cryptic API error.
+    if (res.status === 401 || res.status === 403) return { notFound: true };
+    throw new Error(`GitHub API error: ${res.status}`);
+  }
+  const data = await res.json() as GitHubRepoResponse;
+  return {
+    defaultBranch: data.default_branch,
+    isPrivate: data.private,
+  };
 }

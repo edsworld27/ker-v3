@@ -301,6 +301,32 @@ export const RETENTION_DAYS: Record<ComplianceMode, number> = {
   "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
 };
 
+// ─── Activity log (cloud-audit) ─────────────────────────────────────────────
+//
+// Mirror of the per-browser localStorage activity log. Server-side so
+// HIPAA / SOC 2 retention windows mean something — entries are purged
+// based on the active compliance mode rather than a fixed cap.
+
+export type ActivityCategory =
+  | "orders" | "products" | "customers" | "marketing" | "content"
+  | "theme"  | "settings" | "features"  | "shipping"  | "support" | "auth";
+
+export interface ActivityEntry {
+  id: string;
+  ts: number;
+  actorEmail: string;
+  actorName: string;
+  category: ActivityCategory;
+  action: string;
+  resourceId?: string;
+  resourceLink?: string;
+  diff?: Record<string, { from: unknown; to: unknown }>;
+}
+
+// Cap per-portal entries to keep the JSON blob bounded even when retention
+// is set to several years. Newest entries kept; oldest evicted on append.
+export const ACTIVITY_HARD_CAP = 50_000;
+
 // ─── Discovery (E-2) ───────────────────────────────────────────────────────
 //
 // Auto-detection records — when a heartbeat arrives from an unknown host

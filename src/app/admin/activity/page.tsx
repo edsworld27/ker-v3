@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  listActivity, clearActivity, onActivityChange, relativeTime,
+  loadActivity, clearActivity, onActivityChange, relativeTime,
   type ActivityEntry, type ActivityCategory,
 } from "@/lib/admin/activity";
 import Tip from "@/components/admin/Tip";
@@ -22,16 +22,36 @@ const CATEGORY_COLOURS: Record<ActivityCategory, string> = {
   auth:      "bg-red-500/15 text-red-400",
 };
 
+interface ActivityStats {
+  total: number;
+  oldestTs: number | null;
+  retentionDays: number;
+  byCategory: Record<string, number>;
+}
+
 export default function AdminActivityPage() {
   const [entries,  setEntries]  = useState<ActivityEntry[]>([]);
+  const [stats,    setStats]    = useState<ActivityStats | null>(null);
+  const [source,   setSource]   = useState<"cloud" | "local">("local");
   const [filter,   setFilter]   = useState<ActivityCategory | "all">("all");
   const [actor,    setActor]    = useState<string>("all");
   const [query,    setQuery]    = useState("");
 
   useEffect(() => {
-    const refresh = () => setEntries(listActivity());
-    refresh();
-    return onActivityChange(refresh);
+    let cancelled = false;
+    async function refresh() {
+      const result = await loadActivity({ limit: 1000 });
+      if (cancelled) return;
+      setEntries(result.entries);
+      setStats(result.stats);
+      setSource(result.source);
+    }
+    void refresh();
+    // Refresh on local-cache change AND every 30s so other admins'
+    // entries land in the timeline within a minute.
+    const off = onActivityChange(() => void refresh());
+    const id = setInterval(() => void refresh(), 30_000);
+    return () => { cancelled = true; off(); clearInterval(id); };
   }, []);
 
   const actors = useMemo(() => {
@@ -89,13 +109,25 @@ export default function AdminActivityPage() {
             <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Activity log</h1>
             <Tip
               id="activity.header"
-              text="Audit trail of every admin mutation: order updates, theme saves, flag toggles, tooltip edits and more. Stored locally — capped at 500 entries with the oldest evicted."
+              text="Audit trail of every admin mutation. Cloud-first: stored in the portal backend with retention driven by the active compliance mode (HIPAA → 6 years, SOC 2 → 1 year). LocalStorage is a fast-read cache + offline fallback."
               align="bottom"
             />
+            <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${
+              source === "cloud"
+                ? "bg-green-500/15 text-green-400 border-green-500/25"
+                : "bg-brand-amber/15 text-brand-amber border-brand-amber/30"
+            }`} title={source === "cloud"
+              ? "Reading from the cloud-side activity store"
+              : "Cloud store unreachable — showing localStorage fallback (this device only)"}>
+              {source === "cloud" ? "Cloud" : "Local fallback"}
+            </span>
           </div>
           <p className="text-brand-cream/45 text-sm mt-1">
-            {entries.length} {entries.length === 1 ? "entry" : "entries"} logged
+            {entries.length} {entries.length === 1 ? "entry" : "entries"} loaded
             {visible.length !== entries.length && ` · ${visible.length} matching`}
+            {stats && stats.retentionDays > 0 && (
+              <> · retained {stats.retentionDays}d · {stats.total} total</>
+            )}
           </p>
         </div>
         <button
