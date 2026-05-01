@@ -496,4 +496,35 @@ export interface OrgRecord {
   status: OrgStatus;
   isPrimary: boolean;
   createdAt: number;
+  dashboard?: DashboardLayout; // G-4 per-tenant dashboard customisation
+}
+
+// ─── Per-tenant dashboard layout (G-4) ─────────────────────────────────────
+//
+// Each org carries an optional dashboard layout. Default layout is used
+// when org.dashboard is undefined. Widgets reference well-known IDs so
+// the rendering side can map them to React components.
+
+export type WidgetType =
+  | "stat-orders"
+  | "stat-revenue"
+  | "stat-sites"
+  | "stat-customers"
+  | "list-recent-orders"
+  | "list-recent-activity"
+  | "list-low-stock"
+  | "chart-revenue-trend"
+  | "callout-onboarding";
+
+export interface DashboardWidget {
+  id: string;                  // unique within layout
+  type: WidgetType;
+  title?: string;
+  span: 1 | 2 | 3;             // grid columns out of 3
+  visible: boolean;
+}
+
+export interface DashboardLayout {
+  widgets: DashboardWidget[];
+  updatedAt: number;
 }
