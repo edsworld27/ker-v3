@@ -36,6 +36,8 @@ interface Props {
   unsaved: number;
   onUndo?: () => void;
   onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   onSave?: () => void;
   onPublish?: () => void;
   // What the operator is currently editing. Page-targets get the full
@@ -51,7 +53,8 @@ export default function EditorTopBar({
   mode, onModeChange,
   edit, onEditChange,
   onReload, iframeReady, unsaved,
-  onUndo, onRedo, onSave, onPublish,
+  onUndo, onRedo, canUndo = false, canRedo = false,
+  onSave, onPublish,
   targetKind = "page", funnelLabel,
 }: Props) {
   const isPage = targetKind === "page";
@@ -123,8 +126,8 @@ export default function EditorTopBar({
       {/* Undo / redo */}
       {onUndo && (
         <>
-          <IconBtn onClick={onUndo} title="Undo (⌘Z)" aria-label="Undo">↶</IconBtn>
-          <IconBtn onClick={() => onRedo?.()} title="Redo (⌘⇧Z)" aria-label="Redo">↷</IconBtn>
+          <IconBtn onClick={onUndo} title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo}>↶</IconBtn>
+          <IconBtn onClick={() => onRedo?.()} title="Redo (⌘⇧Z)" aria-label="Redo" disabled={!canRedo}>↷</IconBtn>
           <span className="w-px h-5 bg-white/10" />
         </>
       )}
@@ -249,21 +252,23 @@ function ToggleBtn({
 }
 
 function IconBtn({
-  onClick, title, children, highlighted,
+  onClick, title, children, highlighted, disabled,
 }: {
   onClick: () => void;
   title: string;
   children: React.ReactNode;
   highlighted?: boolean;
+  disabled?: boolean;
   "aria-label"?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       title={title}
       aria-label={title}
-      className={`w-8 h-8 rounded-md flex items-center justify-center text-[13px] transition-colors ${
+      className={`w-8 h-8 rounded-md flex items-center justify-center text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
         highlighted
           ? "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20"
           : "bg-white/5 hover:bg-white/10 text-brand-cream/85"
