@@ -56,6 +56,9 @@ export async function GET() {
       siteCustomCode: true,       // P-3 — Site.customHead/customBody injected via SiteHead
       pageCustomCode: true,       // P-3 — EditorPage.customHead/customFoot rendered by PortalPageRenderer
       codeView: true,             // P-3 — Visual ↔ Code toggle + per-block JSON editor
+      promoteAll: true,           // W-1 — promote bundles pages + content + site code into one PR
+      multiDb: true,              // W-1 — per-org database credentials captured (data model + UI; routing scaffolded)
+      setupChecklist: true,       // W-1 — end-to-end status panel on /aqua
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

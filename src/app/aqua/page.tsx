@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadOrgs, listOrgs, setActiveOrgId, deleteOrg, type OrgRecord } from "@/lib/admin/orgs";
 import { listSitesForOrg } from "@/lib/admin/sites";
+import SetupChecklist from "@/components/aqua/SetupChecklist";
 
 export default function AquaDashboard() {
   const router = useRouter();
@@ -57,6 +58,8 @@ export default function AquaDashboard() {
           sidebar, sites, products, pages, billing all switch to theirs. Use <em>+ New portal</em> in the header to onboard another client.
         </p>
       </header>
+
+      <SetupChecklist />
 
       {/* Example portal callout — only when no real client portals exist yet */}
       {orgs.filter(o => !o.isPrimary).length === 0 && (

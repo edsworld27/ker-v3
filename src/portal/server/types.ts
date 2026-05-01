@@ -499,6 +499,22 @@ export interface OrgRecord {
   members?: OrgMembership[];   // G-5: per-org access control
   subscription?: Subscription; // G-3 active plan + Stripe linkage
   dashboard?: DashboardLayout; // G-4 per-tenant dashboard customisation
+  // Per-tenant database routing (W-1 / multi-DB). When set, the storage
+  // layer reads/writes this org's slice of state from a separate backend
+  // instead of the shared one. Useful when a client requires data
+  // sovereignty (HIPAA, GDPR data residency, separate Supabase project).
+  // Setup: paste creds in /admin/orgs/[id], the server's bootstrapped
+  // storage selector matches by orgId at request time. Empty → falls
+  // back to the global PORTAL_BACKEND.
+  database?: {
+    backend?: "kv" | "supabase" | "postgres";
+    kvUrl?: string;
+    kvToken?: string;
+    supabaseUrl?: string;
+    supabaseServiceKey?: string;
+    postgresUrl?: string;
+    label?: string;            // human-readable name for the admin UI
+  };
 }
 
 // ─── Server-side users + sessions (G-5) ─────────────────────────────────────

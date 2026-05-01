@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Block, BlockType, EditorPage } from "@/portal/server/types";
 import { getPage, updatePage, publishPage, revertPage } from "@/lib/admin/editorPages";
+import { promoteSiteToGitHub } from "@/lib/admin/promote";
 import {
   appendChild, createBlock, duplicateBlock, findBlock, insertSibling,
   moveBlock, removeBlock, updateBlock,
@@ -211,6 +212,21 @@ export default function EditorPage() {
     } finally { setBusy(null); }
   }
 
+  async function handlePromoteToGitHub() {
+    setBusy("promote"); setError(null);
+    try {
+      const result = await promoteSiteToGitHub(siteId, { message: `Visual editor publish: ${page?.title ?? pageId}` });
+      if (result.ok && result.prUrl) {
+        showToast("Pushed to GitHub");
+        window.open(result.prUrl, "_blank", "noopener");
+      } else {
+        setError(result.error ?? "Promote failed — check /admin/portal-settings (GitHub repo + PAT)");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally { setBusy(null); }
+  }
+
   async function handleRevert() {
     if (!confirm("Revert to last published version? Unsaved draft changes will be lost.")) return;
     setBusy("revert"); setError(null);
@@ -301,6 +317,14 @@ export default function EditorPage() {
           className="text-[12px] px-3 py-1.5 rounded-lg bg-brand-orange text-white font-semibold hover:opacity-90 disabled:opacity-50"
         >
           {busy === "publish" ? "Publishing…" : "Publish"}
+        </button>
+        <button
+          onClick={handlePromoteToGitHub}
+          disabled={!!busy}
+          title="Open a PR with portal.pages.json + portal.overrides.json + portal.site.json"
+          className="text-[12px] px-3 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 font-semibold hover:bg-cyan-500/20 disabled:opacity-30"
+        >
+          {busy === "promote" ? "Pushing…" : "Push to GitHub →"}
         </button>
       </header>
 
