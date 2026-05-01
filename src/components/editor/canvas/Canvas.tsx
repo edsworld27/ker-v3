@@ -11,22 +11,31 @@ import { getBlockDefinition, listBlocksByCategory, type BlockDefinition } from "
 import {
   effectiveViewport, getDevicePreset, type DeviceState,
 } from "@/lib/admin/devicePresets";
+import BlockToolbar from "./BlockToolbar";
 
 interface CanvasProps {
   blocks: Block[];
   selectedId: string | null;
-  // Either the legacy enum (kept for back-compat with admin/website
-  // /admin/[pageId] pages that haven't migrated to DevicePreview yet)
-  // OR the full DeviceState from the new toolbar.
   device: "desktop" | "tablet" | "mobile" | DeviceState;
   themeId?: string;
   onSelect: (id: string) => void;
   onDropOnCanvas: (type: BlockType) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onRemove?: (id: string) => void;
+  // For inline text editing — patch a block's props (used by HeadingBlock /
+  // TextBlock contentEditable on double-click).
+  onPatchProps?: (id: string, patch: Record<string, unknown>) => void;
 }
 
-export default function Canvas({ blocks, selectedId, device, themeId, onSelect, onDropOnCanvas, onDropBeside, onMoveBeside }: CanvasProps) {
+export default function Canvas({
+  blocks, selectedId, device, themeId,
+  onSelect, onDropOnCanvas, onDropBeside, onMoveBeside,
+  onMoveUp, onMoveDown, onDuplicate, onRemove, onPatchProps,
+}: CanvasProps) {
   const [hover, setHover] = useState<string | null>(null);
 
   // Resolve viewport. Legacy enum maps to width-only (no zoom, no
@@ -71,6 +80,7 @@ export default function Canvas({ blocks, selectedId, device, themeId, onSelect, 
         ) : (
           <BlockTreeWithChrome
             blocks={blocks}
+            allBlocks={blocks}
             selectedId={selectedId}
             hover={hover}
             setHover={setHover}
@@ -78,6 +88,11 @@ export default function Canvas({ blocks, selectedId, device, themeId, onSelect, 
             onSelect={onSelect}
             onDropBeside={onDropBeside}
             onMoveBeside={onMoveBeside}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+            onDuplicate={onDuplicate}
+            onRemove={onRemove}
+            onPatchProps={onPatchProps}
           />
         )}
       </div>
@@ -213,9 +228,12 @@ function EmptyState({ onDropType }: { onDropType: (type: BlockType) => void }) {
 }
 
 function BlockTreeWithChrome({
-  blocks, selectedId, hover, setHover, themeId, onSelect, onDropBeside, onMoveBeside,
+  blocks, allBlocks, selectedId, hover, setHover, themeId,
+  onSelect, onDropBeside, onMoveBeside,
+  onMoveUp, onMoveDown, onDuplicate, onRemove, onPatchProps,
 }: {
   blocks: Block[];
+  allBlocks: Block[];
   selectedId: string | null;
   hover: string | null;
   setHover: (id: string | null) => void;
@@ -223,13 +241,21 @@ function BlockTreeWithChrome({
   onSelect: (id: string) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onRemove?: (id: string) => void;
+  onPatchProps?: (id: string, patch: Record<string, unknown>) => void;
 }) {
   return (
     <div data-canvas-root>
-      {blocks.map(b => (
+      {blocks.map((b, i) => (
         <BlockWrapper
           key={b.id}
           block={b}
+          siblingIndex={i}
+          siblingCount={blocks.length}
+          allBlocks={allBlocks}
           selectedId={selectedId}
           hover={hover}
           setHover={setHover}
@@ -237,6 +263,11 @@ function BlockTreeWithChrome({
           onSelect={onSelect}
           onDropBeside={onDropBeside}
           onMoveBeside={onMoveBeside}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          onDuplicate={onDuplicate}
+          onRemove={onRemove}
+          onPatchProps={onPatchProps}
         />
       ))}
     </div>
@@ -244,9 +275,15 @@ function BlockTreeWithChrome({
 }
 
 function BlockWrapper({
-  block, selectedId, hover, setHover, themeId, onSelect, onDropBeside, onMoveBeside,
+  block, siblingIndex, siblingCount, allBlocks,
+  selectedId, hover, setHover, themeId,
+  onSelect, onDropBeside, onMoveBeside,
+  onMoveUp, onMoveDown, onDuplicate, onRemove, onPatchProps,
 }: {
   block: Block;
+  siblingIndex?: number;
+  siblingCount?: number;
+  allBlocks?: Block[];
   selectedId: string | null;
   hover: string | null;
   setHover: (id: string | null) => void;
@@ -254,18 +291,24 @@ function BlockWrapper({
   onSelect: (id: string) => void;
   onDropBeside: (targetId: string, type: BlockType, position: "before" | "after" | "inside") => void;
   onMoveBeside: (sourceId: string, targetId: string, position: "before" | "after" | "inside") => void;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onRemove?: (id: string) => void;
+  onPatchProps?: (id: string, patch: Record<string, unknown>) => void;
 }) {
   const def = getBlockDefinition(block.type);
-  // Layer themeStyles into the block when a non-default theme is active.
   const overlay = themeId ? block.themeStyles?.[themeId] : undefined;
   const effectiveBlock = overlay ? { ...block, styles: { ...(block.styles ?? {}), ...overlay } } : block;
   const selected = block.id === selectedId;
   const hovered = block.id === hover;
+  const [dropPos, setDropPos] = useState<"before" | "after" | "inside" | null>(null);
 
   function handleDrop(e: React.DragEvent, position: "before" | "after" | "inside") {
     e.preventDefault();
     e.stopPropagation();
     setHover(null);
+    setDropPos(null);
     const newType = e.dataTransfer.getData("application/x-block-type") as BlockType;
     const movingId = e.dataTransfer.getData("application/x-block-id");
     if (newType) {
@@ -277,17 +320,31 @@ function BlockWrapper({
     }
   }
 
-  function handleDragOver(e: React.DragEvent) {
+  function handleDragOver(e: React.DragEvent, position: "before" | "after" | "inside") {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = e.dataTransfer.types.includes("application/x-block-id") ? "move" : "copy";
+    setDropPos(position);
   }
+
+  function handleDragLeave() {
+    setDropPos(null);
+  }
+
+  // Inline text editing for heading/text/button/cta is handled by the
+  // block components themselves via contentEditable + the
+  // lk-block-text-commit CustomEvent (see HeadingBlock.tsx + TextBlock.tsx).
+  // The editor page listens and patches. Nothing to wire here.
+
+  const canMoveUp   = (siblingIndex ?? 0) > 0;
+  const canMoveDown = (siblingIndex ?? 0) < ((siblingCount ?? 1) - 1);
 
   return (
     <div
       data-block-wrapper={block.id}
       onClick={e => { e.stopPropagation(); onSelect(block.id); }}
       onMouseEnter={e => { e.stopPropagation(); setHover(block.id); }}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => { setHover(null); setDropPos(null); }}
       draggable
       data-touch-drag-payload={JSON.stringify({ type: "x-block-id", value: block.id })}
       onDragStart={e => {
@@ -303,13 +360,15 @@ function BlockWrapper({
     >
       {/* Top drop zone: insert before */}
       <div
-        onDragOver={handleDragOver}
+        onDragOver={e => handleDragOver(e, "before")}
+        onDragLeave={handleDragLeave}
         onDrop={e => handleDrop(e, "before")}
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, zIndex: 5 }}
       />
       {/* Bottom drop zone: insert after */}
       <div
-        onDragOver={handleDragOver}
+        onDragOver={e => handleDragOver(e, "after")}
+        onDragLeave={handleDragLeave}
         onDrop={e => handleDrop(e, "after")}
         style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, zIndex: 5 }}
       />
@@ -317,14 +376,39 @@ function BlockWrapper({
       {/* Inside drop — only for containers */}
       {def?.isContainer && (
         <div
-          onDragOver={handleDragOver}
+          onDragOver={e => handleDragOver(e, "inside")}
+          onDragLeave={handleDragLeave}
           onDrop={e => handleDrop(e, "inside")}
           style={{ position: "absolute", top: 8, left: 0, right: 0, bottom: 8, zIndex: 1, pointerEvents: "none" }}
         />
       )}
 
-      {/* Selection chip */}
-      {selected && (
+      {/* Visible drop indicator — coloured line where the block will land */}
+      {dropPos === "before" && (
+        <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 3, background: "var(--brand-orange, #ff6b35)", zIndex: 15, boxShadow: "0 0 0 2px rgba(255,107,53,0.25)" }} />
+      )}
+      {dropPos === "after" && (
+        <div style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: 3, background: "var(--brand-orange, #ff6b35)", zIndex: 15, boxShadow: "0 0 0 2px rgba(255,107,53,0.25)" }} />
+      )}
+      {dropPos === "inside" && (
+        <div style={{ position: "absolute", inset: 4, border: "2px dashed var(--brand-orange, #ff6b35)", borderRadius: 6, zIndex: 1, pointerEvents: "none" }} />
+      )}
+
+      {/* Floating block toolbar — appears on hover/select */}
+      {(selected || hovered) && (onMoveUp || onMoveDown || onDuplicate || onRemove) && (
+        <BlockToolbar
+          label={def?.label ?? block.type}
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          onMoveUp={() => onMoveUp?.(block.id)}
+          onMoveDown={() => onMoveDown?.(block.id)}
+          onDuplicate={() => onDuplicate?.(block.id)}
+          onRemove={() => onRemove?.(block.id)}
+        />
+      )}
+
+      {/* Selection chip — kept for label visibility under the toolbar */}
+      {selected && !hovered && (
         <span style={{ position: "absolute", top: -22, left: 0, fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--brand-orange, #ff6b35)", color: "#fff", zIndex: 10 }}>
           {def?.label ?? block.type}
         </span>
@@ -337,7 +421,7 @@ function BlockWrapper({
       {def
         ? <def.Component block={effectiveBlock} editorMode renderChildren={children =>
             children
-              ? <>{children.map(c => <BlockWrapper key={c.id} block={c} selectedId={selectedId} hover={hover} setHover={setHover} themeId={themeId} onSelect={onSelect} onDropBeside={onDropBeside} onMoveBeside={onMoveBeside} />)}</>
+              ? <>{children.map((c, ci) => <BlockWrapper key={c.id} block={c} siblingIndex={ci} siblingCount={children.length} allBlocks={allBlocks} selectedId={selectedId} hover={hover} setHover={setHover} themeId={themeId} onSelect={onSelect} onDropBeside={onDropBeside} onMoveBeside={onMoveBeside} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onPatchProps={onPatchProps} />)}</>
               : null
           } />
         : <BlockRenderer blocks={[block]} editorMode themeId={themeId} />

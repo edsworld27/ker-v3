@@ -5,16 +5,17 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   listABTests, assign, recordView, recordConversion,
 } from "@/lib/admin/abtests";
-import { matchAndRecord } from "@/lib/admin/funnels";
+
+// Funnel step tracking moved server-side: when the storefront's
+// AnalyticsTracker fires a pageview, /api/portal/analytics/track
+// matches the URL against active funnels for the org and advances
+// step counters. No client-side call needed here any more.
 
 export default function ABTestRunner() {
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    // Track funnel step visits
-    matchAndRecord(pathname);
-
     // Run A/B tests
     const tests = listABTests().filter((t) => t.status === "running");
     for (const test of tests) {

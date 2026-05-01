@@ -138,6 +138,35 @@ export default function PortalEditOverlay() {
   const excluded = isExcludedPath(pathname);
   const active = wantsEdit && isAdminUser && !excluded;
 
+  // Host-frame integration: when this page renders inside the
+  // /admin/editor iframe, listen for set-mode messages from the host
+  // toolbar (Edit/View) and announce ourselves as ready. Outside an
+  // iframe (top-level storefront editing) these listeners are no-ops.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    function postReady() {
+      try { window.parent.postMessage({ source: "portal-edit-overlay", type: "ready" }, "*"); } catch {}
+    }
+    function onHost(e: MessageEvent) {
+      const data = e.data as { source?: string; type?: string; mode?: "edit" | "view" } | null;
+      if (!data || data.source !== "editor-host") return;
+      if (data.type === "set-mode" && data.mode) {
+        const url = new URL(window.location.href);
+        if (data.mode === "edit") url.searchParams.set("portal_edit", "1");
+        else url.searchParams.delete("portal_edit");
+        window.history.replaceState(null, "", url.toString());
+        // Re-evaluate this component's gate by toggling sessionStorage too,
+        // then full reload — cleaner than trying to re-render the entire
+        // overlay state in place.
+        try { sessionStorage.setItem("lk_portal_edit", data.mode === "edit" ? "1" : "0"); } catch {}
+        window.location.reload();
+      }
+    }
+    window.addEventListener("message", onHost);
+    postReady();
+    return () => window.removeEventListener("message", onHost);
+  }, []);
+
   if (!active) return null;
   return <ActiveOverlay siteId={detectSiteId()} />;
 }
@@ -428,6 +457,18 @@ function ActiveOverlay({ siteId }: { siteId: string }) {
     }
     return count;
   }, [draft, published, loaded]);
+
+  // Surface unsaved count up to the host iframe (the /admin/editor
+  // wrapper). No-op when the overlay isn't running inside an iframe.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    try {
+      window.parent.postMessage(
+        { source: "portal-edit-overlay", type: unsavedCount === 0 ? "saved" : "unsaved", unsaved: unsavedCount },
+        "*",
+      );
+    } catch { /* swallow cross-origin errors */ }
+  }, [unsavedCount]);
 
   // ── Exit ────────────────────────────────────────────────────────────────
   const onExit = useCallback(() => {

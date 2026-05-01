@@ -225,6 +225,49 @@ export default function EditorPage() {
     setSelectedId(null);
   }
 
+  // Per-block actions for the in-canvas BlockToolbar (move up / move
+  // down / duplicate / delete on whichever block was clicked, not just
+  // the currently-selected one).
+  function handleDuplicateBlock(id: string) {
+    mutate(duplicateBlock(blocks, id));
+  }
+
+  function handleRemoveBlock(id: string) {
+    mutate(removeBlock(blocks, id));
+    if (selectedId === id) setSelectedId(null);
+  }
+
+  function handleMoveBlockUp(id: string) {
+    // Find the previous sibling and reorder via moveBlock(..., "before").
+    const target = findBlock(blocks, id);
+    if (!target) return;
+    const siblings = target.parent
+      ? findBlock(blocks, target.parent.id)?.block.children ?? []
+      : blocks;
+    const idx = siblings.findIndex(b => b.id === id);
+    if (idx <= 0) return;
+    const prev = siblings[idx - 1];
+    mutate(moveBlock(blocks, id, prev.id, "before"));
+  }
+
+  function handleMoveBlockDown(id: string) {
+    const target = findBlock(blocks, id);
+    if (!target) return;
+    const siblings = target.parent
+      ? findBlock(blocks, target.parent.id)?.block.children ?? []
+      : blocks;
+    const idx = siblings.findIndex(b => b.id === id);
+    if (idx < 0 || idx >= siblings.length - 1) return;
+    const next = siblings[idx + 1];
+    mutate(moveBlock(blocks, id, next.id, "after"));
+  }
+
+  function handlePatchProps(id: string, patch: Record<string, unknown>) {
+    const target = findBlock(blocks, id);
+    if (!target) return;
+    mutate(updateBlock(blocks, id, { props: { ...target.block.props, ...patch } }));
+  }
+
   async function handlePublish() {
     setBusy("publish"); setError(null);
     try {
@@ -411,6 +454,11 @@ export default function EditorPage() {
             onDropOnCanvas={handleDropOnCanvas}
             onDropBeside={handleDropBeside}
             onMoveBeside={handleMoveBeside}
+            onMoveUp={handleMoveBlockUp}
+            onMoveDown={handleMoveBlockDown}
+            onDuplicate={handleDuplicateBlock}
+            onRemove={handleRemoveBlock}
+            onPatchProps={handlePatchProps}
           />
           <PropertiesPanel
             block={selectedBlock}

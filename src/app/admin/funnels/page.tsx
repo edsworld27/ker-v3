@@ -43,7 +43,8 @@ function FunnelModal({ funnel, onClose }: { funnel: Partial<Funnel> | null; onCl
       type: "page",
       path: "",
       description: "",
-      stats: { reached: 0, completed: 0 },
+      reached: 0,
+      completed: 0,
     }]);
   }
 
@@ -55,14 +56,20 @@ function FunnelModal({ funnel, onClose }: { funnel: Partial<Funnel> | null; onCl
     setSteps(steps.map((s) => s.id === id ? { ...s, ...patch } : s));
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (steps.length < 2) { alert("A funnel needs at least 2 steps"); return; }
     if (steps.some((s) => !s.path)) { alert("All steps need a path"); return; }
     if (isNew) {
-      createFunnel({ name, description: description || undefined, status: "draft", steps });
+      await createFunnel({
+        name,
+        description: description || undefined,
+        steps: steps.map(({ name: stepName, type, path, description: stepDesc }) => ({
+          name: stepName, type, path, description: stepDesc,
+        })),
+      });
     } else {
-      saveFunnel({ ...funnel as Funnel, name, description: description || undefined, steps });
+      await saveFunnel({ ...funnel as Funnel, name, description: description || undefined, steps });
     }
     onClose();
   }
@@ -183,7 +190,7 @@ function AdminFunnelsPageInner() {
       <div className="space-y-4">
         {funnels.map((funnel) => {
           const cr = funnelConversionRate(funnel);
-          const totalReached = funnel.steps[0]?.stats.reached ?? 0;
+          const totalReached = funnel.steps[0]?.reached ?? 0;
 
           return (
             <div key={funnel.id} className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
@@ -209,8 +216,8 @@ function AdminFunnelsPageInner() {
               <div className="px-5 py-4 overflow-x-auto">
                 <div className="flex items-center gap-0 min-w-max">
                   {funnel.steps.map((step, i) => {
-                    const dropOff = i > 0 && funnel.steps[i - 1].stats.reached > 0
-                      ? Math.round((1 - step.stats.reached / funnel.steps[i - 1].stats.reached) * 100)
+                    const dropOff = i > 0 && funnel.steps[i - 1].reached > 0
+                      ? Math.round((1 - step.reached / funnel.steps[i - 1].reached) * 100)
                       : null;
 
                     return (
@@ -221,7 +228,7 @@ function AdminFunnelsPageInner() {
                           </div>
                           <p className="text-xs font-medium text-brand-cream/80 leading-tight">{step.name}</p>
                           <p className="text-[10px] text-brand-cream/35 mt-0.5 leading-tight">{step.path}</p>
-                          <p className="text-xs font-mono text-brand-cream/60 mt-1.5">{step.stats.reached.toLocaleString()}</p>
+                          <p className="text-xs font-mono text-brand-cream/60 mt-1.5">{step.reached.toLocaleString()}</p>
                           <p className="text-[10px] text-brand-cream/30">reached</p>
                         </div>
                         {i < funnel.steps.length - 1 && (
