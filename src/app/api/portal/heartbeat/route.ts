@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { record } from "@/portal/server/heartbeats";
 import { recordDiscovered, type IncomingDiscovery } from "@/portal/server/content";
+import { runDiscovery } from "@/portal/server/discovery";
 import { ensureHydrated } from "@/portal/server/storage";
 import type { OverrideType } from "@/portal/server/types";
 
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
     if (keys.length) recordDiscovered(beat.siteId, path, keys);
   }
 
+  // Site auto-discovery (E-2): on first heartbeat from a new host,
+  // probe Vercel for the project + linked repo and stash a Discovery
+  // record the admin can confirm. Fire-and-forget so a slow Vercel API
+  // never delays the heartbeat response.
+  const host = safeHost(beat.url);
+  if (host) void runDiscovery(host).catch(() => { /* swallowed */ });
+
   return NextResponse.json(
     { ok: true, lastSeenAt: recorded.lastSeenAt, beats: recorded.beats },
     { headers: corsHeaders },
@@ -76,4 +84,10 @@ function safePath(url: string | undefined): string {
   if (!url) return "/";
   try { return new URL(url).pathname || "/"; }
   catch { return "/"; }
+}
+
+function safeHost(url: string | undefined): string | null {
+  if (!url) return null;
+  try { return new URL(url).host; }
+  catch { return null; }
 }

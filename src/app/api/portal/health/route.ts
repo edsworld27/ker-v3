@@ -28,6 +28,7 @@ export async function GET() {
       cloudArchitected: true,     // server-side storage + settings, async hydration, KV-ready (Cloud-1)
       compliance: true,           // /admin/compliance + GET/POST /api/portal/compliance (E-3)
       customerEdit: true,         // Edit-profile alternative + impersonation auto-stop on mode flip (E-4)
+      autoDiscover: true,         // Vercel-driven site auto-discovery on first heartbeat (E-2)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

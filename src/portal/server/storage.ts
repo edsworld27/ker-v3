@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
 import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
-  SiteManifestSchema, Embed, PortalSettings,
+  SiteManifestSchema, Embed, PortalSettings, Discovery,
 } from "./types";
 
 interface PortalState {
@@ -31,11 +31,13 @@ interface PortalState {
   schemas: Record<string, SiteManifestSchema>;
   embeds: Record<string, Embed[]>;
   settings: PortalSettings | null;     // null = "no settings saved yet" (use defaults)
+  discoveries: Record<string, Discovery>;  // E-2 auto-detect inbox, keyed by host
 }
 
 const empty = (): PortalState => ({
   heartbeats: {}, configs: {}, content: {},
   schemas: {}, embeds: {}, settings: null,
+  discoveries: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -232,6 +234,7 @@ function parseBlob(raw: string): PortalState {
       schemas: parsed.schemas ?? {},
       embeds: parsed.embeds ?? {},
       settings: parsed.settings ?? null,
+      discoveries: parsed.discoveries ?? {},
     };
   } catch {
     return empty();

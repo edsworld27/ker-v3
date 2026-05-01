@@ -11,15 +11,23 @@ export const DEFAULT_SETTINGS: PortalSettings = {
   github: { repoUrl: "", defaultBranch: "main" },
   database: { backend: "file" },
   deployment: {},
+  integrations: {},
+  compliance: { mode: "none" },
 };
 
 export function getSettings(): PortalSettings {
   const stored = getState().settings;
   if (!stored) return DEFAULT_SETTINGS;
   return {
-    github:     { ...DEFAULT_SETTINGS.github,     ...stored.github     },
-    database:   { ...DEFAULT_SETTINGS.database,   ...stored.database   },
-    deployment: { ...DEFAULT_SETTINGS.deployment, ...stored.deployment },
+    github:       { ...DEFAULT_SETTINGS.github,       ...stored.github       },
+    database:     { ...DEFAULT_SETTINGS.database,     ...stored.database     },
+    deployment:   { ...DEFAULT_SETTINGS.deployment,   ...stored.deployment   },
+    integrations: { ...(DEFAULT_SETTINGS.integrations ?? {}), ...(stored.integrations ?? {}) },
+    compliance: {
+      mode: stored.compliance?.mode ?? DEFAULT_SETTINGS.compliance?.mode ?? "none",
+      auditRetentionDaysOverride: stored.compliance?.auditRetentionDaysOverride ?? DEFAULT_SETTINGS.compliance?.auditRetentionDaysOverride,
+      acknowledgedWarnings: stored.compliance?.acknowledgedWarnings ?? DEFAULT_SETTINGS.compliance?.acknowledgedWarnings,
+    },
   };
 }
 
@@ -34,7 +42,11 @@ export function saveSettings(patch: PortalSettingsPatch): PortalSettings {
         ...(patch.database ?? {}),
         backend: patch.database?.backend ?? prev.database.backend,
       },
-      deployment: { ...prev.deployment, ...(patch.deployment ?? {}) },
+      deployment:   { ...prev.deployment,   ...(patch.deployment ?? {}) },
+      integrations: { ...(prev.integrations ?? {}), ...(patch.integrations ?? {}) },
+      compliance: patch.compliance
+        ? { ...(prev.compliance ?? { mode: "none" }), ...patch.compliance, mode: patch.compliance.mode ?? prev.compliance?.mode ?? "none" }
+        : prev.compliance,
     };
     state.settings = saved;
   });
@@ -89,6 +101,11 @@ export function getAdminSettings(): PortalSettings {
       postgresUrl: s.database.postgresUrl ? SECRET_PLACEHOLDER : "",
     },
     deployment: { ...s.deployment },
+    integrations: {
+      vercelToken: s.integrations?.vercelToken ? SECRET_PLACEHOLDER : "",
+      autoDiscover: s.integrations?.autoDiscover,
+    },
+    compliance: s.compliance,
   };
 }
 
@@ -108,5 +125,11 @@ export function applyAdminPatch(patch: PortalSettingsPatch): PortalSettings {
     cleaned.database = d;
   }
   if (patch.deployment) cleaned.deployment = { ...patch.deployment };
+  if (patch.integrations) {
+    const i: NonNullable<PortalSettingsPatch["integrations"]> = { ...patch.integrations };
+    if (i.vercelToken === SECRET_PLACEHOLDER) delete i.vercelToken;
+    cleaned.integrations = i;
+  }
+  if (patch.compliance) cleaned.compliance = { ...patch.compliance };
   return saveSettings(cleaned);
 }

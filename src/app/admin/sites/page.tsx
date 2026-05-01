@@ -300,6 +300,23 @@ export default function AdminSitesPage() {
         </div>
       )}
 
+      {/* Discovery inbox — auto-detected sites awaiting confirmation */}
+      <DiscoveryInbox onConfirm={discovery => {
+        // Auto-create a Site row from the discovery and refresh the list
+        const created = createSite({
+          name: discovery.vercelProjectName ?? discovery.host,
+          domains: [discovery.host],
+        });
+        if (discovery.repoUrl) {
+          updateSite(created.id, {
+            primaryDomain: discovery.host,
+          });
+          // Repo URL belongs in portal-settings (D-3 promote target). We
+          // don't auto-write it because it's portal-wide, not per-site.
+        }
+        setSites(listSites());
+      }} />
+
       {/* Sites list */}
       <div className="space-y-4">
         {sites.map(site => (
@@ -1869,6 +1886,119 @@ function SchemaFieldRow({ flatKey, field, override, publishedValue, onChange, on
           {hasOverride ? "matches default" : "showing default"}
         </p>
       )}
+    </div>
+  );
+}
+
+// ─── Discovery inbox (E-2) ──────────────────────────────────────────────────
+//
+// Lists hosts the portal has heartbeat'd from but doesn't yet know about
+// as Sites. Each row shows the auto-detected Vercel project + repo URL
+// (when discoverable) and a one-click Confirm that creates the Site row.
+
+interface DiscoveryRecord {
+  host: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  status: "pending" | "confirmed" | "dismissed";
+  vercelProjectId?: string;
+  vercelProjectName?: string;
+  repoUrl?: string;
+  defaultBranch?: string;
+  detectError?: string;
+}
+
+function DiscoveryInbox({ onConfirm }: {
+  onConfirm: (d: DiscoveryRecord) => void;
+}) {
+  const [items, setItems] = useState<DiscoveryRecord[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function pull() {
+    try {
+      const res = await fetch("/api/portal/discoveries", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json() as { discoveries: DiscoveryRecord[] };
+      setItems(data.discoveries.filter(d => d.status === "pending"));
+    } catch {}
+  }
+
+  useEffect(() => {
+    void pull();
+    const id = setInterval(pull, 15_000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function act(host: string, action: "confirm" | "dismiss" | "rerun") {
+    setBusy(host);
+    try {
+      const res = await fetch("/api/portal/discoveries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host, action }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { discovery: DiscoveryRecord };
+      if (action === "confirm") onConfirm(data.discovery);
+      await pull();
+    } finally { setBusy(null); }
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/5 overflow-hidden">
+      <div className="px-5 py-3 border-b border-brand-orange/20 flex items-center gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-orange">
+          {items.length} new {items.length === 1 ? "site" : "sites"} discovered
+        </p>
+        <p className="text-[11px] text-brand-cream/55">
+          Auto-detected from heartbeats. Confirm to add to your sites list.
+        </p>
+      </div>
+      <div className="divide-y divide-white/5">
+        {items.map(d => (
+          <div key={d.host} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-brand-cream truncate font-mono">{d.host}</p>
+              <p className="text-[11px] text-brand-cream/50 truncate mt-0.5">
+                {d.detectError ? (
+                  <span className="text-brand-amber">⚠ {d.detectError}</span>
+                ) : d.vercelProjectName ? (
+                  <>Vercel project <strong className="text-brand-cream/75">{d.vercelProjectName}</strong>{d.repoUrl && <> · repo <code className="font-mono text-brand-cream/65">{d.repoUrl}</code></>}</>
+                ) : (
+                  <>seen {d.lastSeenAt ? formatAge(Date.now() - d.lastSeenAt) : "recently"}</>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {d.detectError && (
+                <button
+                  onClick={() => act(d.host, "rerun")}
+                  disabled={busy === d.host}
+                  className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+                >
+                  {busy === d.host ? "…" : "Re-probe"}
+                </button>
+              )}
+              <button
+                onClick={() => act(d.host, "dismiss")}
+                disabled={busy === d.host}
+                className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/55 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => act(d.host, "confirm")}
+                disabled={busy === d.host}
+                className="text-[11px] px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold disabled:opacity-40"
+              >
+                {busy === d.host ? "Adding…" : "+ Add as site"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

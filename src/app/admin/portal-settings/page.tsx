@@ -223,6 +223,35 @@ export default function AdminPortalSettingsPage() {
         </Field>
       </Card>
 
+      {/* ── INTEGRATIONS ──────────────────────────────────────────────────── */}
+      <Card title="Integrations" tip="Connect the portal to your hosting + repo provider so a brand-new site auto-fills its admin row when the tag first phones home. Vercel maps domain → project → linked repo; that repo becomes the default for promote PRs (D-3).">
+        <SensitiveField
+          label="Vercel API token"
+          tip="Create a token at vercel.com/account/tokens. Read access is enough for project lookups."
+          value={live.integrations?.vercelToken ?? ""}
+          onChange={v => patch({ integrations: { vercelToken: v } })}
+          placeholder="vrcl_…"
+        />
+        <div className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-brand-black border border-white/5">
+          <button
+            type="button"
+            onClick={() => patch({ integrations: { autoDiscover: !(live.integrations?.autoDiscover !== false) } })}
+            className={`mt-0.5 w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+              (live.integrations?.autoDiscover !== false) ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"
+            }`}
+            aria-pressed={live.integrations?.autoDiscover !== false}
+          >
+            <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-brand-cream">Auto-discover new sites</p>
+            <p className="text-[11px] text-brand-cream/45 leading-relaxed mt-0.5">
+              When the tag heartbeats from a host the portal hasn&apos;t seen, query Vercel for the project and stash a Discovery row in <code className="font-mono">/admin/sites</code>. Disable to silently track new hosts without enriching them.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400">
           {error}

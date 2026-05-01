@@ -230,6 +230,14 @@ export interface PortalSettings {
   deployment: {
     previewBaseUrl?: string;
   };
+  // E-2: 3rd-party integrations the portal uses to auto-detect things
+  // about a host site (currently only Vercel — token used to look up
+  // domain → project → repo so a new heartbeat can register a site
+  // with no manual setup).
+  integrations?: {
+    vercelToken?: string;
+    autoDiscover?: boolean;          // master switch, defaults to true when token present
+  };
   compliance?: ComplianceSettings;
 }
 
@@ -292,6 +300,30 @@ export const RETENTION_DAYS: Record<ComplianceMode, number> = {
   "soc2":  365,                 // 1 year (typical SOC 2 requirement)
   "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
 };
+
+// ─── Discovery (E-2) ───────────────────────────────────────────────────────
+//
+// Auto-detection records — when a heartbeat arrives from an unknown host
+// the portal queries Vercel (and optionally GitHub) to populate the rest
+// of a site's metadata. Each detection lands as a `Discovery` row the
+// admin can confirm (creates the actual Site) or dismiss (recorded so
+// we don't keep nagging).
+
+export type DiscoveryStatus = "pending" | "confirmed" | "dismissed";
+
+export interface Discovery {
+  host: string;                  // e.g. felicia-skincare.com
+  firstSeenAt: number;
+  lastSeenAt: number;
+  status: DiscoveryStatus;
+  // Detection results — populated when Vercel auth is configured.
+  vercelProjectId?: string;
+  vercelProjectName?: string;
+  repoUrl?: string;              // resolved from vercel.link.repo
+  defaultBranch?: string;
+  // Free-text reason if detection failed (shown in admin UI).
+  detectError?: string;
+}
 
 // ─── Embed provider metadata ───────────────────────────────────────────────
 //
