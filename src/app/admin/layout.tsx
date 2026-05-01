@@ -22,6 +22,7 @@ import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
 import CommandPalette from "@/components/admin/CommandPalette";
 import SiteSwitcher from "@/components/admin/SiteSwitcher";
+import OrgSwitcher from "@/components/admin/OrgSwitcher";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -202,7 +203,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </Link>
 
         {/* Site switcher — picks which storefront the admin is editing */}
-        <div className="px-3 pt-3">
+        <div className="px-3 pt-3 space-y-2">
+          <OrgSwitcher />
           <SiteSwitcher />
         </div>
 
