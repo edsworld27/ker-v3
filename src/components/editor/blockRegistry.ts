@@ -53,6 +53,13 @@ import FeatureGridBlock from "./blocks/FeatureGridBlock";
 import NewsletterSignupBlock from "./blocks/NewsletterSignupBlock";
 import CountdownTimerBlock from "./blocks/CountdownTimerBlock";
 import LanguageSwitcherBlock from "./blocks/LanguageSwitcherBlock";
+import GalleryBlock from "./blocks/GalleryBlock";
+import QuoteBlock from "./blocks/QuoteBlock";
+import MapBlock from "./blocks/MapBlock";
+import BannerBlock from "./blocks/BannerBlock";
+import AuthorBioBlock from "./blocks/AuthorBioBlock";
+import MemberGateBlock from "./blocks/MemberGateBlock";
+import DonationButtonBlock from "./blocks/DonationButtonBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -764,6 +771,144 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "variant", label: "Variant", type: "select", default: "dropdown",
         options: [{ value: "dropdown", label: "Dropdown" }, { value: "pills", label: "Pills" }] },
       { key: "enabledLocales", label: "Enabled locales (csv)", type: "text" },
+    ],
+  },
+  "gallery": {
+    type: "gallery",
+    label: "Gallery",
+    icon: "🖼",
+    category: "media",
+    isContainer: false,
+    Component: GalleryBlock,
+    defaultProps: { columns: 3, gap: 12, lightbox: true, photos: [] },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "columns", label: "Columns", type: "number", default: 3 },
+      { key: "gap",     label: "Gap (px)", type: "number", default: 12 },
+      { key: "lightbox", label: "Lightbox on click", type: "boolean", default: true },
+    ],
+  },
+  "quote": {
+    type: "quote",
+    label: "Quote",
+    icon: "❝",
+    category: "content",
+    isContainer: false,
+    Component: QuoteBlock,
+    defaultProps: { text: "Design is intelligence made visible.", align: "center" },
+    fields: [
+      { key: "text",   label: "Quote",   type: "textarea" },
+      { key: "author", label: "Author",  type: "text" },
+      { key: "role",   label: "Role / context", type: "text" },
+      { key: "align",  label: "Align",   type: "select", default: "center",
+        options: [{ value: "left", label: "Left" }, { value: "center", label: "Center" }] },
+    ],
+  },
+  "map": {
+    type: "map",
+    label: "Map",
+    icon: "📍",
+    category: "media",
+    isContainer: false,
+    Component: MapBlock,
+    defaultProps: { lat: 51.5074, lng: -0.1278, zoom: 14, height: 360 },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "address", label: "Address", type: "text" },
+      { key: "lat",     label: "Latitude",  type: "number" },
+      { key: "lng",     label: "Longitude", type: "number" },
+      { key: "zoom",    label: "Zoom",      type: "number", default: 14 },
+      { key: "height",  label: "Height (px)", type: "number", default: 360 },
+      { key: "iframeUrl", label: "Custom embed URL (overrides above)", type: "url" },
+    ],
+  },
+  "banner": {
+    type: "banner",
+    label: "Banner / promo strip",
+    icon: "▬",
+    category: "content",
+    isContainer: false,
+    Component: BannerBlock,
+    defaultProps: {
+      text: "Free UK shipping over £40",
+      tone: "promo",
+      dismissible: true,
+      sticky: false,
+    },
+    fields: [
+      { key: "text",       label: "Text",       type: "text" },
+      { key: "ctaLabel",   label: "CTA label",  type: "text" },
+      { key: "ctaHref",    label: "CTA URL",    type: "url" },
+      { key: "tone",       label: "Tone",       type: "select", default: "promo",
+        options: [
+          { value: "info",  label: "Info" },
+          { value: "promo", label: "Promo" },
+          { value: "alert", label: "Alert" },
+        ] },
+      { key: "dismissible", label: "Dismissible", type: "boolean", default: true },
+      { key: "sticky",      label: "Stick to top", type: "boolean", default: false },
+    ],
+  },
+  "author-bio": {
+    type: "author-bio",
+    label: "Author bio",
+    icon: "👤",
+    category: "content",
+    isContainer: false,
+    Component: AuthorBioBlock,
+    defaultProps: { name: "Felicia", role: "Founder", bio: "" },
+    fields: [
+      { key: "name",      label: "Name", type: "text" },
+      { key: "role",      label: "Role / title", type: "text" },
+      { key: "bio",       label: "Bio",  type: "textarea" },
+      { key: "avatarUrl", label: "Avatar URL", type: "url" },
+    ],
+  },
+  "member-gate": {
+    type: "member-gate",
+    label: "Member gate",
+    icon: "🔒",
+    category: "advanced",
+    isContainer: true,
+    Component: MemberGateBlock,
+    defaultProps: {
+      tier: "free",
+      lockMessage: "Members only — sign in or join to read.",
+      ctaLabel: "Sign in or join",
+      ctaHref: "/account?mode=signup",
+    },
+    fields: [
+      { key: "tier",        label: "Required tier", type: "text", default: "free" },
+      { key: "lockMessage", label: "Lock message",  type: "textarea" },
+      { key: "ctaLabel",    label: "CTA label",     type: "text" },
+      { key: "ctaHref",     label: "CTA URL",       type: "url" },
+    ],
+  },
+  "donation-button": {
+    type: "donation-button",
+    label: "Donation button",
+    icon: "♡",
+    category: "commerce",
+    isContainer: false,
+    Component: DonationButtonBlock,
+    defaultProps: {
+      heading: "Support our work",
+      subheading: "Every donation goes directly to the cause.",
+      currency: "GBP",
+      amounts: "5,10,25,50,100",
+      allowCustom: true,
+      allowRecurring: true,
+    },
+    fields: [
+      { key: "heading",        label: "Heading", type: "text" },
+      { key: "subheading",     label: "Sub-heading", type: "textarea" },
+      { key: "currency",       label: "Currency", type: "select", default: "GBP",
+        options: [
+          { value: "GBP", label: "GBP" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" },
+        ] },
+      { key: "amounts",        label: "Amounts (comma-separated)", type: "text" },
+      { key: "allowCustom",    label: "Allow custom amount", type: "boolean", default: true },
+      { key: "allowRecurring", label: "Show monthly toggle", type: "boolean", default: true },
     ],
   },
 };

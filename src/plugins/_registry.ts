@@ -40,6 +40,10 @@ import crm from "./crm";
 import affiliates from "./affiliates";
 import livechat from "./livechat";
 import auditlog from "./auditlog";
+import automation from "./automation";
+import knowledgebase from "./knowledgebase";
+import search from "./search";
+import backups from "./backups";
 
 // First-party plugins. Order is presentation-only (marketplace
 // rendering); install dependencies are enforced by the runtime.
@@ -61,10 +65,14 @@ const PLUGINS: AquaPlugin[] = [
   funnels,
   affiliates,
   crm,
+  automation,
+  knowledgebase,
+  search,
   compliance,
   support,
   auditor,
   auditlog,
+  backups,
   webhooks,
   repo,
   i18n,

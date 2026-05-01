@@ -222,6 +222,122 @@ const SAAS: AquaPreset = {
   ],
 };
 
+// ─── Preset: subscription / SaaS with billing ─────────────────────────────
+
+const SUBSCRIPTION_SAAS: AquaPreset = {
+  id: "subscription-saas",
+  name: "Subscription SaaS",
+  tagline: "Recurring billing + memberships + marketing site.",
+  description: "SaaS landing + Subscriptions + Memberships + E-commerce + Email + Forms + Chatbot + Funnels + Analytics + Compliance + Audit log. Trials, plan switching, dunning, hosted billing portal.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "ecommerce", features: { stripeCheckout: true, digitalProducts: true, physicalProducts: false, shipping: false, inventory: false } },
+    { pluginId: "subscriptions" },
+    { pluginId: "memberships", features: { freeTier: true, paidTiers: true, memberOnlyBlocks: true } },
+    { pluginId: "email" },
+    { pluginId: "forms" },
+    { pluginId: "chatbot" },
+    { pluginId: "funnels", features: { splitTests: true, funnels: true, conversionGoals: true } },
+    { pluginId: "seo" },
+    { pluginId: "analytics", features: { pageviews: true, events: true, funnelTracking: true } },
+    { pluginId: "compliance" },
+    { pluginId: "auditlog" },
+  ],
+};
+
+// ─── Preset: charity / non-profit ─────────────────────────────────────────
+
+const CHARITY: AquaPreset = {
+  id: "charity",
+  name: "Charity / non-profit",
+  tagline: "Donations + member updates + community storytelling.",
+  description: "Website + E-commerce (digital) + Donations (with goals + Gift Aid) + Email newsletter + Memberships + Blog + Forms + SEO + Analytics + Compliance.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "ecommerce", features: { digitalProducts: true, physicalProducts: false, shipping: false, inventory: false, stripeCheckout: true } },
+    { pluginId: "donations", features: { oneOff: true, recurring: true, goals: true, donorWall: true, giftAid: true, anonymousOption: true } },
+    { pluginId: "email", features: { transactional: true, templates: true, newsletter: true } },
+    { pluginId: "memberships", features: { freeTier: true, paidTiers: true, memberDirectory: false } },
+    { pluginId: "blog", features: { scheduling: true, featuredImage: true, tags: true, rss: true } },
+    { pluginId: "forms" },
+    { pluginId: "seo" },
+    { pluginId: "analytics" },
+    { pluginId: "compliance" },
+  ],
+};
+
+// ─── Preset: bookings / appointments ──────────────────────────────────────
+
+const BOOKINGS: AquaPreset = {
+  id: "bookings",
+  name: "Bookings / appointments",
+  tagline: "Time-slot reservations for restaurants, salons, doctors, consultants.",
+  description: "Website + Reservations + Email confirmations + Forms + SEO + Analytics + Compliance. Optional E-commerce for paid deposits.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "email" },
+    { pluginId: "reservations", features: { calendarView: true, groupBookings: true, reminders: true, waitlist: true } },
+    { pluginId: "forms" },
+    { pluginId: "seo" },
+    { pluginId: "analytics" },
+    { pluginId: "compliance" },
+  ],
+};
+
+// ─── Preset: membership / paid community ──────────────────────────────────
+
+const MEMBERSHIP_SITE: AquaPreset = {
+  id: "membership-site",
+  name: "Membership / paid community",
+  tagline: "Locked content with monthly recurring access.",
+  description: "Website + Memberships + Subscriptions + E-commerce + Email + Blog + Forms + SEO + Analytics + Compliance. Free + paid tiers, member-only blocks, custom welcome emails.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "ecommerce", features: { digitalProducts: true, physicalProducts: false, shipping: false, inventory: false } },
+    { pluginId: "subscriptions" },
+    { pluginId: "memberships", features: { freeTier: true, paidTiers: true, memberOnlyBlocks: true, welcomeEmail: true } },
+    { pluginId: "email", features: { transactional: true, templates: true, newsletter: true } },
+    { pluginId: "blog", features: { scheduling: true, featuredImage: true, tags: true, rss: false } },
+    { pluginId: "forms" },
+    { pluginId: "seo" },
+    { pluginId: "analytics" },
+    { pluginId: "compliance" },
+  ],
+};
+
+// ─── Preset: agency-grade (everything) ────────────────────────────────────
+
+const AGENCY: AquaPreset = {
+  id: "agency",
+  name: "Agency-grade (everything)",
+  tagline: "Most plugins on, ready for power users. Enterprise audit + webhooks + CRM.",
+  description: "Use this when you'll be hand-tuning. Every business-critical plugin pre-installed: Website, E-commerce (hybrid), Subscriptions, Memberships, Email, Forms, Chatbot, LiveChat, Funnels, SEO, Analytics, CRM, Affiliates, Webhooks, AuditLog, Compliance, Support.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "ecommerce", features: { physicalProducts: true, digitalProducts: true, variants: true, inventory: true, shipping: true, discountCodes: true, reviews: true, stripeCheckout: true } },
+    { pluginId: "subscriptions" },
+    { pluginId: "memberships" },
+    { pluginId: "email" },
+    { pluginId: "forms" },
+    { pluginId: "chatbot" },
+    { pluginId: "livechat" },
+    { pluginId: "funnels" },
+    { pluginId: "seo" },
+    { pluginId: "analytics" },
+    { pluginId: "crm" },
+    { pluginId: "affiliates" },
+    { pluginId: "webhooks" },
+    { pluginId: "auditlog" },
+    { pluginId: "compliance" },
+    { pluginId: "support" },
+  ],
+};
+
 // ─── Registry ──────────────────────────────────────────────────────────────
 
 const PRESETS: AquaPreset[] = [
@@ -234,6 +350,11 @@ const PRESETS: AquaPreset[] = [
   BLOG,
   MARKETING,
   SAAS,
+  SUBSCRIPTION_SAAS,
+  CHARITY,
+  BOOKINGS,
+  MEMBERSHIP_SITE,
+  AGENCY,
 ];
 
 export function listPresets(): AquaPreset[] {

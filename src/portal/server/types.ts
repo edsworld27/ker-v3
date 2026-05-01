@@ -649,7 +649,9 @@ export type BlockType =
   | "login-form" | "signup-form" | "theme-selector" | "social-auth"
   // Marketing / content blocks (added with the plugin platform)
   | "pricing-table" | "faq" | "contact-form" | "stats-bar" | "logo-grid"
-  | "feature-grid" | "newsletter-signup" | "countdown-timer" | "language-switcher";
+  | "feature-grid" | "newsletter-signup" | "countdown-timer" | "language-switcher"
+  | "gallery" | "quote" | "map" | "banner" | "author-bio" | "member-gate"
+  | "donation-button";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the
