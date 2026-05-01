@@ -9,6 +9,7 @@ import { listCustomTabs } from "@/lib/admin/adminConfig";
 import { setAdminMode, type AdminMode } from "@/lib/admin/adminConfig";
 import { getSession } from "@/lib/auth";
 import { logActivity, clearActivity } from "@/lib/admin/activity";
+import { listSites, setActiveSiteId } from "@/lib/admin/sites";
 
 interface CommandItem {
   id: string;
@@ -42,6 +43,8 @@ const STATIC_PAGES: CommandItem[] = [
   { id: "go-customise",   label: "Go to Customise",      group: "Navigation", icon: "▦", href: "/admin/customise" },
   { id: "go-tooltips",    label: "Edit Tooltips",        group: "Navigation", icon: "▦", href: "/admin/tooltips" },
   { id: "go-activity",    label: "View Activity Log",    group: "Navigation", icon: "▦", href: "/admin/activity" },
+  { id: "go-sites",       label: "Manage Sites",         group: "Navigation", icon: "▦", href: "/admin/sites" },
+  { id: "go-popup",       label: "Edit Discount Popup",  group: "Navigation", icon: "▦", href: "/admin/popup" },
 
   { id: "go-storefront",  label: "Open Storefront",      group: "Quick Links", icon: "↗", href: "/" },
   { id: "go-account",     label: "Open Customer Account",group: "Quick Links", icon: "↗", href: "/account" },
@@ -120,7 +123,18 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
       icon: t.icon || "▦",
       href: `/admin/tab/${t.id}`,
     }));
-    return [...customers, ...orders, ...products, ...tabs];
+    const session = getSession();
+    const sites = listSites().map(s => ({
+      id: `site-${s.id}`,
+      label: `Switch to ${s.name}`,
+      hint: s.primaryDomain || s.domains[0] || "no domain",
+      group: "Switch site",
+      icon: "◐",
+      action: () => {
+        setActiveSiteId(s.id, session?.user.email);
+      },
+    }));
+    return [...customers, ...orders, ...products, ...tabs, ...sites];
   }, [open]);
 
   const all = useMemo(() => [...STATIC_PAGES, ...ACTIONS, ...dynamic], [dynamic]);

@@ -16,6 +16,7 @@ import { getBranding, listCustomTabs, onAdminConfigChange, type AdminBranding, t
 import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
 import CommandPalette from "@/components/admin/CommandPalette";
+import SiteSwitcher from "@/components/admin/SiteSwitcher";
 
 interface NavItem { href: string; label: string; match: (p: string) => boolean; resource?: Resource }
 interface NavGroup { label: string; items: NavItem[] }
@@ -76,6 +77,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/support",      label: "Support",      match: (p) => p.startsWith("/admin/support"),      resource: "support" },
       { href: "/admin/shipping",     label: "Shipping",     match: (p) => p.startsWith("/admin/shipping"),     resource: "shipping" },
       { href: "/admin/settings",     label: "Settings",     match: (p) => p.startsWith("/admin/settings"),     resource: "settings" },
+      { href: "/admin/sites",        label: "Sites",        match: (p) => p.startsWith("/admin/sites"),        resource: "settings" },
       { href: "/admin/customise",    label: "Customise",    match: (p) => p.startsWith("/admin/customise"),    resource: "settings" },
       { href: "/admin/tooltips",     label: "Tooltips",     match: (p) => p.startsWith("/admin/tooltips"),     resource: "settings" },
       { href: "/admin/activity",     label: "Activity log", match: (p) => p.startsWith("/admin/activity"),     resource: "settings" },
@@ -238,6 +240,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="block text-[10px] tracking-[0.25em] uppercase text-brand-amber mt-0.5">{branding.shortName}</span>
           </div>
         </Link>
+
+        {/* Site switcher — picks which storefront the admin is editing */}
+        <div className="px-3 pt-3">
+          <SiteSwitcher />
+        </div>
 
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
           {NAV_GROUPS.map(group => {

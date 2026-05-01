@@ -9,6 +9,7 @@ import {
   type BackgroundConfig,
 } from "@/lib/admin/theme";
 import { isPreviewMode } from "@/lib/admin/content";
+import { resolveSiteByHost, onSitesChange } from "@/lib/admin/sites";
 import {
   getActiveVariantId,
   resolveVariantTheme,
@@ -178,7 +179,11 @@ export default function ThemeInjector() {
 
   function apply() {
     const base = isPreviewMode() ? getDraftTheme() : getPublishedTheme();
-    const variantId = getActiveVariantId();
+    // The active site's themeVariantId wins on the storefront. Falls back to
+    // the admin's globally-active variant (used in the admin preview), then
+    // to "dark".
+    const site = typeof window !== "undefined" ? resolveSiteByHost(window.location.hostname) : null;
+    const variantId = site?.themeVariantId ?? getActiveVariantId();
     const theme = resolveVariantTheme(base, variantId);
 
     if (!styleRef.current) {
@@ -214,7 +219,8 @@ export default function ThemeInjector() {
     apply();
     const off1 = onThemeChange(apply);
     const off2 = onVariantChange(apply);
-    return () => { off1(); off2(); };
+    const off3 = onSitesChange(apply);
+    return () => { off1(); off2(); off3(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
