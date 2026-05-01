@@ -18,8 +18,9 @@ import { getOrg } from "./orgs";
 import { getState, mutate } from "./storage";
 import {
   listBookings, listResources, listServices, listStaff,
-  createBooking,
+  createBooking, markReminderSent,
 } from "./reservations";
+import { sendEmail } from "./email";
 
 // ─── iCal text generation (RFC 5545 subset) ────────────────────────────────
 
@@ -377,19 +378,16 @@ export async function syncExternalFeed(orgId: string, feedId: string): Promise<{
 // /api/portal/reservations/reminders/run endpoint kicks it off.
 
 export async function dispatchDueReminders(orgId: string): Promise<{ sent24h: number; sent1h: number }> {
-  // Lazy-load to avoid a hard dep when Email plugin isn't installed.
-  const { sendEmail } = await import("./email");
-
   const now = Date.now();
   const window24h = [now + 23 * 3600_000, now + 25 * 3600_000];   // ±1h
   const window1h  = [now + 30 * 60_000,  now + 90 * 60_000];      // 30m–1.5h
 
   const bookings = listBookings(orgId).filter(b => b.status === "confirmed");
+  const services = listServices(orgId);
   let sent24h = 0;
   let sent1h = 0;
 
   for (const b of bookings) {
-    const services = listServices(orgId);
     const serviceName = b.serviceId ? services.find(s => s.id === b.serviceId)?.name : undefined;
 
     if (!b.remindersSent?.reminder24h && b.startMs >= window24h[0] && b.startMs <= window24h[1]) {
@@ -401,7 +399,6 @@ export async function dispatchDueReminders(orgId: string): Promise<{ sent24h: nu
         text: `See you tomorrow.\n\nYour${serviceName ? ` ${serviceName}` : ""} booking is at ${new Date(b.startMs).toLocaleString()}.`,
         tags: ["booking-reminder-24h"],
       }).catch(() => undefined);
-      const { markReminderSent } = await import("./reservations");
       markReminderSent(orgId, b.id, "reminder24h");
       sent24h++;
     }
@@ -415,7 +412,6 @@ export async function dispatchDueReminders(orgId: string): Promise<{ sent24h: nu
         text: `Almost time.\n\nYour${serviceName ? ` ${serviceName}` : ""} booking starts at ${new Date(b.startMs).toLocaleTimeString()}.`,
         tags: ["booking-reminder-1h"],
       }).catch(() => undefined);
-      const { markReminderSent } = await import("./reservations");
       markReminderSent(orgId, b.id, "reminder1h");
       sent1h++;
     }

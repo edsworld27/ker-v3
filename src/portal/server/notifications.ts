@@ -10,6 +10,7 @@ import "server-only";
 import { getOrg } from "./orgs";
 import { getState, mutate } from "./storage";
 import { on, type AquaEventName } from "./eventBus";
+import { sendEmail } from "./email";
 
 export type NotificationCategory =
   | "order" | "booking" | "form" | "subscription"
@@ -293,7 +294,6 @@ export function bindNotifications(): void {
     // batched by an external scheduler; for now, skip batching and
     // rely on immediate.
     if (cfg.emailDigest === "immediate" && cfg.digestRecipients.length > 0) {
-      const { sendEmail } = await import("./email");
       await sendEmail({
         orgId: event.orgId,
         to: cfg.digestRecipients,
@@ -325,7 +325,6 @@ export async function dispatchDigest(orgId: string): Promise<{ sent: boolean; co
   const unread = listNotifications(orgId, 5000, true).filter(n => n.createdAt >= since);
   if (unread.length === 0) return { sent: false, count: 0 };
 
-  const { sendEmail } = await import("./email");
   const items = unread.map(n => `<li><strong>${n.title}</strong> — ${n.body}</li>`).join("");
   const itemsText = unread.map(n => `• ${n.title} — ${n.body}`).join("\n");
 

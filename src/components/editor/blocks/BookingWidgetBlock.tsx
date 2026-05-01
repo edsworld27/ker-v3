@@ -94,10 +94,11 @@ export default function BookingWidgetBlock({ block }: BlockRenderProps) {
     const day = new Date(date); day.setHours(9, 0, 0, 0);
     const end = new Date(date); end.setHours(17, 0, 0, 0);
     let cursor = day.getTime();
-    const step = Math.max(15, durationMinutes) * 60_000;
+    // Inner `slotMs` (avoid shadowing the outer `step` state).
+    const slotMs = Math.max(15, durationMinutes) * 60_000;
     while (cursor + durationMinutes * 60_000 <= end.getTime()) {
       if (cursor > Date.now() + 60_000) out.push(cursor);
-      cursor += step;
+      cursor += slotMs;
     }
     return out;
   }

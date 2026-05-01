@@ -1,8 +1,13 @@
-// GET /api/portal/reservations/calendar.ics?orgId=...&token=...
+// GET /api/portal/reservations/feed?orgId=...&token=...
 //
 // Public iCal feed for Google / Apple / Notion / Outlook subscribe.
 // Token-gated so the feed URL doubles as a shareable secret —
 // rotating the token invalidates outstanding subscriptions.
+//
+// Note: lives at /feed (not /calendar.ics) because Turbopack treats
+// dot-containing route segments as static asset paths under some
+// conditions. Calendar clients honour Content-Type: text/calendar
+// regardless of URL extension.
 
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
