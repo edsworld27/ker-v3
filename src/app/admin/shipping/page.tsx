@@ -30,21 +30,21 @@ export default function AdminShippingPage() {
 
       {/* Defaults */}
       <Section title="Dispatch defaults">
-        <Field label="Handling time" tip="How long between order and shipment. Shown on the storefront and used by the chatbot.">
+        <Field label="Handling time" tipId="shipping.handling-time" tip="How long between order and shipment. Shown on the storefront and used by the chatbot.">
           <input
             value={cfg.defaults.handlingTime}
             onChange={e => updateDefaults({ handlingTime: e.target.value })}
             className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
           />
         </Field>
-        <Field label="Cutoff" tip="Daily cutoff time for same-day dispatch. Orders placed after this ship the next business day.">
+        <Field label="Cutoff" tipId="shipping.cutoff" tip="Daily cutoff time for same-day dispatch. Orders placed after this ship the next business day.">
           <input
             value={cfg.defaults.cutoff}
             onChange={e => updateDefaults({ cutoff: e.target.value })}
             className="w-full bg-brand-black border border-white/10 rounded-lg px-3 py-2 text-sm text-brand-cream"
           />
         </Field>
-        <Field label="Default carrier" tip="Used when an order's tracking is missing carrier metadata.">
+        <Field label="Default carrier" tipId="shipping.carrier" tip="Used when an order's tracking is missing carrier metadata.">
           <input
             value={cfg.defaults.carrier}
             onChange={e => updateDefaults({ carrier: e.target.value })}
@@ -57,7 +57,7 @@ export default function AdminShippingPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-xs tracking-[0.22em] uppercase text-brand-cream/60">Shipping zones</h2>
-          <Tip text="Group destination countries and assign carrier rates to each. The first matching zone wins, so order zones from most specific to most general (eg. UK first, then Europe, then Worldwide)." />
+          <Tip id="shipping.zones" text="Group destination countries and assign carrier rates to each. The first matching zone wins, so order zones from most specific to most general (eg. UK first, then Europe, then Worldwide)." />
         </div>
         <button onClick={() => addZone()} className="text-xs px-3 py-1.5 rounded-lg border border-brand-orange/30 text-brand-orange hover:bg-brand-orange/10">+ Add zone</button>
       </div>
@@ -129,12 +129,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
+function Field({ label, tip, tipId, children }: { label: string; tip?: string; tipId?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5 sm:col-span-2">
       <label className="text-[11px] tracking-widest uppercase text-brand-cream/45 flex items-center gap-1.5">
         {label}
-        {tip && <Tip text={tip} />}
+        {tip && <Tip id={tipId} text={tip} />}
       </label>
       {children}
     </div>

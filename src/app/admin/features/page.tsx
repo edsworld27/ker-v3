@@ -40,7 +40,7 @@ export default function AdminFeaturesPage() {
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Growth</p>
           <div className="flex items-center gap-2">
             <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Feature flags</h1>
-            <Tip text="Toggle parts of the site without redeploying. Use rollout % to gradually expose new features to a subset of users (deterministic by stable hash of email)." align="bottom" />
+            <Tip id="features.header" text="Toggle parts of the site without redeploying. Use rollout % to gradually expose new features to a subset of users (deterministic by stable hash of email)." align="bottom" />
           </div>
           <p className="text-brand-cream/45 text-sm mt-1">
             Turn features on/off, do percentage rollouts, or override per user. Store future features here until ready to launch.
@@ -122,7 +122,7 @@ export default function AdminFeaturesPage() {
                   />
                   <span className="text-xs font-mono text-brand-amber">{flag.rolloutPercent}%</span>
                   <span className="text-[11px] text-brand-cream/35">of users</span>
-                  <Tip text="Sticky bucketing: each user is hashed to a stable number 0–99, and stays in or out for the lifetime of this flag. Increase the percentage to widen exposure." />
+                  <Tip id="features.rollout" text="Sticky bucketing: each user is hashed to a stable number 0–99, and stays in or out for the lifetime of this flag. Increase the percentage to widen exposure." />
                 </div>
               )}
 

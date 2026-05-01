@@ -1,20 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getTooltipText, onTooltipsChange } from "@/lib/admin/tooltips";
 
 // Reusable admin tooltip. Hover (or focus) shows a richer popup than the
 // native `title` attribute — supports paragraphs and tap-to-toggle on mobile.
+//
+// Pass `id` to make the tooltip editable from /admin/tooltips. The default
+// `text` is shown until an admin overrides it.
 
 export default function Tip({
+  id,
   text,
   size = "sm",
   align = "top",
 }: {
+  id?: string;
   text: string;
   size?: "sm" | "md";
   align?: "top" | "bottom" | "right";
 }) {
   const [open, setOpen] = useState(false);
+  const [resolved, setResolved] = useState(text);
+
+  useEffect(() => {
+    setResolved(getTooltipText(id, text));
+    if (!id) return;
+    return onTooltipsChange(() => setResolved(getTooltipText(id, text)));
+  }, [id, text]);
 
   const dim = size === "md" ? "w-5 h-5 text-[10px]" : "w-4 h-4 text-[9px]";
 
@@ -42,9 +55,9 @@ export default function Tip({
       {open && (
         <span
           role="tooltip"
-          className={`absolute z-[60] ${popPos} w-64 rounded-lg bg-brand-black border border-brand-orange/25 shadow-xl shadow-black/50 px-3 py-2 text-[11px] leading-relaxed text-brand-cream/85 normal-case tracking-normal pointer-events-none`}
+          className={`absolute z-[60] ${popPos} w-64 rounded-lg bg-brand-black border border-brand-orange/25 shadow-xl shadow-black/50 px-3 py-2 text-[11px] leading-relaxed text-brand-cream/85 normal-case tracking-normal pointer-events-none whitespace-pre-line`}
         >
-          {text}
+          {resolved}
         </span>
       )}
     </span>
