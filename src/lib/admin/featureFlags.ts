@@ -1,5 +1,7 @@
 "use client";
 
+import { logActivity } from "./activity";
+
 // Feature flags system.
 // Admin can turn features on/off site-wide, set rollout %, or override per user email.
 // Components use isFeatureEnabled(flag) to gate functionality.
@@ -190,8 +192,22 @@ export function getFlag(id: string): FeatureFlag | null {
 
 export function saveFlag(id: string, patch: Partial<Omit<FeatureFlag, "id">>) {
   const store = readStore();
+  const prev = store[id];
   store[id] = { ...store[id], ...patch };
   writeStore(store);
+  if (prev) {
+    const changes: string[] = [];
+    if (patch.status !== undefined && patch.status !== prev.status) changes.push(`status: ${prev.status} → ${patch.status}`);
+    if (patch.rolloutPercent !== undefined && patch.rolloutPercent !== prev.rolloutPercent) changes.push(`rollout: ${prev.rolloutPercent}% → ${patch.rolloutPercent}%`);
+    if (changes.length > 0 || patch.name || patch.description || patch.category) {
+      logActivity({
+        category: "features",
+        action: `Updated flag "${prev.name}"${changes.length ? ` (${changes.join(", ")})` : ""}`,
+        resourceId: id,
+        resourceLink: `/admin/features`,
+      });
+    }
+  }
 }
 
 export function createFlag(
@@ -231,7 +247,17 @@ export function setUserOverride(flagId: string, email: string, enabled: boolean 
   const overrides = { ...flag.userOverrides };
   if (enabled === null) delete overrides[email];
   else overrides[email] = enabled;
-  saveFlag(flagId, { userOverrides: overrides });
+  const store = readStore();
+  store[flagId] = { ...store[flagId], userOverrides: overrides };
+  writeStore(store);
+  logActivity({
+    category: "features",
+    action: enabled === null
+      ? `Cleared "${flag.name}" override for ${email}`
+      : `Set "${flag.name}" → ${enabled ? "ON" : "OFF"} for ${email}`,
+    resourceId: flagId,
+    resourceLink: `/admin/features`,
+  });
 }
 
 // ─── Evaluation ───────────────────────────────────────────────────────────────

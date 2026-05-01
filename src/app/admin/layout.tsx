@@ -15,6 +15,7 @@ import { getTeamMemberByEmail, getPermissionsForEmail, type Resource, type Actio
 import { getBranding, listCustomTabs, onAdminConfigChange, type AdminBranding, type CustomTab } from "@/lib/admin/adminConfig";
 import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
+import CommandPalette from "@/components/admin/CommandPalette";
 
 interface NavItem { href: string; label: string; match: (p: string) => boolean; resource?: Resource }
 interface NavGroup { label: string; items: NavItem[] }
@@ -76,6 +77,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/settings",     label: "Settings",     match: (p) => p.startsWith("/admin/settings"),     resource: "settings" },
       { href: "/admin/customise",    label: "Customise",    match: (p) => p.startsWith("/admin/customise"),    resource: "settings" },
       { href: "/admin/tooltips",     label: "Tooltips",     match: (p) => p.startsWith("/admin/tooltips"),     resource: "settings" },
+      { href: "/admin/activity",     label: "Activity log", match: (p) => p.startsWith("/admin/activity"),     resource: "settings" },
     ],
   },
 ];
@@ -97,6 +99,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [activeFunnels, setActiveFunnels] = useState(0);
   const [branding, setBranding] = useState<AdminBranding>(() => getBranding());
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Cmd+K (or Ctrl+K) opens the command palette
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     setSession(getSession());
@@ -315,6 +330,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           )}
           <AdminModeSwitcher />
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] text-xs text-brand-cream/60 hover:text-brand-cream transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></svg>
+              Quick search
+            </span>
+            <kbd className="text-[10px] border border-white/15 rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
+          </button>
         </div>
 
         <div className="p-4 border-t border-white/5 text-[11px] text-brand-cream/40 space-y-1">
@@ -368,6 +393,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-16 md:pb-0">
         {children}
       </main>
+
+      {/* Command palette (Cmd+K) */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+      {/* Mobile floating ⌘K button (desktop users use the keyboard shortcut) */}
+      <button
+        onClick={() => setPaletteOpen(true)}
+        className="md:hidden fixed bottom-16 right-4 z-30 w-12 h-12 rounded-full bg-brand-orange text-white shadow-lg shadow-black/40 flex items-center justify-center"
+        aria-label="Open command palette"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </svg>
+      </button>
     </div>
   );
 }

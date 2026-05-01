@@ -1,5 +1,7 @@
 "use client";
 
+import { logActivity } from "./activity";
+
 // Editable tooltips. Default copy lives in DEFAULT_TOOLTIPS keyed by stable IDs.
 // Admins can override any text from /admin/tooltips. Overrides persist in
 // localStorage and broadcast a change event so live <Tip> instances re-render.
@@ -105,16 +107,33 @@ export function saveTooltipOverride(id: string, text: string) {
     o[id] = text;
   }
   writeOverrides(o);
+  logActivity({
+    category: "settings",
+    action: text.trim() ? `Edited tooltip "${id}"` : `Cleared tooltip override "${id}"`,
+    resourceId: id,
+    resourceLink: `/admin/tooltips`,
+  });
 }
 
 export function resetTooltipOverride(id: string) {
   const o = readOverrides();
   delete o[id];
   writeOverrides(o);
+  logActivity({
+    category: "settings",
+    action: `Reset tooltip "${id}" to default`,
+    resourceId: id,
+    resourceLink: `/admin/tooltips`,
+  });
 }
 
 export function resetAllTooltipOverrides() {
   writeOverrides({});
+  logActivity({
+    category: "settings",
+    action: `Reset all tooltip overrides`,
+    resourceLink: `/admin/tooltips`,
+  });
 }
 
 export function onTooltipsChange(handler: () => void): () => void {
