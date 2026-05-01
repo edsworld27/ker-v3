@@ -68,7 +68,8 @@ import {
 } from "@/portal/server/orders";
 import { sendEmail } from "@/portal/server/email";
 import { emit } from "@/portal/server/eventBus";
-import "@/portal/server/webhooks"; // ensure event bus is wired
+import "@/portal/server/webhooks";
+import "@/portal/server/notifications";
 
 export const runtime = "nodejs";
 

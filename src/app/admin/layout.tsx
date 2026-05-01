@@ -26,6 +26,7 @@ import AdminModeSwitcher from "@/components/AdminModeSwitcher";
 import CommandPalette from "@/components/admin/CommandPalette";
 import SiteSwitcher from "@/components/admin/SiteSwitcher";
 import OrgSwitcher from "@/components/admin/OrgSwitcher";
+import NotificationBell from "@/components/admin/NotificationBell";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -223,7 +224,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Site switcher — picks which storefront the admin is editing */}
         <div className="px-3 pt-3 space-y-2">
-          <OrgSwitcher />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0"><OrgSwitcher /></div>
+            <NotificationBell />
+          </div>
           <SiteSwitcher />
         </div>
 

@@ -5,6 +5,7 @@ import { ensureHydrated } from "@/portal/server/storage";
 import { subscribe } from "@/portal/server/newsletter";
 import { emit } from "@/portal/server/eventBus";
 import "@/portal/server/webhooks";
+import "@/portal/server/notifications";
 
 export const dynamic = "force-dynamic";
 

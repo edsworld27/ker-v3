@@ -338,6 +338,43 @@ const AGENCY: AquaPreset = {
   ],
 };
 
+// ─── Preset: full service-based business ──────────────────────────────────
+
+const SERVICE_BUSINESS: AquaPreset = {
+  id: "service-business",
+  name: "Service business (calendar + bookings)",
+  tagline: "Salons, clinics, consultants, studios — anyone selling time slots.",
+  description: "Website + Reservations + Email + Notifications + Forms + SEO + Analytics + Compliance. Bookings calendar with iCal export to Google / Apple / Notion / Outlook, external feed import, in-app + email + push notifications, services + staff + buffer time, customer reminders 24h and 1h before each booking, public booking widget block on the storefront.",
+  plugins: [
+    { pluginId: "brand" },
+    { pluginId: "website" },
+    { pluginId: "email", features: { transactional: true, templates: true, newsletter: false } },
+    { pluginId: "notifications", features: { inApp: true, emailDigest: true, browserPush: false, perUserPrefs: true } },
+    {
+      pluginId: "reservations",
+      features: {
+        calendarView: true,
+        groupBookings: true,
+        depositPayments: false,
+        reminders: true,
+        smsReminders: false,
+        waitlist: true,
+        recurring: false,
+      },
+      config: {
+        bookingPath: "/book",
+        leadTimeMinutes: 60,
+        maxFutureDays: 90,
+        slotDuration: 30,
+      },
+    },
+    { pluginId: "forms" },
+    { pluginId: "seo" },
+    { pluginId: "analytics" },
+    { pluginId: "compliance" },
+  ],
+};
+
 // ─── Registry ──────────────────────────────────────────────────────────────
 
 const PRESETS: AquaPreset[] = [
@@ -353,6 +390,7 @@ const PRESETS: AquaPreset[] = [
   SUBSCRIPTION_SAAS,
   CHARITY,
   BOOKINGS,
+  SERVICE_BUSINESS,
   MEMBERSHIP_SITE,
   AGENCY,
 ];
