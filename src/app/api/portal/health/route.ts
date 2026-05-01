@@ -20,6 +20,7 @@ export async function GET() {
       tracking: true,             // GET/POST /api/portal/config/[siteId]
       content: true,              // GET/POST /api/portal/content/[siteId]
       manifest: true,             // GET/POST /api/portal/schema/[siteId] (D-1)
+      embeds: true,               // GET/POST /api/portal/embeds/[siteId] (D-5)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

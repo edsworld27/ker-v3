@@ -45,6 +45,48 @@ interface AdminTrackingConfig {
   updatedAt: number;
 }
 
+// Embeds — mirrors src/portal/server/types.ts. Inlined to keep the admin
+// page free of server-only imports.
+type AdminEmbedProvider =
+  | "crisp" | "intercom" | "tidio"
+  | "calendly" | "cal-com"
+  | "youtube" | "vimeo"
+  | "custom-html";
+
+type AdminEmbedPosition = "popup-bottom-right" | "popup-bottom-left" | "inline" | "bottom-bar";
+
+interface AdminEmbed {
+  id: string;
+  provider: AdminEmbedProvider;
+  enabled: boolean;
+  value: string;
+  position?: AdminEmbedPosition;
+  consentCategory?: ConsentCategory;
+  settings?: Record<string, unknown>;
+  label?: string;
+}
+
+const EMBED_PROVIDER_OPTIONS: { id: AdminEmbedProvider; label: string; placeholder: string; defaultCategory: ConsentCategory; defaultPosition?: AdminEmbedPosition }[] = [
+  { id: "crisp",       label: "Crisp Chat",  placeholder: "1234abcd-...",                       defaultCategory: "functional", defaultPosition: "popup-bottom-right" },
+  { id: "intercom",    label: "Intercom",    placeholder: "abc1234",                             defaultCategory: "functional", defaultPosition: "popup-bottom-right" },
+  { id: "tidio",       label: "Tidio",       placeholder: "abc1234",                             defaultCategory: "functional", defaultPosition: "popup-bottom-right" },
+  { id: "calendly",    label: "Calendly",    placeholder: "https://calendly.com/yourname/30min", defaultCategory: "functional" },
+  { id: "cal-com",     label: "Cal.com",     placeholder: "https://cal.com/yourname",            defaultCategory: "functional" },
+  { id: "youtube",     label: "YouTube",     placeholder: "dQw4w9WgXcQ",                         defaultCategory: "marketing" },
+  { id: "vimeo",       label: "Vimeo",       placeholder: "12345678",                            defaultCategory: "marketing" },
+  { id: "custom-html", label: "Custom HTML", placeholder: "<script>...</script>",                defaultCategory: "marketing" },
+];
+
+const EMBED_PROVIDER_BY_ID: Record<AdminEmbedProvider, (typeof EMBED_PROVIDER_OPTIONS)[number]> =
+  EMBED_PROVIDER_OPTIONS.reduce((acc, p) => { acc[p.id] = p; return acc; }, {} as Record<AdminEmbedProvider, (typeof EMBED_PROVIDER_OPTIONS)[number]>);
+
+const EMBED_POSITION_LABELS: Record<AdminEmbedPosition, string> = {
+  "popup-bottom-right": "Popup (bottom right)",
+  "popup-bottom-left":  "Popup (bottom left)",
+  "inline":             "Inline",
+  "bottom-bar":         "Bottom bar",
+};
+
 // Content overrides — mirrors src/portal/server/types.ts.
 type OverrideType = "text" | "html" | "image-src" | "href";
 
@@ -418,6 +460,9 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Tracking & analytics — central config served to the loader */}
           <TrackingBlock siteId={site.id} />
 
+          {/* Embeds — chatbots, calendars, video, custom HTML */}
+          <EmbedsBlock siteId={site.id} />
+
           {/* Content overrides — instrumented regions on the host site */}
           <ContentOverridesBlock siteId={site.id} />
 
@@ -779,6 +824,229 @@ function TrackerRow({ tracker, onPatch, onDelete }: {
         >
           ×
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Embeds ─────────────────────────────────────────────────────────────────
+//
+// Per-site registry of embeddable widgets — chatbots, calendars, video,
+// custom HTML. Host sites render <PortalEmbed id="..." siteId="..."/>; the
+// component fetches this list and picks the right provider snippet.
+
+function EmbedsBlock({ siteId }: { siteId: string }) {
+  const [embeds, setEmbeds] = useState<AdminEmbed[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [addProvider, setAddProvider] = useState<AdminEmbedProvider>("crisp");
+  const [addId, setAddId] = useState("");
+  const [addValue, setAddValue] = useState("");
+  const embedsRef = useRef<AdminEmbed[] | null>(null);
+  embedsRef.current = embeds;
+
+  // Load full admin list on mount.
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/embeds/${encodeURIComponent(siteId)}?admin=1`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminEmbed[];
+        if (!cancelled) setEmbeds(Array.isArray(data) ? data : []);
+      } catch { /* leave null — UI shows error state */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Debounced save: 500ms after the last edit. Driven by the dirty flag so
+  // the initial fetch doesn't trigger a write.
+  useEffect(() => {
+    if (!dirty || !embeds) return;
+    const id = setTimeout(async () => {
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/portal/embeds/${encodeURIComponent(siteId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds }),
+        });
+        if (res.ok) { setSavedAt(Date.now()); setDirty(false); }
+      } catch { /* keep optimistic state, retry on next edit */ }
+      finally { setSaving(false); }
+    }, 500);
+    return () => clearTimeout(id);
+  }, [dirty, embeds, siteId]);
+
+  function addEmbed() {
+    const idText = addId.trim();
+    const value = addValue.trim();
+    if (!idText || !value) return;
+    if ((embedsRef.current ?? []).some(e => e.id === idText)) return;   // duplicate id
+    const meta = EMBED_PROVIDER_BY_ID[addProvider];
+    const e: AdminEmbed = {
+      id: idText,
+      provider: addProvider,
+      enabled: true,
+      value,
+      consentCategory: meta.defaultCategory,
+      position: meta.defaultPosition,
+    };
+    setEmbeds([...(embedsRef.current ?? []), e]);
+    setDirty(true);
+    setAddId("");
+    setAddValue("");
+  }
+
+  function patchEmbed(rowId: string, patch: Partial<AdminEmbed>) {
+    setEmbeds((embedsRef.current ?? []).map(e => e.id === rowId ? { ...e, ...patch } : e));
+    setDirty(true);
+  }
+
+  function deleteEmbed(rowId: string) {
+    if (!confirm("Remove this embed?")) return;
+    setEmbeds((embedsRef.current ?? []).filter(e => e.id !== rowId));
+    setDirty(true);
+  }
+
+  const list = embeds ?? [];
+  const enabledCount = list.filter(e => e.enabled && e.value).length;
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Embeds</p>
+        <Tip text='Drop &lt;PortalEmbed id="support-chat" siteId="..."/&gt; into your React tree wherever you want a chatbot, calendar, video player, or custom HTML widget. Configure the underlying provider here and you can swap Crisp for Intercom (or change a Calendly URL) without touching the host site code.' />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : `${enabledCount} active`}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-3">
+        {list.length === 0 && !loading && (
+          <p className="text-xs text-brand-cream/40 italic px-1">No embeds yet — add one below.</p>
+        )}
+        {list.map(e => (
+          <EmbedRow
+            key={e.id}
+            embed={e}
+            onPatch={p => patchEmbed(e.id, p)}
+            onDelete={() => deleteEmbed(e.id)}
+          />
+        ))}
+
+        {/* Add embed */}
+        <div className="rounded-lg border border-white/5 bg-brand-black p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-brand-cream/40">Add embed</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={addProvider}
+              onChange={ev => setAddProvider(ev.target.value as AdminEmbedProvider)}
+              className={INPUT + " sm:w-44"}
+            >
+              {EMBED_PROVIDER_OPTIONS.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+            <input
+              value={addId}
+              onChange={ev => setAddId(ev.target.value)}
+              placeholder="e.g. support-chat"
+              className={INPUT + " font-mono text-xs sm:w-44"}
+            />
+            <input
+              value={addValue}
+              onChange={ev => setAddValue(ev.target.value)}
+              onKeyDown={ev => { if (ev.key === "Enter") { ev.preventDefault(); addEmbed(); } }}
+              placeholder={EMBED_PROVIDER_BY_ID[addProvider].placeholder}
+              className={INPUT + " font-mono text-xs flex-1 min-w-[160px]"}
+            />
+            <button
+              onClick={addEmbed}
+              disabled={!addId.trim() || !addValue.trim()}
+              className="text-xs px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-40 shrink-0"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-brand-cream/30">
+          Reference each embed by its id from <code className="font-mono">&lt;PortalEmbed id=&quot;…&quot;/&gt;</code>. Changes apply within ~30 seconds (the renderer caches that long).
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EmbedRow({ embed, onPatch, onDelete }: {
+  embed: AdminEmbed;
+  onPatch: (p: Partial<AdminEmbed>) => void;
+  onDelete: () => void;
+}) {
+  const meta = EMBED_PROVIDER_BY_ID[embed.provider];
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => onPatch({ enabled: !embed.enabled })}
+          className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+            embed.enabled ? "bg-green-500/80 justify-end" : "bg-white/15 justify-start"
+          }`}
+          aria-pressed={embed.enabled}
+          title={embed.enabled ? "Enabled — click to pause" : "Disabled — click to enable"}
+        >
+          <div className="w-3 h-3 rounded-full bg-white" />
+        </button>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-brand-cream/65 border border-white/10 shrink-0">
+          {meta.label}
+        </span>
+        <code className="font-mono text-[11px] text-brand-cream/80 bg-white/5 px-2 py-1 rounded border border-white/10 shrink-0" title="Embed id (read-only)">
+          {embed.id}
+        </code>
+        <input
+          value={embed.value}
+          onChange={ev => onPatch({ value: ev.target.value })}
+          placeholder={meta.placeholder}
+          className={INPUT + " font-mono text-xs flex-1 min-w-[140px] py-1.5"}
+        />
+        <button
+          onClick={onDelete}
+          className="text-[12px] px-2 py-1 text-brand-cream/45 hover:text-red-400 shrink-0"
+          aria-label="Remove embed"
+        >
+          ×
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={embed.position ?? ""}
+          onChange={ev => onPatch({ position: (ev.target.value || undefined) as AdminEmbedPosition | undefined })}
+          className={INPUT + " text-xs py-1.5 sm:w-48"}
+          title="Where the widget renders"
+        >
+          <option value="">Position (default)</option>
+          {(Object.keys(EMBED_POSITION_LABELS) as AdminEmbedPosition[]).map(p => (
+            <option key={p} value={p}>{EMBED_POSITION_LABELS[p]}</option>
+          ))}
+        </select>
+        <select
+          value={embed.consentCategory ?? meta.defaultCategory}
+          onChange={ev => onPatch({ consentCategory: ev.target.value as ConsentCategory })}
+          className={INPUT + " text-xs py-1.5 sm:w-32"}
+          title="Which consent category gates this embed"
+        >
+          <option value="functional">Functional</option>
+          <option value="analytics">Analytics</option>
+          <option value="marketing">Marketing</option>
+        </select>
       </div>
     </div>
   );
