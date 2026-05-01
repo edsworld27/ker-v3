@@ -44,6 +44,7 @@ export async function GET() {
       sitesAdminPolished: true,   // T1 #10 — favicon/logo upload UX, theme variant tile picker, DNS check helper, sortable site list, primary star moved out of danger zone
       chatbot: true,              // T1 #3 — per-site chatbot config (provider picker, system prompt, theming)
       billing: true,              // G-3 plan registry + Stripe-billed feature flags
+      dashboards: true,           // G-4 per-tenant dashboard layout customisation
       visualEditor: true,         // T1 #8 — in-place editor overlay for [data-portal-edit] regions
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
