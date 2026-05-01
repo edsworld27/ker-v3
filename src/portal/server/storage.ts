@@ -23,7 +23,7 @@ import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
   EmbedTheme, ChatbotConfig, OrgRecord, ServerUser, EditorPage, PortalAsset,
-  ThemeRecord,
+  ThemeRecord, FeatureRequest, MeetingBooking, SupportInvoice,
 } from "./types";
 
 interface PortalState {
@@ -42,6 +42,9 @@ interface PortalState {
   pages: Record<string, Record<string, EditorPage>>; // V-A visual editor: siteId → pageId → page
   assets: Record<string, PortalAsset>;               // P-2 asset library: assetId → asset
   themes: Record<string, Record<string, ThemeRecord>>; // T-1 themes: siteId → themeId → theme
+  featureRequests: Record<string, FeatureRequest>;     // S-1 aqua support
+  meetings: Record<string, MeetingBooking>;            // S-1 aqua support
+  invoices: Record<string, SupportInvoice>;            // S-1 aqua support (mock until Stripe wired)
 }
 
 const empty = (): PortalState => ({
@@ -56,6 +59,9 @@ const empty = (): PortalState => ({
   pages: {},
   assets: {},
   themes: {},
+  featureRequests: {},
+  meetings: {},
+  invoices: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -418,6 +424,9 @@ function parseBlob(raw: string): PortalState {
       pages: parsed.pages ?? {},
       assets: parsed.assets ?? {},
       themes: parsed.themes ?? {},
+      featureRequests: parsed.featureRequests ?? {},
+      meetings: parsed.meetings ?? {},
+      invoices: parsed.invoices ?? {},
     };
   } catch {
     return empty();

@@ -8,14 +8,16 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type AnimateKind = "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in";
+type AnimateKind = "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in" | "rotate-in" | "blur-in";
 
 const REST: Record<AnimateKind, React.CSSProperties> = {
-  "fade-in":     { opacity: 1, transform: "none" },
-  "slide-up":    { opacity: 1, transform: "none" },
-  "slide-left":  { opacity: 1, transform: "none" },
-  "slide-right": { opacity: 1, transform: "none" },
-  "zoom-in":     { opacity: 1, transform: "none" },
+  "fade-in":     { opacity: 1, transform: "none", filter: "none" },
+  "slide-up":    { opacity: 1, transform: "none", filter: "none" },
+  "slide-left":  { opacity: 1, transform: "none", filter: "none" },
+  "slide-right": { opacity: 1, transform: "none", filter: "none" },
+  "zoom-in":     { opacity: 1, transform: "none", filter: "none" },
+  "rotate-in":   { opacity: 1, transform: "none", filter: "none" },
+  "blur-in":     { opacity: 1, transform: "none", filter: "none" },
 };
 
 const HIDDEN: Record<AnimateKind, React.CSSProperties> = {
@@ -24,11 +26,19 @@ const HIDDEN: Record<AnimateKind, React.CSSProperties> = {
   "slide-left":  { opacity: 0,             transform: "translateX(-24px)" },
   "slide-right": { opacity: 0,             transform: "translateX(24px)" },
   "zoom-in":     { opacity: 0,             transform: "scale(0.96)" },
+  "rotate-in":   { opacity: 0,             transform: "rotate(-4deg) scale(0.98)" },
+  "blur-in":     { opacity: 0,             transform: "none", filter: "blur(8px)" },
 };
 
-const TRANSITION = "opacity 600ms ease-out, transform 600ms ease-out";
+interface Props {
+  animate: AnimateKind;
+  duration?: string;
+  delay?: string;
+  easing?: string;
+  children: React.ReactNode;
+}
 
-export default function AnimateOnScroll({ animate, children }: { animate: AnimateKind; children: React.ReactNode }) {
+export default function AnimateOnScroll({ animate, duration, delay, easing, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
 
@@ -47,13 +57,17 @@ export default function AnimateOnScroll({ animate, children }: { animate: Animat
     return () => obs.disconnect();
   }, []);
 
+  const dur = duration ?? "600ms";
+  const del = delay ?? "0ms";
+  const ease = easing ?? "ease-out";
+
   return (
     <div
       ref={ref}
       style={{
         ...(shown ? REST[animate] : HIDDEN[animate]),
-        transition: TRANSITION,
-        willChange: "opacity, transform",
+        transition: `opacity ${dur} ${ease} ${del}, transform ${dur} ${ease} ${del}, filter ${dur} ${ease} ${del}`,
+        willChange: "opacity, transform, filter",
       }}
     >
       {children}

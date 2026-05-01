@@ -20,6 +20,7 @@ import {
 import Canvas from "@/components/editor/canvas/Canvas";
 import Sidebar from "@/components/editor/canvas/Sidebar";
 import PropertiesPanel from "@/components/editor/canvas/PropertiesPanel";
+import TouchDndProvider from "@/components/editor/canvas/touchDnd";
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -285,6 +286,7 @@ export default function EditorPage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-brand-black">
+      <TouchDndProvider />
       {/* Top bar */}
       <header className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/8 bg-brand-black-soft">
         <button onClick={() => router.push(`/admin/sites/${siteId}/pages`)} className="text-[12px] text-brand-cream/55 hover:text-brand-cream">← Pages</button>

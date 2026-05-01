@@ -49,6 +49,12 @@ interface PageResponse {
     customHead?: string;
     customFoot?: string;
     themeId?: string;
+    layoutOverrides?: {
+      hideNav?: boolean;
+      hideFooter?: boolean;
+      nav?: Block[];
+      footer?: Block[];
+    };
     seo?: {
       title?: string;
       metaDescription?: string;
@@ -163,7 +169,13 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
       )}
       {customHead && <span dangerouslySetInnerHTML={{ __html: customHead }} />}
       <div data-portal-page={scopeId} data-theme-id={themeId} data-theme-appearance={data.theme?.appearance ?? "auto"}>
+        {data.page.layoutOverrides?.nav && !data.page.layoutOverrides.hideNav && (
+          <BlockRenderer blocks={data.page.layoutOverrides.nav} themeId={themeId} />
+        )}
         <BlockRenderer blocks={data.page.blocks} themeId={themeId} />
+        {data.page.layoutOverrides?.footer && !data.page.layoutOverrides.hideFooter && (
+          <BlockRenderer blocks={data.page.layoutOverrides.footer} themeId={themeId} />
+        )}
       </div>
       {customFoot && <span dangerouslySetInnerHTML={{ __html: customFoot }} />}
     </>

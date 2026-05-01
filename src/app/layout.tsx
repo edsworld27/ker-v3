@@ -12,6 +12,7 @@ import ImpersonationBar from "@/components/ImpersonationBar";
 import ForcePasswordChange from "@/components/ForcePasswordChange";
 import FeatureGate from "@/components/FeatureGate";
 import SiteResolver from "@/components/SiteResolver";
+import SiteUX from "@/components/SiteUX";
 import PortalTagInjector from "@/components/PortalTagInjector";
 import WebVitalsReporter from "@/components/web-vitals-reporter";
 import PortalEditOverlay from "@/components/PortalEditOverlay";
@@ -75,6 +76,7 @@ export default function RootLayout({
       <body className="min-h-full bg-brand-black text-brand-cream font-body antialiased">
         <CartProvider>
           <SiteResolver />
+          <SiteUX />
           <PortalTagInjector />
           <WebVitalsReporter />
           <PortalEditOverlay />

@@ -27,6 +27,12 @@ export default function AquaLayout({ children }: { children: React.ReactNode }) 
         <span className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/45 hidden sm:inline">Agency dashboard</span>
         <span className="ml-auto" />
         <Link
+          href="/aqua/support"
+          className={`text-[12px] px-3 py-1.5 rounded-lg border transition-colors ${pathname.startsWith("/aqua/support") ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400" : "border-white/15 text-brand-cream/65 hover:text-brand-cream hover:bg-white/5"}`}
+        >
+          Support
+        </Link>
+        <Link
           href="/aqua/example"
           className={`text-[12px] px-3 py-1.5 rounded-lg border transition-colors ${pathname.startsWith("/aqua/example") ? "border-brand-amber/50 bg-brand-amber/10 text-brand-amber" : "border-white/15 text-brand-cream/65 hover:text-brand-cream hover:bg-white/5"}`}
         >

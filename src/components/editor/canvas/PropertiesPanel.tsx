@@ -24,7 +24,7 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
 
   if (!block) {
     return (
-      <aside className="w-72 shrink-0 border-l border-white/8 bg-brand-black-soft p-4 text-[12px] text-brand-cream/45 leading-relaxed">
+      <aside className="w-72 shrink-0 border-l border-white/8 bg-brand-black-soft p-4 text-[12px] text-brand-cream/45 leading-relaxed hidden lg:block">
         Select a block on the canvas to edit its properties + styles.
       </aside>
     );
@@ -49,7 +49,7 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
   }
 
   return (
-    <aside className="w-72 shrink-0 border-l border-white/8 bg-brand-black-soft flex flex-col">
+    <aside className="lg:w-72 lg:shrink-0 lg:border-l lg:border-white/8 lg:relative lg:flex lg:flex-col fixed lg:static bottom-0 left-0 right-0 max-h-[55vh] lg:max-h-none border-t lg:border-t-0 border-white/8 bg-brand-black-soft flex flex-col z-30 overflow-y-auto">
       <div className="px-3 pt-3 pb-2 border-b border-white/8">
         <p className="text-[10px] tracking-[0.2em] uppercase text-brand-cream/45">{def?.icon} {def?.label ?? block.type}</p>
         <p className="text-[10px] font-mono text-brand-cream/35 mt-0.5">{block.id}</p>
@@ -302,6 +302,25 @@ function StyleEditor<K extends keyof BlockStyles>({ styles, onChange }: { styles
                 <option value="slide-left">Slide from left</option>
                 <option value="slide-right">Slide from right</option>
                 <option value="zoom-in">Zoom in</option>
+                <option value="rotate-in">Rotate in</option>
+                <option value="blur-in">Blur in</option>
+              </select>
+            </Field>
+            <Field label="Duration">
+              <input type="text" value={(styles.animateDuration as string | undefined) ?? ""} onChange={e => onChange("animateDuration" as K, (e.target.value || undefined) as BlockStyles[K])} placeholder="600ms" className={INPUT + " font-mono"} />
+            </Field>
+            <Field label="Delay">
+              <input type="text" value={(styles.animateDelay as string | undefined) ?? ""} onChange={e => onChange("animateDelay" as K, (e.target.value || undefined) as BlockStyles[K])} placeholder="0ms" className={INPUT + " font-mono"} />
+            </Field>
+            <Field label="Easing">
+              <select value={(styles.animateEasing as string | undefined) ?? ""} onChange={e => onChange("animateEasing" as K, (e.target.value || undefined) as BlockStyles[K])} className={INPUT + " font-mono"}>
+                <option value="">ease-out (default)</option>
+                <option value="ease">ease</option>
+                <option value="ease-in">ease-in</option>
+                <option value="ease-in-out">ease-in-out</option>
+                <option value="linear">linear</option>
+                <option value="cubic-bezier(0.16, 1, 0.3, 1)">cubic-bezier (snappy)</option>
+                <option value="cubic-bezier(0.34, 1.56, 0.64, 1)">cubic-bezier (overshoot)</option>
               </select>
             </Field>
             <p className="text-[10px] text-brand-cream/40 leading-relaxed">Plays once when the block enters the viewport on the live site. The editor canvas shows the resting state.</p>

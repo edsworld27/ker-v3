@@ -653,7 +653,12 @@ export interface BlockStyles {
   tablet?: Partial<Omit<BlockStyles, "mobile" | "tablet" | "animate">>;
   // On-scroll entrance animation. Only applied at runtime — the editor
   // canvas always renders the resting state so layout work is precise.
-  animate?: "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in";
+  animate?: "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in" | "rotate-in" | "blur-in";
+  // Animation tuning (X-1). All optional — skipping any falls back to
+  // the AnimateOnScroll defaults (600ms, 0ms delay, ease-out).
+  animateDuration?: string;     // e.g. "800ms"
+  animateDelay?: string;        // e.g. "120ms"
+  animateEasing?: string;       // any CSS timing function
 }
 
 export interface Block {
@@ -713,6 +718,15 @@ export interface EditorPage {
   // theme. Set to a theme id when the admin wants this page (or
   // section of pages, e.g. /landing) to use Light or Dark explicitly.
   themeId?: string;
+  // Per-page chrome overrides (X-1). The site has a default nav +
+  // footer block tree (defined elsewhere); a page can opt out by
+  // providing its own here, or hide them entirely.
+  layoutOverrides?: {
+    hideNav?: boolean;
+    hideFooter?: boolean;
+    nav?: Block[];               // when set, replaces the site nav for this page
+    footer?: Block[];            // when set, replaces the site footer
+  };
   // Full SEO panel (SEO-A1). All optional — sensible defaults derived
   // from `title`/`description`. Sitemap reads `excludeFromSitemap` +
   // `priority` + `changefreq`; robots reads `noindex`/`nofollow`.
@@ -803,4 +817,58 @@ export interface ThemeRecord {
   tokens: ThemeTokens;
   createdAt: number;
   updatedAt: number;
+}
+
+// ─── Aqua Support hub (S-1) ────────────────────────────────────────────────
+//
+// In-portal support surface for clients of the agency. Feature requests,
+// meeting bookings, mock invoices (until Stripe webhook lands), resource
+// links. Lives under /aqua/support so the agency owner + their clients
+// share the same UI.
+
+export type SupportRequestStatus = "open" | "planned" | "in-progress" | "shipped" | "declined";
+export type SupportRequestPriority = "low" | "medium" | "high" | "urgent";
+
+export interface FeatureRequest {
+  id: string;
+  orgId: string;                  // which client filed it
+  title: string;
+  body: string;
+  status: SupportRequestStatus;
+  priority: SupportRequestPriority;
+  votes: number;                  // simple +1 counter
+  submittedBy?: string;           // email
+  createdAt: number;
+  updatedAt: number;
+  comments?: Array<{ id: string; author: string; body: string; createdAt: number; isAgency?: boolean }>;
+}
+
+export interface MeetingBooking {
+  id: string;
+  orgId: string;
+  topic: string;
+  preferredDates: string[];       // ISO date strings the client suggested
+  notes?: string;
+  status: "requested" | "confirmed" | "completed" | "cancelled";
+  confirmedAt?: number;
+  meetingUrl?: string;            // set by the agency (Zoom/Meet link)
+  createdAt: number;
+  contactEmail?: string;
+}
+
+export interface SupportInvoice {
+  id: string;                     // e.g. "in_2024_03_pro"
+  orgId: string;
+  number: string;                 // human-readable "INV-2024-001"
+  date: number;                   // issued
+  dueDate?: number;
+  status: "draft" | "open" | "paid" | "void" | "uncollectible";
+  amountTotal: number;            // pence
+  currency: string;               // "GBP"
+  description?: string;
+  hostedUrl?: string;             // Stripe-hosted invoice URL when present
+  pdfUrl?: string;
+  // Stub line items for the mock view — gets replaced when the Stripe
+  // webhook starts populating real invoices.
+  lines: Array<{ description: string; quantity: number; unitAmount: number }>;
 }

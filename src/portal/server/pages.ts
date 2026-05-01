@@ -69,6 +69,7 @@ export interface UpdatePageInput {
   customHead?: string;
   customFoot?: string;
   seo?: EditorPage["seo"];
+  layoutOverrides?: EditorPage["layoutOverrides"];
 }
 
 export function updatePage(siteId: string, pageId: string, patch: UpdatePageInput): EditorPage | null {
