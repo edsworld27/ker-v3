@@ -134,7 +134,12 @@ export default function PortalEmbedLoginPage() {
     ? `You're signed in as ${signedInAs.name}`
     : siteId ? `Sign in to ${siteId}` : "Sign in to continue");
   const signInLabel = theme.signInLabel || "Sign in";
-  const adminUrl = theme.adminUrl || "/admin";
+  // Default to the dedicated /login page (Aqua portal admin login). It has
+  // a back button + optional Dev mode shortcut depending on security mode.
+  // The `back` query lets the operator return to the host site they came
+  // from rather than into the admin panel.
+  const fallbackBack = typeof window !== "undefined" ? window.location.href : "";
+  const adminUrl = theme.adminUrl || `/login?back=${encodeURIComponent(fallbackBack)}`;
   const adminLabel = theme.adminLinkLabel || "Admin sign-in →";
 
   return (

@@ -323,6 +323,9 @@ export default function AdminPortalSettingsPage() {
         </div>
       </Card>
 
+      {/* ── SECURITY (admin login mode) ───────────────────────────────────── */}
+      <SecurityCard />
+
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400">
           {error}
@@ -479,6 +482,109 @@ function SensitiveField({
         </div>
       </div>
     </Field>
+  );
+}
+
+// Admin login security mode. Three states drive the /login page:
+//   strict — credentials only (production default)
+//   dev    — credentials + a Dev mode button for one-click admin access
+//   off    — admin auth bypassed entirely (legacy NEXT_PUBLIC_PORTAL_DEV_BYPASS)
+// The toggle here writes a localStorage override so previews can be
+// re-keyed without redeploying. The env var still wins on cold load.
+function SecurityCard() {
+  const [hydrated, setHydrated] = useState(false);
+  const [mode, setMode] = useState<"strict" | "dev" | "off">("strict");
+  const [hasOverride, setHasOverride] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const auth = await import("@/lib/auth");
+      setMode(auth.getSecurityMode());
+      try {
+        setHasOverride(localStorage.getItem("lk_security_mode_v1") !== null);
+      } catch {}
+      setHydrated(true);
+    })();
+  }, []);
+
+  async function pick(next: "strict" | "dev" | "off") {
+    const auth = await import("@/lib/auth");
+    auth.setSecurityModeOverride(next);
+    setMode(next);
+    setHasOverride(true);
+  }
+
+  async function clearOverride() {
+    const auth = await import("@/lib/auth");
+    auth.setSecurityModeOverride(null);
+    setMode(auth.getSecurityMode());
+    setHasOverride(false);
+  }
+
+  const choices: Array<{ id: "strict" | "dev" | "off"; label: string; sub: string }> = [
+    { id: "strict", label: "Strict",   sub: "Credentials required. No Dev mode button." },
+    { id: "dev",    label: "Dev",      sub: "Credentials + a Dev mode button on /login." },
+    { id: "off",    label: "Off",      sub: "Skip admin auth entirely (local only)." },
+  ];
+
+  if (!hydrated) return null;
+
+  return (
+    <Card
+      id="setup-security"
+      title="Admin login security"
+      tip="Controls the /login page. In dev/off you get one-click admin access — useful for local testing. Always strict in production."
+    >
+      <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+        Effective mode: <strong className="text-brand-cream/85 font-mono">{mode}</strong>
+        {hasOverride && <span className="text-brand-amber/80"> · runtime override</span>}
+      </p>
+      <div className="grid sm:grid-cols-3 gap-2">
+        {choices.map(c => {
+          const active = c.id === mode;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => pick(c.id)}
+              className={`text-left p-3 rounded-xl border transition-colors ${
+                active
+                  ? "border-brand-orange/60 bg-brand-orange/10"
+                  : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
+              }`}
+            >
+              <p className="text-[12px] font-semibold text-brand-cream">{c.label}</p>
+              <p className="text-[10px] text-brand-cream/50 leading-relaxed mt-0.5">{c.sub}</p>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between text-[11px]">
+        {hasOverride ? (
+          <button
+            type="button"
+            onClick={clearOverride}
+            className="text-brand-cream/55 hover:text-brand-orange"
+          >
+            Clear override (use env var)
+          </button>
+        ) : <span />}
+        <a
+          href="/login"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-cream/55 hover:text-brand-orange"
+        >
+          Open /login ↗
+        </a>
+      </div>
+      <div className="rounded-lg border border-white/5 bg-brand-black px-3 py-2.5 text-[11px] text-brand-cream/55 leading-relaxed">
+        Production env: set <code className="font-mono text-brand-cream/75">NEXT_PUBLIC_PORTAL_SECURITY=strict</code> (or <code className="font-mono">dev</code> / <code className="font-mono">off</code>).
+        The legacy <code className="font-mono">NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+# Three-mode admin login: "strict" (default, prod), "dev", or "off"
+NEXT_PUBLIC_PORTAL_SECURITY=strict1</code> still works and maps to <code className="font-mono">off</code>.
+      </div>
+    </Card>
   );
 }
 
@@ -1517,6 +1623,8 @@ PORTAL_SUPABASE_URL=${supabaseUrl || "https://<project-ref>.supabase.co"}
 PORTAL_SUPABASE_SERVICE_KEY=<your service_role key>
 PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
 NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+# Three-mode admin login: "strict" (default, prod), "dev", or "off"
+NEXT_PUBLIC_PORTAL_SECURITY=strict
 # Optional — only if you want preview share links to point at the live URL
 PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}`;
 
@@ -1548,6 +1656,8 @@ PORTAL_SUPABASE_SERVICE_KEY=<your service_role key>
 PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
 PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}
 NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+# Three-mode admin login: "strict" (default, prod), "dev", or "off"
+NEXT_PUBLIC_PORTAL_SECURITY=strict
 PORT=3000`;
 
   const cmd =
@@ -1585,7 +1695,9 @@ PORTAL_KV_URL=https://<your-upstash-region>.upstash.io
 PORTAL_KV_TOKEN=<your Upstash REST token>
 PORTAL_PREVIEW_SECRET=<long random string, e.g. \`openssl rand -hex 32\`>
 PORTAL_PREVIEW_BASE_URL=${previewBaseUrl || "https://your-site.com"}
-NEXT_PUBLIC_PORTAL_DEV_BYPASS=`;
+NEXT_PUBLIC_PORTAL_DEV_BYPASS=
+# Three-mode admin login: "strict" (default, prod), "dev", or "off"
+NEXT_PUBLIC_PORTAL_SECURITY=strict`;
 
   return (
     <div className="space-y-3">
