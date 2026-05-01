@@ -44,6 +44,7 @@ interface BackendInfoResponse {
 export default function AdminPortalSettingsPage() {
   const searchParams = useSearchParams();
   const setupSiteId = searchParams?.get("setup") ?? null;
+  const setupMode = (searchParams?.get("mode") ?? "existing") as "existing" | "new";
   const [settings, setSettings] = useState<PortalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,14 @@ export default function AdminPortalSettingsPage() {
         <SavedIndicator at={savedAt} />
       </div>
 
-      {setupSite && <SetupChecklist settings={live} backendInfo={backendInfo} />}
+      {setupSite && (
+        <SetupChecklist
+          settings={live}
+          backendInfo={backendInfo}
+          setupSite={setupSite}
+          setupMode={setupMode}
+        />
+      )}
 
       <MigrationBanner
         backendInfo={backendInfo}
@@ -539,10 +547,13 @@ interface ChecklistItem {
   hint: string;
 }
 
-function SetupChecklist({ settings, backendInfo }: {
+function SetupChecklist({ settings, backendInfo, setupSite, setupMode }: {
   settings: PortalSettings;
   backendInfo: BackendInfoResponse | null;
+  setupSite: Site;
+  setupMode: "existing" | "new";
 }) {
+  const githubReady = !!settings.github.repoUrl && hasSecret(settings.github.pat ?? "");
   const items: ChecklistItem[] = [
     {
       id: "github-repo",
@@ -635,6 +646,320 @@ function SetupChecklist({ settings, backendInfo }: {
           All set. Drop the portal tag into <code className="font-mono">&lt;head&gt;</code> on the host site and the portal will auto-discover + connect.
         </div>
       )}
+
+      {/* Mode-specific helpers */}
+      <div className="px-5 py-4 border-t border-white/5 bg-white/[0.02] space-y-3">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-brand-cream/45">Optional · {setupMode} site</p>
+        </div>
+
+        {/* Inject Portal tag — both modes, but only enabled when GitHub is connected */}
+        <InjectPortalTag siteId={setupSite.id} githubReady={githubReady} />
+
+        {/* AI Convert prompt — both modes, helps wire the tag into a real codebase */}
+        <AiConvertButton siteId={setupSite.id} setupMode={setupMode} />
+
+        {/* Iframe login embed — code snippet to drop into the host site */}
+        <IframeLoginSnippet siteId={setupSite.id} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Inject Portal tag (PR button) ─────────────────────────────────────────
+
+function InjectPortalTag({ siteId, githubReady }: { siteId: string; githubReady: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; prUrl?: string; prNumber?: number; error?: string } | null>(null);
+
+  async function inject() {
+    setBusy(true); setResult(null);
+    try {
+      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const res = await fetch("/api/portal/inject-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId, portalOrigin }),
+      });
+      const data = await res.json() as { ok: boolean; prUrl?: string; prNumber?: number; error?: string };
+      setResult(data);
+    } catch (e) {
+      setResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 px-3 py-2.5 space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs font-medium text-brand-cream">Inject Portal tag</p>
+        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10">PR</span>
+        <button
+          onClick={inject}
+          disabled={busy || !githubReady}
+          title={githubReady ? "Open a PR adding the portal tag snippet to your repo" : "Configure GitHub repo + PAT first"}
+          className="ml-auto text-[11px] px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {busy ? "Opening PR…" : "Inject Portal tag"}
+        </button>
+      </div>
+      <p className="text-[11px] text-brand-cream/45 leading-relaxed">
+        Opens a PR adding <code className="font-mono text-brand-cream/65">portal-tag.html</code> at your repo root with the script tag for site <code className="font-mono">{siteId}</code> and instructions for where to paste it (Next.js / Astro / vanilla).
+      </p>
+      {result && (
+        result.ok && result.prUrl ? (
+          <p className="text-[11px] text-green-400">
+            ✓ PR opened:{" "}
+            <a href={result.prUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300">
+              #{result.prNumber} on GitHub ↗
+            </a>
+          </p>
+        ) : (
+          <p className="text-[11px] text-red-400">✗ {result.error}</p>
+        )
+      )}
+    </div>
+  );
+}
+
+// ─── AI Convert prompt ─────────────────────────────────────────────────────
+
+function AiConvertButton({ siteId, setupMode }: { siteId: string; setupMode: "existing" | "new" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 px-3 py-2.5 space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs font-medium text-brand-cream">Convert to portal-friendly</p>
+        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10">AI prompt</span>
+        <button
+          onClick={() => setOpen(true)}
+          className="ml-auto text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30"
+        >
+          Open prompt
+        </button>
+      </div>
+      <p className="text-[11px] text-brand-cream/45 leading-relaxed">
+        {setupMode === "existing"
+          ? "Generates the migration plan for your existing repo: where to paste the tag, which components to wire to usePortalContent, what portal.config.ts keys to declare based on your CMS."
+          : "Scaffolds a fresh portal.config.ts + the integration code for a new project — drops the tag in the layout, sets up the manifest, lists the first set of editable keys."}
+      </p>
+      {open && <AiConvertModal siteId={siteId} setupMode={setupMode} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function AiConvertModal({ siteId, setupMode, onClose }: { siteId: string; setupMode: "existing" | "new"; onClose: () => void }) {
+  const [framework, setFramework] = useState("");
+  const [pasted, setPasted] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://your-portal.app";
+  const prompt = buildConvertPrompt({ siteId, setupMode, framework, projectShape: pasted, portalOrigin });
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-brand-black-soft border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-5 py-3 border-b border-white/8 flex items-center gap-3">
+          <p className="text-sm font-semibold text-brand-cream">
+            {setupMode === "existing" ? "Convert existing website to portal-friendly" : "Scaffold a new portal-friendly website"}
+          </p>
+          <button onClick={onClose} className="ml-auto text-brand-cream/50 hover:text-brand-cream text-lg leading-none">×</button>
+        </div>
+        <div className="p-5 space-y-4 overflow-y-auto">
+          <p className="text-[12px] text-brand-cream/65 leading-relaxed">
+            Tell the AI about your project; it returns the exact files to add, the script-tag insertion line, and the
+            initial <code className="font-mono">portal.config.ts</code> manifest. Paste the response back into your repo.
+          </p>
+
+          <div>
+            <label className="block text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5">
+              Framework / stack
+            </label>
+            <input
+              value={framework}
+              onChange={e => setFramework(e.target.value)}
+              placeholder="e.g. Next.js 15 App Router, Astro 4, vanilla Vite + React, WordPress, plain HTML…"
+              className={INPUT}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5">
+              Project shape (paste anything useful — package.json, file tree, key components)
+            </label>
+            <textarea
+              value={pasted}
+              onChange={e => setPasted(e.target.value)}
+              placeholder={"// optional but helpful\n{\n  \"name\": \"my-site\",\n  \"dependencies\": { \"next\": \"…\" }\n}"}
+              rows={5}
+              className={INPUT + " font-mono text-xs"}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50">Prompt</label>
+              <button
+                onClick={copyPrompt}
+                className="text-[11px] px-2.5 py-1 rounded-md bg-brand-orange/20 border border-brand-orange/40 text-brand-orange hover:bg-brand-orange/30 font-semibold"
+              >
+                {copied ? "Copied" : "Copy prompt"}
+              </button>
+            </div>
+            <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 overflow-x-auto text-brand-cream/85 whitespace-pre-wrap max-h-72 overflow-y-auto">
+{prompt}
+            </pre>
+          </div>
+
+          <p className="text-[10px] text-brand-cream/40">
+            What you&apos;ll get back: the exact line(s) to add to your layout/template, a starter <code className="font-mono">portal.config.ts</code> with sensible defaults, and the components to convert from hardcoded copy to <code className="font-mono">usePortalContent()</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildConvertPrompt(args: {
+  siteId: string;
+  setupMode: "existing" | "new";
+  framework: string;
+  projectShape: string;
+  portalOrigin: string;
+}): string {
+  const fw = args.framework.trim() || "<describe your framework / stack>";
+  const shape = args.projectShape.trim();
+  const tag = `<script src="${args.portalOrigin}/portal/tag.js" data-site="${args.siteId}" defer></script>`;
+
+  return `I'm wiring up the "ker-v3 portal" admin tool to manage content for ${args.setupMode === "existing" ? "an existing" : "a new"} website. The portal is a single-tag content + analytics platform; help me make my repo portal-friendly.
+
+## Site info
+- Portal site ID: \`${args.siteId}\`
+- Framework / stack: ${fw}
+- Portal origin: ${args.portalOrigin}
+
+${shape ? `## Project shape
+
+\`\`\`
+${shape}
+\`\`\`
+
+` : ""}## What to integrate
+
+**1. Portal tag.** The portal needs this single line in the \`<head>\` of every page:
+
+\`\`\`html
+${tag}
+\`\`\`
+
+Tell me **the exact file + line** to add it to in my framework. Use \`next/script\` if it's Next.js.
+
+**2. Manifest file.** Drop a typed manifest at the repo root called \`portal.config.ts\`:
+
+\`\`\`ts
+import { definePortal } from "@/portal/client";   // path may differ in my repo
+
+export default definePortal({
+  // Section-grouped: { sectionName: { keyName: { type, default, multiline? } } }
+  // type ∈ "text" | "html" | "image-src" | "href"
+  hero: {
+    headline: { type: "text", default: "..." },
+    subtitle: { type: "html", default: "..." },
+  },
+  // ...add real sections + keys based on the project I described
+});
+\`\`\`
+
+Generate a starter manifest with **3-5 sections** of plausible keys for my site type, with realistic defaults sourced from common copy (or from anything you can infer from the project shape above).
+
+**3. Render integration.** ${args.setupMode === "existing"
+    ? "List the **3-5 most visible components** in my project (Hero, Footer, Navbar, etc.) and show — for each — the exact code change to swap hardcoded copy for `usePortalContent(schema)` reads."
+    : "Show the canonical pattern for a fresh component using `usePortalContent(schema)` so I can mirror it across my new components."}
+
+**4. Sync command.** The portal CLI uploads the schema:
+
+\`\`\`bash
+node scripts/portal-sync.mjs --site=${args.siteId} --portal=${args.portalOrigin}
+\`\`\`
+
+Confirm whether my framework needs an extra build step before this works (e.g. compiling \`portal.config.ts\` first).
+
+## What I need back
+1. Exact file path + line to insert the tag
+2. Full \`portal.config.ts\` ready to paste
+3. ${args.setupMode === "existing" ? "Per-component diffs (3-5 components) to swap hardcoded text for portal lookups" : "One example component using usePortalContent + the recommended folder structure"}
+4. Any framework-specific gotchas (SSR hydration, CSP, build steps)
+
+Format code in fenced blocks so I can paste straight into my files. Keep the prose tight.`;
+}
+
+// ─── Iframe login embed snippet ────────────────────────────────────────────
+
+function IframeLoginSnippet({ siteId }: { siteId: string }) {
+  const [copied, setCopied] = useState<"" | "iframe" | "js">("");
+  const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://your-portal.app";
+
+  const iframeSnippet =
+`<iframe
+  src="${portalOrigin}/embed/login?site=${siteId}"
+  width="360"
+  height="480"
+  style="border:0;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.2)"
+  allow="clipboard-write"
+></iframe>
+
+<script>
+  // Listen for the auth-success postMessage and store the token however
+  // your site wants. Always validate event.origin.
+  window.addEventListener("message", (e) => {
+    if (e.origin !== "${portalOrigin}") return;
+    if (!e.data || e.data.source !== "portal-login") return;
+    if (e.data.type === "auth-success") {
+      // e.data → { siteId, email, name, accessToken, expiresAt }
+      console.log("Portal sign-in:", e.data);
+      // …persist the session your way
+    }
+  });
+</script>`;
+
+  async function copy(which: "iframe") {
+    const text = iframeSnippet;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(""), 2000);
+    } catch {}
+  }
+
+  return (
+    <div className="rounded-lg border border-white/8 bg-brand-black/40 px-3 py-2.5 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs font-medium text-brand-cream">Embed portal login</p>
+        <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-brand-cream/55 border border-white/10">iframe + postMessage</span>
+        <button
+          onClick={() => copy("iframe")}
+          className="ml-auto text-[11px] px-2.5 py-1 rounded-md bg-brand-amber/20 border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/30 font-semibold"
+        >
+          {copied === "iframe" ? "Copied" : "Copy snippet"}
+        </button>
+      </div>
+      <p className="text-[11px] text-brand-cream/45 leading-relaxed">
+        Drop this into any page that needs portal sign-in. The iframe renders the portal&apos;s login UI; on success, an <code className="font-mono">auth-success</code> postMessage is sent to the parent with the access token.
+      </p>
+      <pre className="text-[11px] font-mono bg-brand-black border border-white/8 rounded-lg p-3 overflow-x-auto text-brand-cream/85 whitespace-pre max-h-48 overflow-y-auto">
+{iframeSnippet}
+      </pre>
     </div>
   );
 }

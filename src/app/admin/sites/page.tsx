@@ -201,6 +201,7 @@ export default function AdminSitesPage() {
   const [newName, setNewName] = useState("");
   const [newDomain, setNewDomain] = useState("");
   const [quickSetup, setQuickSetup] = useState(true);
+  const [setupMode, setSetupMode] = useState<"existing" | "new">("existing");
   const [heartbeats, setHeartbeats] = useState<Record<string, Heartbeat>>({});
   const [now, setNow] = useState<number>(() => Date.now());
   const [portalOrigin, setPortalOrigin] = useState<string>("");
@@ -254,8 +255,15 @@ export default function AdminSitesPage() {
     if (quickSetup) {
       // Quick setup: send the admin straight to portal-settings with a
       // checklist scoped to this new site. They drop the keys, every
-      // green tick lights up, the portal is ready end-to-end.
-      router.push(`/admin/portal-settings?setup=${encodeURIComponent(created.id)}`);
+      // green tick lights up, the portal is ready end-to-end. The
+      // setupMode (existing / new) drives which optional steps the
+      // checklist surfaces — existing sites get the AI Convert prompt
+      // + Inject Portal tag step; new sites get the manifest scaffold.
+      const params = new URLSearchParams({
+        setup: created.id,
+        mode: setupMode,
+      });
+      router.push(`/admin/portal-settings?${params.toString()}`);
     } else {
       setEditingId(created.id);
     }
@@ -299,6 +307,41 @@ export default function AdminSitesPage() {
               <input value={newDomain} onChange={e => setNewDomain(e.target.value)} placeholder="e.g. felicia.com" className={INPUT + " font-mono"} />
             </Field>
           </div>
+
+          {/* Setup mode picker — only visible when quick setup is on */}
+          {quickSetup && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                {
+                  id: "existing" as const,
+                  label: "Existing website",
+                  blurb: "Already deployed. Inject the portal tag into <head>, auto-discover the repo, point overrides at it.",
+                },
+                {
+                  id: "new" as const,
+                  label: "New website",
+                  blurb: "Fresh project. Generate portal.config.ts, scaffold the manifest, wire usePortalContent into your components.",
+                },
+              ]).map(opt => {
+                const active = setupMode === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSetupMode(opt.id)}
+                    className={`text-left p-3 rounded-xl border transition-colors ${
+                      active
+                        ? "border-brand-orange bg-brand-orange/10 text-brand-cream"
+                        : "border-white/10 text-brand-cream/65 hover:border-white/25 hover:text-brand-cream"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold mb-0.5">{opt.label}</p>
+                    <p className="text-[11px] text-brand-cream/45 leading-relaxed">{opt.blurb}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Quick setup toggle */}
           <label className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-brand-black/40 border border-white/5 cursor-pointer">

@@ -33,6 +33,9 @@ export async function GET() {
       supabase: true,             // Supabase backend with auto-detected schema + inline migration SQL
       quickSetup: true,           // /admin/sites “Quick setup” → /admin/portal-settings checklist
       autoMigrate: true,          // POST /api/portal/migrate auto-applies schema via Supabase Management API
+      injectTag: true,            // POST /api/portal/inject-tag opens a PR adding the portal script tag (F-3)
+      embedLogin: true,           // /embed/login iframeable + postMessage auth-success to parent (F-4)
+      aiConvert: true,            // AI Convert prompt modal in the setup checklist (F-2)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
