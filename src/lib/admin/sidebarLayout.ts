@@ -139,6 +139,7 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
       description: "Sites, features, customisation",
       items: [
         { type: "link", id: "settings", label: "General",       href: "/admin/settings", resource: "settings" },
+        { type: "link", id: "orgs",     label: "Organisations", href: "/admin/orgs",     resource: "settings" },
         { type: "link", id: "sites",    label: "Sites",         href: "/admin/sites",    resource: "settings" },
         { type: "link", id: "features", label: "Feature flags", href: "/admin/features", resource: "settings" },
         { type: "link", id: "customise", label: "Customise",    href: "/admin/customise", resource: "settings" },

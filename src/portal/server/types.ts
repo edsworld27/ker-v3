@@ -474,3 +474,26 @@ export const EMBED_DEFAULT_POSITION: Partial<Record<EmbedProvider, EmbedPosition
   "intercom": "popup-bottom-right",
   "tidio":    "popup-bottom-right",
 };
+
+// ─── Organisation / tenant model (G-2) ─────────────────────────────────────
+//
+// One agency owns N orgs (one per client). Each org owns N sites + has
+// its own settings, branding and billing. The agency owner's own
+// `isPrimary: true` org seeded at first load — keeps the data shape
+// uniform across "the agency itself" and every client tenant.
+
+export type OrgStatus = "active" | "suspended" | "trialing";
+
+export interface OrgRecord {
+  id: string;
+  name: string;
+  slug: string;
+  ownerEmail?: string;
+  brandColor?: string;
+  logoUrl?: string;
+  // Billing — filled in by G-3.
+  stripeCustomerId?: string;
+  status: OrgStatus;
+  isPrimary: boolean;
+  createdAt: number;
+}

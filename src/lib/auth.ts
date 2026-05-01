@@ -121,6 +121,92 @@ export type AuthResult =
   | { ok: true; session: Session }
   | { ok: false; error: string };
 
+// ── Security mode (dev-bypass selector) ───────────────────────────────────────
+//
+// Three-mode toggle that gates how the /login page behaves:
+//   "strict" — credentials required, no dev shortcut (production default)
+//   "dev"    — credentials work AND a "Dev mode" button creates an admin
+//              session in one click (local development, preview deploys)
+//   "off"    — admin auth is bypassed entirely (legacy behaviour of the
+//              older NEXT_PUBLIC_PORTAL_DEV_BYPASS=1 env)
+//
+// Source order: a runtime override in localStorage wins (so the admin can
+// flip a preview deploy without redeploying), then NEXT_PUBLIC_PORTAL_SECURITY,
+// then the legacy NEXT_PUBLIC_PORTAL_DEV_BYPASS=1, else "strict".
+//
+// G-5 will retire this for real per-tenant auth.
+
+export type SecurityMode = "strict" | "dev" | "off";
+
+const SECURITY_OVERRIDE_KEY = "lk_security_mode_v1";
+
+export function getSecurityMode(): SecurityMode {
+  if (typeof window !== "undefined") {
+    try {
+      const ls = localStorage.getItem(SECURITY_OVERRIDE_KEY);
+      if (ls === "strict" || ls === "dev" || ls === "off") return ls;
+    } catch {}
+  }
+  if (process.env.NEXT_PUBLIC_PORTAL_DEV_BYPASS === "1") return "off";
+  const env = process.env.NEXT_PUBLIC_PORTAL_SECURITY;
+  if (env === "strict" || env === "dev" || env === "off") return env;
+  // The user's spec wording — "security=true" / "security=false" — gets
+  // normalised here so either style works in .env files.
+  if (env === "true")  return "strict";
+  if (env === "false") return "dev";
+  return "strict";
+}
+
+export function setSecurityModeOverride(mode: SecurityMode | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (mode === null) localStorage.removeItem(SECURITY_OVERRIDE_KEY);
+    else localStorage.setItem(SECURITY_OVERRIDE_KEY, mode);
+  } catch {}
+}
+
+// One-click dev sign-in: synthesises a super-admin session without going
+// through the password store. Only callable when getSecurityMode() returns
+// "dev" or "off"; the /login page enforces that. The synthesised user is
+// kept in the same shape as a real one so the rest of the admin code path
+// (sidebar, isAdmin, team perms) doesn't need to special-case it.
+
+export const DEV_ADMIN_EMAIL = "dev@local.portal";
+
+export function signInAsDev(): Session {
+  const mode = getSecurityMode();
+  if (mode === "strict") {
+    throw new Error("Dev sign-in is disabled (security=strict). Set NEXT_PUBLIC_PORTAL_SECURITY=dev or off.");
+  }
+  const email = DEV_ADMIN_EMAIL;
+  const users = loadUsers();
+  // Persist the dev user so listAllUsers + getTeamMemberByEmail callers
+  // see a stable identity across page loads.
+  let stored = users[email];
+  if (!stored) {
+    stored = {
+      id: makeId(),
+      email,
+      name: "Dev admin",
+      emailVerified: true,
+      provider: "email",
+      role: "admin",
+      createdAt: Date.now(),
+    };
+    users[email] = stored;
+    saveUsers(users);
+  } else if (stored.role !== "admin") {
+    stored.role = "admin";
+    users[email] = stored;
+    saveUsers(users);
+  }
+  const { passwordHash: _a, tempPassword: _b, ...publicUser } = stored;
+  void _a; void _b;
+  // Force admin role even if the allowlist would reject (dev@local isn't
+  // on ADMIN_EMAILS, and we don't want to pollute that list either).
+  return startSession({ ...publicUser, role: "admin" });
+}
+
 // ── Session ───────────────────────────────────────────────────────────────────
 
 export function getSession(): Session | null {
@@ -128,7 +214,11 @@ export function getSession(): Session | null {
   if (!s) return null;
   if (s.expiresAt < Date.now()) { signOut(); return null; }
   // Backfill role for sessions issued before the admin allowlist existed.
-  const expected: Role = isAdminEmail(s.user.email) ? "admin" : "customer";
+  // The dev sign-in produces a session for DEV_ADMIN_EMAIL — that email is
+  // intentionally NOT on ADMIN_EMAILS (so a real signup with that email
+  // can't escalate). Treat it as admin only when the security mode permits.
+  const isDevAdmin = s.user.email === DEV_ADMIN_EMAIL && getSecurityMode() !== "strict";
+  const expected: Role = isAdminEmail(s.user.email) || isDevAdmin ? "admin" : "customer";
   if (s.user.role !== expected) {
     s.user.role = expected;
     write(SESSION_KEY, s);
