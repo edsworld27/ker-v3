@@ -13,15 +13,21 @@ import {
   onLoginCustomisationChange,
   type LoginCustomisation, type LoginLayout,
 } from "@/lib/admin/loginCustomisation";
+import {
+  getSidebarLayout, saveSidebarLayout, resetSidebarLayout,
+  onSidebarLayoutChange, newId, DEFAULT_LAYOUT,
+  type SidebarLayout, type SidebarPanel, type SidebarItem, type SidebarLink,
+} from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
 
-type Tab = "branding" | "tabs" | "login" | "export";
+type Tab = "branding" | "sidebar" | "tabs" | "login" | "export";
 
 export default function AdminCustomisePage() {
   const [tab, setTab] = useState<Tab>("branding");
   const [branding, setBranding] = useState<AdminBranding>(getBranding);
   const [tabs, setTabs] = useState<CustomTab[]>(listCustomTabs);
   const [login, setLogin] = useState<LoginCustomisation>(getLoginCustomisation);
+  const [sidebar, setSidebar] = useState<SidebarLayout>(getSidebarLayout);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -32,8 +38,14 @@ export default function AdminCustomisePage() {
     refresh();
     const off1 = onAdminConfigChange(refresh);
     const off2 = onLoginCustomisationChange(() => setLogin(getLoginCustomisation()));
-    return () => { off1(); off2(); };
+    const off3 = onSidebarLayoutChange(() => setSidebar(getSidebarLayout()));
+    return () => { off1(); off2(); off3(); };
   }, []);
+
+  function patchSidebar(next: SidebarLayout) {
+    saveSidebarLayout(next);
+    setSidebar(next);
+  }
 
   function patchBranding(p: Partial<AdminBranding>) {
     saveBranding(p);
@@ -69,6 +81,7 @@ export default function AdminCustomisePage() {
 
   const TABS: Array<{ id: Tab; label: string; desc: string }> = [
     { id: "branding", label: "Branding",      desc: "Logo, colours, custom CSS" },
+    { id: "sidebar",  label: "Sidebar",       desc: "Edit panels, items, dropdowns and custom routes" },
     { id: "tabs",     label: "Custom tabs",   desc: "Add iframe-embedded sidebar tabs" },
     { id: "login",    label: "Login page",    desc: "Customise the public login UI" },
     { id: "export",   label: "Export & repo", desc: "Download code and view repo" },
@@ -155,6 +168,15 @@ export default function AdminCustomisePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── SIDEBAR ────────────────────────────────────────────────────────── */}
+      {tab === "sidebar" && (
+        <SidebarEditor
+          layout={sidebar}
+          onChange={patchSidebar}
+          onReset={() => { resetSidebarLayout(); setSidebar(getSidebarLayout()); }}
+        />
       )}
 
       {/* ── CUSTOM TABS ────────────────────────────────────────────────────── */}
@@ -420,6 +442,324 @@ function ColorRow({ label, value, onChange, tip }: { label: string; value: strin
       <div className="flex items-center gap-2">
         <input type="color" value={value} onChange={e => onChange(e.target.value)} className="w-8 h-8 rounded-lg border border-white/20 cursor-pointer bg-transparent" />
         <input type="text" value={value} onChange={e => onChange(e.target.value)} className="w-24 text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-brand-cream font-mono focus:outline-none focus:border-brand-orange/50" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar editor ──────────────────────────────────────────────────────────
+
+function SidebarEditor({
+  layout, onChange, onReset,
+}: {
+  layout: SidebarLayout;
+  onChange: (l: SidebarLayout) => void;
+  onReset: () => void;
+}) {
+  function updatePanels(panels: SidebarPanel[]) {
+    onChange({ ...layout, panels });
+  }
+  function patchPanel(id: string, patch: Partial<SidebarPanel>) {
+    updatePanels(layout.panels.map(p => p.id === id ? { ...p, ...patch } : p));
+  }
+  function movePanel(id: string, dir: -1 | 1) {
+    const idx = layout.panels.findIndex(p => p.id === id);
+    if (idx < 0) return;
+    const j = idx + dir;
+    if (j < 0 || j >= layout.panels.length) return;
+    const next = [...layout.panels];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    updatePanels(next);
+  }
+  function deletePanel(id: string) {
+    if (!confirm("Delete this panel and all its items?")) return;
+    updatePanels(layout.panels.filter(p => p.id !== id));
+  }
+  function addPanel() {
+    const label = prompt("Panel name", "New panel");
+    if (!label) return;
+    const icon = prompt("Icon (emoji or short text)", "✨") ?? "✨";
+    updatePanels([...layout.panels, {
+      id: newId("panel"),
+      label,
+      icon,
+      description: "",
+      items: [],
+    }]);
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card title="How it works" tip="The admin sidebar is organised as top-level panels. Click a panel to drill in; click 'All panels' to come back.">
+        <p className="text-sm text-brand-cream/55 leading-relaxed">
+          The sidebar opens with a list of <strong className="text-brand-cream">panels</strong> (Store, Website, Users, Settings).
+          Clicking a panel <strong className="text-brand-cream">drills in</strong> and shows that panel&apos;s items;
+          a back button returns to the top level. You can rename panels, reorder items,
+          group items into <strong className="text-brand-cream">dropdowns</strong>, and add your own
+          <strong className="text-brand-cream"> custom routes</strong> — internal admin paths or external URLs.
+        </p>
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <button onClick={addPanel} className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold">
+            + Add panel
+          </button>
+          <button onClick={onReset} className="text-xs px-3 py-2 rounded-lg border border-white/10 text-brand-cream/60 hover:text-brand-cream">
+            Reset to defaults
+          </button>
+        </div>
+      </Card>
+
+      <div className="space-y-4">
+        {layout.panels.map((panel, i) => (
+          <PanelEditor
+            key={panel.id}
+            panel={panel}
+            isFirst={i === 0}
+            isLast={i === layout.panels.length - 1}
+            onPatch={p => patchPanel(panel.id, p)}
+            onMove={d => movePanel(panel.id, d)}
+            onDelete={() => deletePanel(panel.id)}
+            onItemsChange={items => patchPanel(panel.id, { items })}
+          />
+        ))}
+        {layout.panels.length === 0 && (
+          <div className="rounded-2xl border border-white/8 bg-brand-black-card px-6 py-10 text-center">
+            <p className="text-brand-cream/45 text-sm mb-3">No panels yet — your sidebar will be empty.</p>
+            <button
+              onClick={() => onChange(DEFAULT_LAYOUT)}
+              className="text-xs px-4 py-2 rounded-lg bg-brand-orange text-white font-semibold"
+            >
+              Restore defaults
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PanelEditor({
+  panel, isFirst, isLast, onPatch, onMove, onDelete, onItemsChange,
+}: {
+  panel: SidebarPanel;
+  isFirst: boolean;
+  isLast: boolean;
+  onPatch: (p: Partial<SidebarPanel>) => void;
+  onMove: (d: -1 | 1) => void;
+  onDelete: () => void;
+  onItemsChange: (items: SidebarItem[]) => void;
+}) {
+  function addLink() {
+    const label = prompt("Link label", "New link");
+    if (!label) return;
+    const href = prompt("URL or admin path (e.g. /admin/orders or https://…)", "/admin/");
+    if (!href) return;
+    onItemsChange([...panel.items, {
+      type: "link",
+      id: newId("link"),
+      label,
+      href,
+      external: href.startsWith("http"),
+    }]);
+  }
+  function addGroup() {
+    const label = prompt("Dropdown label", "New group");
+    if (!label) return;
+    onItemsChange([...panel.items, {
+      type: "group",
+      id: newId("group"),
+      label,
+      defaultOpen: true,
+      items: [],
+    }]);
+  }
+  function patchItem(id: string, patch: Partial<SidebarItem>) {
+    onItemsChange(panel.items.map(it => it.id === id
+      ? { ...it, ...patch } as SidebarItem
+      : it,
+    ));
+  }
+  function deleteItem(id: string) {
+    if (!confirm("Delete this item?")) return;
+    onItemsChange(panel.items.filter(it => it.id !== id));
+  }
+  function moveItem(id: string, dir: -1 | 1) {
+    const idx = panel.items.findIndex(it => it.id === id);
+    if (idx < 0) return;
+    const j = idx + dir;
+    if (j < 0 || j >= panel.items.length) return;
+    const next = [...panel.items];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    onItemsChange(next);
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/5 bg-white/[0.02] flex items-center gap-3">
+        <input
+          value={panel.icon}
+          onChange={e => onPatch({ icon: e.target.value })}
+          placeholder="Icon"
+          className={INPUT + " w-14 text-center"}
+        />
+        <input
+          value={panel.label}
+          onChange={e => onPatch({ label: e.target.value })}
+          placeholder="Panel name"
+          className={INPUT + " flex-1 font-semibold"}
+        />
+        <div className="flex items-center gap-1">
+          <button disabled={isFirst} onClick={() => onMove(-1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25" title="Move up">↑</button>
+          <button disabled={isLast} onClick={() => onMove(1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25" title="Move down">↓</button>
+          <button onClick={onDelete} className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-brand-orange">Delete</button>
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        <input
+          value={panel.description ?? ""}
+          onChange={e => onPatch({ description: e.target.value })}
+          placeholder="Short description (shown under the panel name)"
+          className={INPUT}
+        />
+
+        <div className="space-y-1.5 pt-1">
+          {panel.items.map((item, i) => (
+            <ItemEditor
+              key={item.id}
+              item={item}
+              isFirst={i === 0}
+              isLast={i === panel.items.length - 1}
+              onPatch={p => patchItem(item.id, p)}
+              onMove={d => moveItem(item.id, d)}
+              onDelete={() => deleteItem(item.id)}
+            />
+          ))}
+          {panel.items.length === 0 && (
+            <p className="text-xs text-brand-cream/35 px-3 py-3 text-center">
+              No items in this panel yet.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button onClick={addLink} className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30">
+            + Link
+          </button>
+          <button onClick={addGroup} className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream hover:border-white/30">
+            + Dropdown
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ItemEditor({
+  item, isFirst, isLast, onPatch, onMove, onDelete,
+}: {
+  item: SidebarItem;
+  isFirst: boolean;
+  isLast: boolean;
+  onPatch: (p: Partial<SidebarItem>) => void;
+  onMove: (d: -1 | 1) => void;
+  onDelete: () => void;
+}) {
+  if (item.type === "link") {
+    return (
+      <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 rounded-lg border border-white/5 bg-white/[0.015]">
+        <span className="text-[10px] uppercase tracking-wider text-brand-cream/35 w-12 shrink-0">Link</span>
+        <input
+          value={item.label}
+          onChange={e => onPatch({ label: e.target.value } as Partial<SidebarItem>)}
+          placeholder="Label"
+          className={INPUT + " flex-1 min-w-[120px]"}
+        />
+        <input
+          value={item.href}
+          onChange={e => onPatch({ href: e.target.value, external: e.target.value.startsWith("http") } as Partial<SidebarItem>)}
+          placeholder="/admin/… or https://…"
+          className={INPUT + " flex-[2] min-w-[180px] font-mono text-xs"}
+        />
+        <div className="flex items-center gap-1">
+          <button disabled={isFirst} onClick={() => onMove(-1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↑</button>
+          <button disabled={isLast} onClick={() => onMove(1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↓</button>
+          <button onClick={onDelete} className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-brand-orange">×</button>
+        </div>
+      </div>
+    );
+  }
+  // Group / dropdown editor — alias `item` to a narrowed local so closures
+  // see the group type.
+  const group = item;
+  function addChild() {
+    const label = prompt("Link label", "New link");
+    if (!label) return;
+    const href = prompt("URL or admin path", "/admin/");
+    if (!href) return;
+    const child: SidebarLink = {
+      id: newId("link"),
+      label,
+      href,
+      external: href.startsWith("http"),
+    };
+    onPatch({ items: [...group.items, child] } as Partial<SidebarItem>);
+  }
+  function patchChild(id: string, patch: Partial<SidebarLink>) {
+    onPatch({ items: group.items.map(c => c.id === id ? { ...c, ...patch } : c) } as Partial<SidebarItem>);
+  }
+  function deleteChild(id: string) {
+    onPatch({ items: group.items.filter(c => c.id !== id) } as Partial<SidebarItem>);
+  }
+  function moveChild(id: string, dir: -1 | 1) {
+    const idx = group.items.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const j = idx + dir;
+    if (j < 0 || j >= group.items.length) return;
+    const next = [...group.items];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    onPatch({ items: next } as Partial<SidebarItem>);
+  }
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.02]">
+      <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-white/5">
+        <span className="text-[10px] uppercase tracking-wider text-brand-amber/60 w-12 shrink-0">Group</span>
+        <input
+          value={group.label}
+          onChange={e => onPatch({ label: e.target.value } as Partial<SidebarItem>)}
+          placeholder="Group label"
+          className={INPUT + " flex-1 font-medium"}
+        />
+        <div className="flex items-center gap-1">
+          <button disabled={isFirst} onClick={() => onMove(-1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↑</button>
+          <button disabled={isLast} onClick={() => onMove(1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↓</button>
+          <button onClick={onDelete} className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-brand-orange">×</button>
+        </div>
+      </div>
+      <div className="p-2 space-y-1.5">
+        {group.items.map((child, i) => (
+          <div key={child.id} className="flex flex-wrap items-center gap-2 pl-4 py-1">
+            <input
+              value={child.label}
+              onChange={e => patchChild(child.id, { label: e.target.value })}
+              placeholder="Label"
+              className={INPUT + " flex-1 min-w-[100px] py-1.5"}
+            />
+            <input
+              value={child.href}
+              onChange={e => patchChild(child.id, { href: e.target.value, external: e.target.value.startsWith("http") })}
+              placeholder="/admin/… or https://…"
+              className={INPUT + " flex-[2] min-w-[160px] font-mono text-xs py-1.5"}
+            />
+            <div className="flex items-center gap-1">
+              <button disabled={i === 0} onClick={() => moveChild(child.id, -1)} className="px-1 py-0.5 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25 text-xs">↑</button>
+              <button disabled={i === group.items.length - 1} onClick={() => moveChild(child.id, 1)} className="px-1 py-0.5 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25 text-xs">↓</button>
+              <button onClick={() => deleteChild(child.id)} className="text-[11px] px-1.5 py-0.5 text-brand-cream/45 hover:text-brand-orange">×</button>
+            </div>
+          </div>
+        ))}
+        <button onClick={addChild} className="text-[11px] px-3 py-1.5 ml-4 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream hover:border-white/25">
+          + Link in dropdown
+        </button>
       </div>
     </div>
   );
