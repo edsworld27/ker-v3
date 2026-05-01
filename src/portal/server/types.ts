@@ -206,3 +206,47 @@ export interface PortalSettings {
     previewBaseUrl?: string;
   };
 }
+
+// ─── Embed provider metadata ───────────────────────────────────────────────
+//
+// Maps used by the admin UI and the runtime renderer. Kept colocated with
+// the EmbedProvider union so adding a new provider lights up everywhere.
+
+export const EMBED_PROVIDER_LABELS: Record<EmbedProvider, string> = {
+  "crisp":       "Crisp Chat",
+  "intercom":    "Intercom",
+  "tidio":       "Tidio",
+  "calendly":    "Calendly",
+  "cal-com":     "Cal.com",
+  "youtube":     "YouTube",
+  "vimeo":       "Vimeo",
+  "custom-html": "Custom HTML",
+};
+
+export const EMBED_PROVIDER_PLACEHOLDER: Record<EmbedProvider, string> = {
+  "crisp":       "1234abcd-...",                       // Crisp website ID
+  "intercom":    "abc1234",                             // Intercom app ID
+  "tidio":       "abc1234",                             // Tidio public key
+  "calendly":    "https://calendly.com/yourname/30min",
+  "cal-com":     "https://cal.com/yourname",
+  "youtube":     "dQw4w9WgXcQ",                        // YouTube video ID
+  "vimeo":       "12345678",                           // Vimeo video ID
+  "custom-html": "<script>...</script>",
+};
+
+export const EMBED_DEFAULT_CONSENT: Record<EmbedProvider, ConsentCategory> = {
+  "crisp":       "functional",   // chat is functional UX
+  "intercom":    "functional",
+  "tidio":       "functional",
+  "calendly":    "functional",
+  "cal-com":     "functional",
+  "youtube":     "marketing",    // YT cookies = marketing
+  "vimeo":       "marketing",
+  "custom-html": "marketing",    // conservative
+};
+
+export const EMBED_DEFAULT_POSITION: Partial<Record<EmbedProvider, EmbedPosition>> = {
+  "crisp":    "popup-bottom-right",
+  "intercom": "popup-bottom-right",
+  "tidio":    "popup-bottom-right",
+};
