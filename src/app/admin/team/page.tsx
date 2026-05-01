@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   listTeam, listRoles, inviteTeamMember, updateTeamMember, removeTeamMember,
@@ -12,6 +13,9 @@ import {
   listAllUsers, adminCreateUser, deleteUser, startImpersonation,
   AUTH_EVENT, type User,
 } from "@/lib/auth";
+import {
+  loadCompliance, isImpersonationAllowedSync, getComplianceModeSync, onComplianceChange,
+} from "@/lib/admin/portalCompliance";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -350,6 +354,8 @@ export default function AdminTeamPage() {
   const [editMember, setEditMember] = useState<string | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateError, setImpersonateError] = useState("");
+  const [impersonationAllowed, setImpersonationAllowed] = useState(true);
+  const [complianceMode, setComplianceMode] = useState<string>("none");
 
   useEffect(() => {
     const refreshTeam = () => { setMembers(listTeam()); setRoles(listRoles()); };
@@ -367,11 +373,30 @@ export default function AdminTeamPage() {
     };
   }, []);
 
+  // Compliance probe — gates the Impersonate buttons. HIPAA + SOC 2
+  // disable straight impersonation in favour of the audit-friendly
+  // Edit/Configure flow.
+  useEffect(() => {
+    void loadCompliance().then(() => {
+      setImpersonationAllowed(isImpersonationAllowedSync());
+      setComplianceMode(getComplianceModeSync());
+    });
+    const off = onComplianceChange(() => {
+      setImpersonationAllowed(isImpersonationAllowedSync());
+      setComplianceMode(getComplianceModeSync());
+    });
+    return off;
+  }, []);
+
   function roleFor(roleId: string): Role | undefined {
     return roles.find((r) => r.id === roleId);
   }
 
   function handleImpersonate(email: string) {
+    if (!impersonationAllowed) {
+      setImpersonateError(`Compliance mode "${complianceMode}" disables impersonation. Use Edit profile instead.`);
+      return;
+    }
     setImpersonating(email);
     setImpersonateError("");
     const result = startImpersonation(email);
@@ -443,8 +468,18 @@ export default function AdminTeamPage() {
       {tab === "users" && (
         <div className="space-y-3">
           <div className="rounded-xl border border-white/8 p-4 bg-brand-amber/5 text-xs text-brand-cream/50 space-y-1">
-            <p className="font-medium text-brand-cream/70">About user impersonation</p>
-            <p>Click <strong className="text-brand-cream/80">Impersonate</strong> to sign in as any user — you&apos;ll see exactly what they see. An amber bar at the top always shows who you&apos;re impersonating, and <strong className="text-brand-cream/80">switching back</strong> instantly restores your admin session without needing their password.</p>
+            <p className="font-medium text-brand-cream/70">Two ways to act on a user&apos;s behalf</p>
+            <p>
+              <strong className="text-brand-cream/80">Edit profile</strong> opens the customer record — change fields directly,
+              every save is logged to the activity feed with old → new diffs. Audit-friendly; recommended for HIPAA / SOC 2.
+            </p>
+            <p>
+              <strong className="text-brand-cream/80">Impersonate</strong> signs you in as the user so you see exactly what they
+              see. Faster but a bigger privacy footprint — disabled automatically under HIPAA + SOC 2 compliance modes.
+              {!impersonationAllowed && (
+                <span className="text-brand-amber"> Currently disabled (mode: {complianceMode}).</span>
+              )}
+            </p>
           </div>
 
           {users.length === 0 && (
@@ -484,10 +519,20 @@ export default function AdminTeamPage() {
 
               {/* Actions */}
               <div className="flex gap-2 items-center shrink-0">
+                <Link
+                  href={`/admin/customers/${encodeURIComponent(u.email)}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 font-medium transition-colors"
+                  title="Edit / configure this user — every change is logged to the activity feed"
+                >
+                  Edit profile
+                </Link>
                 <button
                   onClick={() => handleImpersonate(u.email)}
-                  disabled={impersonating === u.email}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-50 font-medium transition-colors"
+                  disabled={impersonating === u.email || !impersonationAllowed}
+                  title={!impersonationAllowed
+                    ? `Compliance mode "${complianceMode}" disables impersonation`
+                    : "Sign in as this user — leaves an audit trail"}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-30 disabled:cursor-not-allowed font-medium transition-colors"
                 >
                   {impersonating === u.email ? "Loading…" : "Impersonate"}
                 </button>
@@ -533,11 +578,20 @@ export default function AdminTeamPage() {
                   {m.status}
                 </span>
                 <div className="flex items-center gap-1.5">
+                  <Link
+                    href={`/admin/customers/${encodeURIComponent(m.email)}`}
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-white/10 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 font-medium transition-colors"
+                    title="Edit / configure this member's record"
+                  >
+                    Edit
+                  </Link>
                   <button
                     onClick={() => handleImpersonate(m.email)}
-                    disabled={impersonating === m.email}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-50 font-medium transition-colors"
-                    title="Switch to this user's view"
+                    disabled={impersonating === m.email || !impersonationAllowed}
+                    title={!impersonationAllowed
+                      ? `Compliance mode "${complianceMode}" disables impersonation`
+                      : "Switch to this user's view"}
+                    className="text-xs px-2.5 py-1.5 rounded-lg bg-brand-amber/10 border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/20 disabled:opacity-30 disabled:cursor-not-allowed font-medium transition-colors"
                   >
                     {impersonating === m.email ? "…" : "View as"}
                   </button>
