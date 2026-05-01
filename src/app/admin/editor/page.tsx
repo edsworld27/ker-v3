@@ -633,32 +633,39 @@ function PublishModal({
   }, [phase, onClose]);
 
   // Preload a diff summary so the operator can see what's about to ship.
+  // Fails open: if either request fails, surface an empty preview so the
+  // operator can still publish (the actual publish chain has its own
+  // error reporting).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Content overrides — diff draft vs published from the admin shape.
-      const contentRes = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}?admin=1`, { cache: "no-store" });
-      const contentJson = contentRes.ok ? await contentRes.json() as {
-        draft?: Record<string, { value: string; type: string }>;
-        published?: Record<string, { value: string; type: string }>;
-      } : { draft: {}, published: {} };
-      const draft     = contentJson.draft ?? {};
-      const published = contentJson.published ?? {};
-      const all = new Set<string>([...Object.keys(draft), ...Object.keys(published)]);
-      const changed: string[] = [];
-      for (const k of all) {
-        const a = draft[k];
-        const b = published[k];
-        if (!a && b) { changed.push(k); continue; }
-        if (a && !b) { changed.push(k); continue; }
-        if (a && b && (a.value !== b.value || a.type !== b.type)) changed.push(k);
-      }
-
-      // Editor pages — fetch all and diff blocks vs publishedBlocks.
-      const pagesAll = await listEditorPages(site.id, true);
-      const changedPages = pagesAll
-        .filter(p => JSON.stringify(p.blocks) !== JSON.stringify(p.publishedBlocks ?? []))
-        .map(p => ({ id: p.id, slug: p.slug, title: p.title || p.slug }));
+      let changed: string[] = [];
+      let changedPages: PublishPreview["changedPages"] = [];
+      try {
+        const contentRes = await fetch(`/api/portal/content/${encodeURIComponent(site.id)}?admin=1`, { cache: "no-store" });
+        if (contentRes.ok) {
+          const contentJson = await contentRes.json() as {
+            draft?: Record<string, { value: string; type: string }>;
+            published?: Record<string, { value: string; type: string }>;
+          };
+          const draft     = contentJson.draft ?? {};
+          const published = contentJson.published ?? {};
+          const all = new Set<string>([...Object.keys(draft), ...Object.keys(published)]);
+          for (const k of all) {
+            const a = draft[k];
+            const b = published[k];
+            if (!a && b) { changed.push(k); continue; }
+            if (a && !b) { changed.push(k); continue; }
+            if (a && b && (a.value !== b.value || a.type !== b.type)) changed.push(k);
+          }
+        }
+      } catch { /* fall through with empty content list */ }
+      try {
+        const pagesAll = await listEditorPages(site.id, true);
+        changedPages = pagesAll
+          .filter(p => JSON.stringify(p.blocks) !== JSON.stringify(p.publishedBlocks ?? []))
+          .map(p => ({ id: p.id, slug: p.slug, title: p.title || p.slug }));
+      } catch { /* fall through with empty pages list */ }
 
       if (cancelled) return;
       setPreview({ changedContentKeys: changed.sort(), changedPages });
