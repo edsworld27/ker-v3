@@ -27,6 +27,14 @@ import { NextRequest } from "next/server";
 //   window.__portal.beat("custom-event");         // ad-hoc heartbeat
 //   window.__portal.applyOverrides();             // force re-apply
 //   window.__portal.refresh();                    // re-fetch + re-apply
+//   window.__portal.disable();                    // stop beats + observer
+//
+// Stability knobs (T1 #9):
+//   - data-sample="0.25"    → only 25% of post-connect beats are sent
+//   - max 1 beat per 2s     → per-page rate cap
+//   - failure backoff       → doubles up to 5min on /heartbeat errors
+//   - 5s fetch abort        → config + content fetches cancel on timeout
+//   - re-apply storm guard  → > 50 applies / 5s disables observer
 //
 // One <script> in <head> covers tracking + connectivity + content
 // overrides — callers paste it once and never touch it again.
@@ -45,6 +53,26 @@ export async function GET(req: NextRequest) {
     var heartbeatUrl = portal + "/api/portal/heartbeat";
     var configUrl    = portal + "/api/portal/config/"  + encodeURIComponent(siteId);
     var contentUrl   = portal + "/api/portal/content/" + encodeURIComponent(siteId);
+
+    // ── Sampling + rate limiting ─────────────────────────────────────
+    // data-sample defaults to 1.0 (always send). Lower values drop a
+    // random fraction of visibility-driven beats AFTER the initial
+    // connect — connectivity reporting must always go through.
+    var sampleAttr = s && s.getAttribute("data-sample");
+    var sampleNum  = sampleAttr == null ? 1 : parseFloat(sampleAttr);
+    if (!isFinite(sampleNum) || sampleNum > 1) sampleNum = 1;
+    if (sampleNum < 0) sampleNum = 0;
+    var sample = sampleNum;
+    var lastBeat = 0;
+    // Failure backoff: doubles on a non-ok / rejected fetch (cap 5min),
+    // resets to 0 on a successful round-trip. The visibilitychange beat
+    // path checks Date.now() - lastBeat < failureBackoffMs and skips
+    // when still cooling down.
+    var failureBackoffMs = 0;
+    var FAILURE_BACKOFF_MAX = 5 * 60 * 1000;
+    // Set to true when window.__portal.disable() is called — kills all
+    // future heartbeats and disconnects the MutationObserver.
+    var disabled = false;
 
     // Preview mode (D-2): when the page URL carries portal_preview=draft and
     // a signed pt token, point the content fetch at the draft endpoint. The
@@ -97,7 +125,20 @@ export async function GET(req: NextRequest) {
     }
     function beat(event) {
       try {
+        if (disabled) return;
+        var now = Date.now();
+        var isConnect = event === "connect";
+        // Per-page rate cap: max 1 beat / 2s. The initial connect
+        // bypasses both the cap and the sampling gate.
+        if (!isConnect) {
+          if (now - lastBeat < 2000) return;
+          if (sample < 1 && Math.random() > sample) return;
+          if (failureBackoffMs && now - lastBeat < failureBackoffMs) return;
+        }
+        lastBeat = now;
         var body = payload(event);
+        // Backoff state machine. sendBeacon is fire-and-forget (no
+        // status), so we only adjust failureBackoffMs on the fetch path.
         if (navigator.sendBeacon) {
           navigator.sendBeacon(heartbeatUrl, new Blob([body], { type: "text/plain" }));
         } else {
@@ -105,12 +146,19 @@ export async function GET(req: NextRequest) {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: body, keepalive: true, mode: "cors", credentials: "omit"
-          }).catch(function(){});
+          }).then(function(r) {
+            if (r && r.ok) failureBackoffMs = 0;
+            else bumpBackoff();
+          }).catch(function(){ bumpBackoff(); });
         }
       } catch (e) {}
     }
+    function bumpBackoff() {
+      failureBackoffMs = failureBackoffMs ? Math.min(failureBackoffMs * 2, FAILURE_BACKOFF_MAX) : 2000;
+    }
     beat("connect");
     document.addEventListener("visibilitychange", function() {
+      if (disabled) return;
       if (document.visibilityState === "hidden") beat("hide");
       else if (document.visibilityState === "visible") beat("show");
     });
@@ -228,9 +276,38 @@ export async function GET(req: NextRequest) {
       for (var i = 0; i < els.length; i++) applyTo(els[i]);
     }
 
+    // ── Defensive fetch (5s abort timeout) ───────────────────────────
+    // The portal host can hang or be unreachable; an abort guarantees
+    // the host page never carries a hanging request indefinitely. The
+    // AbortController's signal is fed into every fetch we make for
+    // config + content, both at boot and on refresh().
+    function fetchWithTimeout(url, opts, ms) {
+      var init = {};
+      if (opts) {
+        init.mode = opts.mode;
+        init.credentials = opts.credentials;
+        init.cache = opts.cache;
+      }
+      try {
+        if (typeof AbortController !== "undefined") {
+          var ctrl = new AbortController();
+          init.signal = ctrl.signal;
+          var t = setTimeout(function() { try { ctrl.abort(); } catch (e) {} }, ms);
+          return fetch(url, init).then(function(r) {
+            clearTimeout(t);
+            return r;
+          }, function(err) {
+            clearTimeout(t);
+            throw err;
+          });
+        }
+      } catch (e) {}
+      return fetch(url, init);
+    }
+
     // ── Fetch and apply config + content (in parallel) ───────────────
     var needsConsent = false;
-    fetch(configUrl, { mode: "cors", credentials: "omit", cache: "default" })
+    fetchWithTimeout(configUrl, { mode: "cors", credentials: "omit", cache: "default" }, 5000)
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(cfg) {
         if (!cfg || !cfg.trackers || !cfg.trackers.length) return;
@@ -242,7 +319,7 @@ export async function GET(req: NextRequest) {
       })
       .catch(function(){});
 
-    fetch(contentUrl, { mode: "cors", credentials: "omit", cache: "default" })
+    fetchWithTimeout(contentUrl, { mode: "cors", credentials: "omit", cache: "default" }, 5000)
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(map) {
         if (!map || typeof map !== "object") return;
@@ -253,9 +330,16 @@ export async function GET(req: NextRequest) {
 
     // Re-apply on subsequent DOM additions (SPA route changes, hydration
     // mismatches, etc.). Coalesce bursts so a render storm doesn't loop.
+    // Hard cap: > 50 applies in 5s ⇒ host is in a render loop, log once
+    // and stop further re-applies (don't crash the host page).
     var reapplyTimer = null;
+    var applyCount = 0;
+    var applyWindowStart = 0;
+    var reapplyDisabled = false;
+    var obs = null;
     if (typeof MutationObserver !== "undefined") {
-      var obs = new MutationObserver(function(records) {
+      obs = new MutationObserver(function(records) {
+        if (disabled || reapplyDisabled) return;
         var hit = false;
         for (var i = 0; i < records.length; i++) {
           if (records[i].addedNodes && records[i].addedNodes.length) { hit = true; break; }
@@ -263,6 +347,21 @@ export async function GET(req: NextRequest) {
         if (!hit || reapplyTimer) return;
         reapplyTimer = setTimeout(function() {
           reapplyTimer = null;
+          if (disabled || reapplyDisabled) return;
+          var now = Date.now();
+          if (now - applyWindowStart > 5000) {
+            applyWindowStart = now;
+            applyCount = 0;
+          }
+          applyCount++;
+          if (applyCount > 50) {
+            reapplyDisabled = true;
+            try { obs && obs.disconnect(); } catch (e) {}
+            if (window.console && console.warn) {
+              console.warn("[portal] re-apply storm detected (>50/5s) — disabling further re-applies for this page");
+            }
+            return;
+          }
           applyOverrides();
         }, 50);
       });
@@ -271,7 +370,7 @@ export async function GET(req: NextRequest) {
     }
 
     function refresh() {
-      fetch(contentUrl, { mode: "cors", credentials: "omit", cache: "no-store" })
+      fetchWithTimeout(contentUrl, { mode: "cors", credentials: "omit", cache: "no-store" }, 5000)
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(map) {
           if (!map || typeof map !== "object") return;
@@ -279,6 +378,18 @@ export async function GET(req: NextRequest) {
           applyOverrides();
         })
         .catch(function(){});
+    }
+
+    // ── Per-page opt-out ─────────────────────────────────────────────
+    // Hosts can call window.__portal.disable() on /admin pages or other
+    // contexts where the tag should sit silent. Disconnects the
+    // observer, clears any pending re-apply timer, and gates beat().
+    function disable() {
+      if (disabled) return;
+      disabled = true;
+      reapplyDisabled = true;
+      try { obs && obs.disconnect(); } catch (e) {}
+      if (reapplyTimer) { try { clearTimeout(reapplyTimer); } catch (e) {} reapplyTimer = null; }
     }
 
     // ── Public API ───────────────────────────────────────────────────
@@ -290,10 +401,11 @@ export async function GET(req: NextRequest) {
     window.__portal.applyOverrides = applyOverrides;
     window.__portal.refresh = refresh;
     window.__portal.preview = previewMode;
-    window.__portal.version = 4;
+    window.__portal.disable = disable;
+    window.__portal.version = 5;
 
     if (window.console && console.log) {
-      console.log("[portal] tag v4 ready (site=" + siteId + (previewMode ? ", preview=" + previewMode.mode : "") + ")");
+      console.log("[portal] tag v5 ready (site=" + siteId + (previewMode ? ", preview=" + previewMode.mode : "") + ")");
     }
   } catch (e) { /* tag must never throw onto host site */ }
 })();`;
