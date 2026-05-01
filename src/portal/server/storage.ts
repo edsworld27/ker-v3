@@ -22,7 +22,7 @@ import { dirname, resolve } from "path";
 import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
-  EmbedTheme, ChatbotConfig, OrgRecord,
+  EmbedTheme, ChatbotConfig, OrgRecord, ServerUser,
 } from "./types";
 
 interface PortalState {
@@ -37,6 +37,7 @@ interface PortalState {
   embedThemes: Record<string, EmbedTheme>;  // G-1 per-site embed customisation
   chatbots: Record<string, ChatbotConfig>;  // T1 #3 per-site chatbot config
   orgs: Record<string, OrgRecord>;          // G-2 org/tenant store
+  users: Record<string, ServerUser>;        // G-5 server-side user store
 }
 
 const empty = (): PortalState => ({
@@ -47,6 +48,7 @@ const empty = (): PortalState => ({
   embedThemes: {},
   chatbots: {},
   orgs: {},
+  users: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -405,6 +407,7 @@ function parseBlob(raw: string): PortalState {
       // an upgrade returns a sane default rather than `undefined`.
       chatbots: parsed.chatbots ?? {},
       orgs: parsed.orgs ?? {},
+      users: parsed.users ?? {},
     };
   } catch {
     return empty();

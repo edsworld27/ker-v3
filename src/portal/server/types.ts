@@ -496,4 +496,28 @@ export interface OrgRecord {
   status: OrgStatus;
   isPrimary: boolean;
   createdAt: number;
+  members?: OrgMembership[];   // G-5: per-org access control
+}
+
+// ─── Server-side users + sessions (G-5) ─────────────────────────────────────
+//
+// The localStorage user store in src/lib/auth.ts will be retired here.
+// Server-side users own the password hash + role, sessions are signed
+// HMAC cookies validated on every protected request.
+
+export type UserRole = "super-admin" | "admin" | "member";
+
+export interface ServerUser {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;        // sha256(password + email-salt)
+  role: UserRole;              // global role; per-org membership lives on OrgRecord.members
+  createdAt: number;
+}
+
+export interface OrgMembership {
+  email: string;               // FK to ServerUser.email
+  role: "owner" | "admin" | "member";
+  joinedAt: number;
 }
