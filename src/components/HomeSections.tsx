@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { getSections, onSectionsChange, type SectionDef } from "@/lib/admin/sections";
-import SocialStrip from "@/components/SocialStrip";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import Problem from "@/components/Problem";
 import Solution from "@/components/Solution";
 import Shop from "@/components/Shop";
-import Testimonials from "@/components/Testimonials";
+
+// Below-the-fold heavy components are dynamically imported so their
+// JS doesn't compete with the initial render. SSR stays on so crawlers
+// and the no-JS path still see the content; only the JS hydration is
+// deferred. `loading: () => null` keeps the placeholder invisible —
+// these sections sit far enough down the page that there's no LCP risk.
+const SocialStrip  = dynamic(() => import("@/components/SocialStrip"),  { ssr: true, loading: () => null });
+const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: true, loading: () => null });
 
 const SECTION_MAP: Record<string, React.ComponentType> = {
   social:       SocialStrip,
