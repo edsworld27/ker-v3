@@ -12,6 +12,8 @@ import {
 } from "@/lib/admin/orders";
 import { listFlags, setUserOverride } from "@/lib/admin/featureFlags";
 import type { FeatureFlag } from "@/lib/admin/featureFlags";
+import { startImpersonation } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   pending:   "bg-white/8 text-brand-cream/55",
@@ -25,6 +27,7 @@ type Tab = "orders" | "flags" | "notes";
 
 export default function CustomerDetailPage() {
   const params  = useParams();
+  const router  = useRouter();
   const email   = decodeURIComponent((params?.email as string) ?? "");
 
   const [customer, setCustomer] = useState<CustomerDetail | null | undefined>(undefined);
@@ -81,6 +84,15 @@ export default function CustomerDetailPage() {
     setFlags(listFlags());
   }
 
+  function handlePreviewAs() {
+    const r = startImpersonation(email);
+    if (!r.ok) {
+      alert(`Cannot preview as ${email}: ${r.error}\n\nThis usually means they've placed orders but never created an account.`);
+      return;
+    }
+    router.push("/");
+  }
+
   if (customer === undefined) {
     return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
   }
@@ -132,12 +144,20 @@ export default function CustomerDetailPage() {
             </form>
           </div>
         </div>
-        <a
-          href={`mailto:${customer.email}`}
-          className="shrink-0 text-xs px-4 py-2 rounded-lg border border-white/10 text-brand-cream/60 hover:text-brand-cream hover:border-white/25 transition-colors"
-        >
-          Email ↗
-        </a>
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            onClick={handlePreviewAs}
+            className="text-xs px-4 py-2 rounded-lg bg-brand-orange/15 border border-brand-orange/30 text-brand-orange hover:bg-brand-orange/25 hover:border-brand-orange/50 transition-colors font-medium"
+          >
+            Preview as customer ↗
+          </button>
+          <a
+            href={`mailto:${customer.email}`}
+            className="text-xs px-4 py-2 rounded-lg border border-white/10 text-brand-cream/60 hover:text-brand-cream hover:border-white/25 transition-colors"
+          >
+            Email ↗
+          </a>
+        </div>
       </div>
 
       {/* Stats */}
