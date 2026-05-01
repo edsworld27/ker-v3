@@ -13,19 +13,28 @@
 //   iframe → host:  { source: "portal-edit-overlay", type: "ready" | "select" | "unsaved" | "saved", … }
 //   host → iframe:  { source: "editor-host", type: "set-mode" | "patch" | "save" | "revert", … }
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import DevicePreview from "@/components/admin/DevicePreview";
 import EditorTopBar, { type EditorMode } from "./EditorTopBar";
 import EditorPropertiesSidebar, { type SelectedElement } from "./EditorPropertiesSidebar";
+import EditorOutliner, { type EditorTarget } from "./EditorOutliner";
+import EditorFunnelStage from "./EditorFunnelStage";
 import {
   loadDeviceState, saveDeviceState, getDevicePreset, effectiveViewport,
   type DeviceState,
 } from "@/lib/admin/devicePresets";
-import { listPages as listEditorPages, getPage as getEditorPage, updatePage as updateEditorPage, publishPage as publishEditorPage } from "@/lib/admin/editorPages";
+import {
+  listPages as listEditorPages, getPage as getEditorPage,
+  updatePage as updateEditorPage, publishPage as publishEditorPage,
+  createPage as createEditorPage, deletePage as deleteEditorPage,
+} from "@/lib/admin/editorPages";
 import { listSites, getActiveSite, type Site } from "@/lib/admin/sites";
 import { promoteSiteToGitHub, type PromoteResult } from "@/lib/admin/promote";
+import {
+  type Funnel, listFunnels, refreshFunnels, createFunnel, onFunnelsChange,
+} from "@/lib/admin/funnels";
 import type { EditorPage } from "@/portal/server/types";
 
 interface PageEntry {
@@ -43,7 +52,8 @@ function VisualEditorPageInner() {
   const [sites, setSites] = useState<Site[]>([]);
   const [site, setSite] = useState<Site | null>(null);
   const [pages, setPages] = useState<PageEntry[]>([]);
-  const [pageId, setPageId] = useState<string | null>(null);
+  const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [target, setTarget] = useState<EditorTarget>({ kind: "page", id: "_home" });
   const [mode, setMode] = useState<EditorMode>("live");
   const [edit, setEdit] = useState<"edit" | "view">("edit");
   const [deviceState, setDeviceState] = useState<DeviceState>(() => loadDeviceState());
@@ -52,9 +62,23 @@ function VisualEditorPageInner() {
   const [reloadKey, setReloadKey] = useState(0);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [newPageOpen, setNewPageOpen] = useState(false);
+  const [newFunnelOpen, setNewFunnelOpen] = useState(false);
+  const [pageSettingsId, setPageSettingsId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Load sites + pages on mount.
+  const loadPages = useCallback(async (siteId: string): Promise<PageEntry[]> => {
+    const editorPages = await listEditorPages(siteId, true);
+    const pageEntries: PageEntry[] = editorPages.map(p => ({
+      id: p.id, slug: p.slug, title: p.title || p.slug, source: "editor",
+    }));
+    if (!pageEntries.some(p => p.slug === "/")) {
+      pageEntries.unshift({ id: "_home", slug: "/", title: "Home", source: "site" });
+    }
+    return pageEntries;
+  }, []);
+
+  // Load sites + pages + funnels on mount.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -65,28 +89,38 @@ function VisualEditorPageInner() {
       setSite(active);
       if (!active) return;
 
-      const editorPages = await listEditorPages(active.id);
+      const [pageEntries, _funnels] = await Promise.all([
+        loadPages(active.id),
+        refreshFunnels(),
+      ]);
       if (cancelled) return;
 
-      const pageEntries: PageEntry[] = editorPages.map(p => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title || p.slug,
-        source: "editor",
-      }));
-      // Always include the storefront home so operators can edit it
-      // even if no editor-managed page covers "/".
-      if (!pageEntries.some(p => p.slug === "/")) {
-        pageEntries.unshift({ id: "_home", slug: "/", title: "Home", source: "site" });
-      }
       setPages(pageEntries);
-      setPageId(pageEntries[0]?.id ?? null);
+      setFunnels(_funnels);
+      setTarget({ kind: "page", id: pageEntries[0]?.id ?? "_home" });
     }
     void load();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadPages]);
 
-  const currentPage = pageId ? pages.find(p => p.id === pageId) : null;
+  // Re-load pages when the active site changes.
+  useEffect(() => {
+    if (!site) return;
+    let cancelled = false;
+    void loadPages(site.id).then(pageEntries => {
+      if (cancelled) return;
+      setPages(pageEntries);
+      setTarget({ kind: "page", id: pageEntries[0]?.id ?? "_home" });
+    });
+    return () => { cancelled = true; };
+  }, [site?.id, loadPages]);
+
+  // Subscribe to funnel mutations so the outliner stays in sync.
+  useEffect(() => onFunnelsChange(() => setFunnels(listFunnels())), []);
+
+  const currentPage   = target.kind === "page" ? pages.find(p => p.id === target.id) ?? null : null;
+  const currentFunnel = target.kind === "funnel" ? funnels.find(f => f.id === target.id) ?? null : null;
+  const pageSettingsPage = pageSettingsId ? pages.find(p => p.id === pageSettingsId) ?? null : null;
 
   // The URL we render inside the iframe in Live mode. ?portal_edit=1
   // activates PortalEditOverlay; mode=view turns it off without reload.
@@ -130,8 +164,8 @@ function VisualEditorPageInner() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  // Reset selected when the page changes — its keys won't be in the new doc.
-  useEffect(() => { setSelected(null); }, [pageId, mode]);
+  // Reset selected when the target / mode changes — its keys won't be in the new doc.
+  useEffect(() => { setSelected(null); }, [target, mode]);
 
   function reloadIframe() {
     setIframeReady(false);
@@ -157,10 +191,43 @@ function VisualEditorPageInner() {
     postToIframe({ source: "editor-host", type: "revert", key });
   }
 
+  // Outliner callbacks — page CRUD + funnel CRUD wired to the libs.
+  async function handleDeletePage(id: string) {
+    if (!site) return;
+    const pg = pages.find(p => p.id === id);
+    if (!pg || pg.source !== "editor") return;
+    const ok = window.confirm(`Delete "${pg.title}"? This cannot be undone.`);
+    if (!ok) return;
+    await deleteEditorPage(site.id, id);
+    const next = await loadPages(site.id);
+    setPages(next);
+    if (target.kind === "page" && target.id === id) {
+      setTarget({ kind: "page", id: next[0]?.id ?? "_home" });
+    }
+  }
+  function handleSelectPage(id: string)   { setTarget({ kind: "page", id }); }
+  function handleSelectFunnel(id: string) { setTarget({ kind: "funnel", id }); }
+
+  async function handleDeleteFunnel(id: string) {
+    const f = funnels.find(x => x.id === id);
+    if (!f) return;
+    const ok = window.confirm(`Delete "${f.name}"? This cannot be undone.`);
+    if (!ok) return;
+    const { deleteFunnel } = await import("@/lib/admin/funnels");
+    await deleteFunnel(id);
+    setFunnels(listFunnels());
+    if (target.kind === "funnel" && target.id === id) {
+      setTarget({ kind: "page", id: pages[0]?.id ?? "_home" });
+    }
+  }
+
   // Resolve viewport for iframe scaling. Same maths the canvas uses.
   const spec = getDevicePreset(deviceState.deviceId) ?? null;
   const viewport = spec ? effectiveViewport(spec, deviceState) : { width: 1280, height: 800 };
   const isResponsive = deviceState.deviceId === "responsive";
+
+  // Topbar widgets only make sense for page editing.
+  const isPageTarget = target.kind === "page";
 
   return (
     <main className="h-[calc(100vh-0px)] flex flex-col bg-[#0a0a0a]">
@@ -169,8 +236,8 @@ function VisualEditorPageInner() {
         siteId={site?.id ?? ""}
         onSiteChange={id => setSite(sites.find(s => s.id === id) ?? null)}
         pages={pages.map(p => ({ id: p.id, slug: p.slug, title: p.title }))}
-        pageId={pageId}
-        onPageChange={setPageId}
+        pageId={isPageTarget ? target.id : null}
+        onPageChange={id => setTarget({ kind: "page", id })}
         mode={mode}
         onModeChange={setMode}
         edit={edit}
@@ -181,14 +248,41 @@ function VisualEditorPageInner() {
         onPublish={() => setPublishOpen(true)}
       />
 
-      {mode === "live" && (
+      {isPageTarget && mode === "live" && (
         <DevicePreview state={deviceState} onChange={s => { setDeviceState(s); saveDeviceState(s); }} />
       )}
 
       <div className="flex-1 min-h-0 flex">
+        <EditorOutliner
+          siteName={site?.name ?? "Site"}
+          pages={pages}
+          funnels={funnels}
+          target={target}
+          onSelectPage={handleSelectPage}
+          onSelectFunnel={handleSelectFunnel}
+          onCreatePage={() => setNewPageOpen(true)}
+          onCreateFunnel={() => setNewFunnelOpen(true)}
+          onDeletePage={id => void handleDeletePage(id)}
+          onDeleteFunnel={id => void handleDeleteFunnel(id)}
+          onPageSettings={id => setPageSettingsId(id)}
+        />
+
         {/* Stage */}
         <div className="flex-1 min-w-0 overflow-auto bg-[#050505] flex items-start justify-center p-6">
-          {mode === "code" ? (
+          {target.kind === "funnel" ? (
+            currentFunnel ? (
+              <EditorFunnelStage
+                funnel={currentFunnel}
+                onChange={next => setFunnels(fs => fs.map(f => f.id === next.id ? next : f))}
+                onDeleted={() => {
+                  setFunnels(listFunnels());
+                  setTarget({ kind: "page", id: pages[0]?.id ?? "_home" });
+                }}
+              />
+            ) : (
+              <div className="text-center text-[12px] text-brand-cream/45 mt-12">Funnel not found.</div>
+            )
+          ) : mode === "code" ? (
             <CodeStage
               site={site}
               page={currentPage}
@@ -198,8 +292,8 @@ function VisualEditorPageInner() {
             <div className="text-center text-[12px] text-brand-cream/45 mt-12 max-w-md">
               <p>No pages on this site yet.</p>
               <p className="mt-2">
-                Create one from <Link href="/admin/pages" className="text-cyan-300 hover:text-cyan-200">/admin/pages</Link>{" "}
-                or use the block-based editor at <Link href="/admin/sites" className="text-cyan-300 hover:text-cyan-200">/admin/sites</Link>.
+                Click <strong>+</strong> in the left rail to create one, or open{" "}
+                <Link href="/admin/sites" className="text-cyan-300 hover:text-cyan-200">/admin/sites</Link>.
               </p>
             </div>
           ) : mode === "block" && currentPage.source !== "editor" ? (
@@ -244,7 +338,7 @@ function VisualEditorPageInner() {
 
         {/* Right properties sidebar — only useful in Live mode where the
             overlay is sending select events back. */}
-        {mode === "live" && (
+        {isPageTarget && mode === "live" && (
           <EditorPropertiesSidebar
             selected={selected}
             onClose={() => setSelected(null)}
@@ -256,21 +350,21 @@ function VisualEditorPageInner() {
       </div>
 
       <footer className="shrink-0 px-4 py-2 border-t border-white/5 bg-brand-black-soft text-[10px] text-brand-cream/45 flex items-center gap-4">
-        {mode === "live" && (
+        {target.kind === "funnel" ? (
+          <span>Funnel editor — auto-saves changes. Step paths support globs (e.g. <code className="font-mono text-brand-cream/65">/products/*</code>).</span>
+        ) : mode === "live" ? (
           <>
             <span>Cmd/Ctrl+E to toggle edit mode inside the iframe</span>
             <span className="opacity-50">·</span>
             <span>Click any element marked <code className="font-mono text-brand-cream/65">data-portal-edit</code> to edit</span>
           </>
-        )}
-        {mode === "block" && (
+        ) : mode === "block" ? (
           <span>Block editor — drag, drop, duplicate, delete blocks. Saves are instant.</span>
-        )}
-        {mode === "code" && (
+        ) : (
           <span>Raw JSON view of the page's block tree. Edit carefully — invalid JSON won't save.</span>
         )}
         <div className="flex-1" />
-        <span>{currentPage?.slug}</span>
+        <span>{target.kind === "page" ? currentPage?.slug : currentFunnel?.steps.length + " steps"}</span>
       </footer>
 
       {publishOpen && site && (
@@ -278,6 +372,45 @@ function VisualEditorPageInner() {
           site={site}
           activePageId={currentPage?.source === "editor" ? currentPage.id : null}
           onClose={() => setPublishOpen(false)}
+        />
+      )}
+
+      {newPageOpen && site && (
+        <NewPageModal
+          onClose={() => setNewPageOpen(false)}
+          onCreate={async input => {
+            const created = await createEditorPage(site.id, input);
+            if (!created) return false;
+            const next = await loadPages(site.id);
+            setPages(next);
+            setTarget({ kind: "page", id: created.id });
+            return true;
+          }}
+        />
+      )}
+
+      {newFunnelOpen && (
+        <NewFunnelModal
+          onClose={() => setNewFunnelOpen(false)}
+          onCreate={async input => {
+            const created = await createFunnel(input);
+            if (!created) return false;
+            setFunnels(listFunnels());
+            setTarget({ kind: "funnel", id: created.id });
+            return true;
+          }}
+        />
+      )}
+
+      {pageSettingsId && pageSettingsPage && site && (
+        <PageSettingsModal
+          siteId={site.id}
+          page={pageSettingsPage}
+          onClose={() => setPageSettingsId(null)}
+          onSaved={async () => {
+            const next = await loadPages(site.id);
+            setPages(next);
+          }}
         />
       )}
     </main>
@@ -573,6 +706,293 @@ function PublishModal({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── New page modal ─────────────────────────────────────────────────────────
+
+function NewPageModal({
+  onClose, onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (input: { slug: string; title: string }) => Promise<boolean>;
+}) {
+  const [title, setTitle] = useState("");
+  const [slug, setSlug]   = useState("");
+  const [busy, setBusy]   = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Auto-derive slug from title until the operator edits it directly.
+  const slugTouched = useRef(false);
+  function handleTitle(v: string) {
+    setTitle(v);
+    if (!slugTouched.current) {
+      const auto = "/" + v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      setSlug(auto === "/" ? "" : auto);
+    }
+  }
+
+  async function submit() {
+    setError(null);
+    const t = title.trim();
+    let s = slug.trim();
+    if (!t) { setError("Title is required."); return; }
+    if (!s) { setError("Slug is required."); return; }
+    if (!s.startsWith("/")) s = "/" + s;
+    setBusy(true);
+    const ok = await onCreate({ slug: s, title: t });
+    setBusy(false);
+    if (!ok) { setError("Failed to create page. Slug may already exist."); return; }
+    onClose();
+  }
+
+  return (
+    <ModalShell title="New page" onClose={busy ? () => {} : onClose}>
+      <label className="block">
+        <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Title</span>
+        <input
+          value={title}
+          onChange={e => handleTitle(e.target.value)}
+          placeholder="About us"
+          autoFocus
+          className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+        />
+      </label>
+      <label className="block">
+        <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Slug</span>
+        <input
+          value={slug}
+          onChange={e => { slugTouched.current = true; setSlug(e.target.value); }}
+          placeholder="/about"
+          className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+        />
+      </label>
+      {error && <p className="text-[11px] text-red-300">{error}</p>}
+      <ModalActions
+        onCancel={onClose}
+        onSubmit={() => void submit()}
+        submitLabel={busy ? "Creating…" : "Create"}
+        disabled={busy}
+      />
+    </ModalShell>
+  );
+}
+
+// ── New funnel modal ───────────────────────────────────────────────────────
+
+function NewFunnelModal({
+  onClose, onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (input: { name: string }) => Promise<boolean>;
+}) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    setError(null);
+    const n = name.trim();
+    if (!n) { setError("Name is required."); return; }
+    setBusy(true);
+    const ok = await onCreate({ name: n });
+    setBusy(false);
+    if (!ok) { setError("Failed to create funnel."); return; }
+    onClose();
+  }
+
+  return (
+    <ModalShell title="New funnel" onClose={busy ? () => {} : onClose}>
+      <p className="text-[12px] text-brand-cream/65">
+        Funnels track how visitors walk a sequence of pages — landing → product → checkout.
+        Add steps after creating.
+      </p>
+      <label className="block">
+        <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Name</span>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Spring sale funnel"
+          autoFocus
+          className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+        />
+      </label>
+      {error && <p className="text-[11px] text-red-300">{error}</p>}
+      <ModalActions
+        onCancel={onClose}
+        onSubmit={() => void submit()}
+        submitLabel={busy ? "Creating…" : "Create"}
+        disabled={busy}
+      />
+    </ModalShell>
+  );
+}
+
+// ── Page settings modal ────────────────────────────────────────────────────
+
+function PageSettingsModal({
+  siteId, page, onClose, onSaved,
+}: {
+  siteId: string;
+  page: PageEntry;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(page.title);
+  const [slug, setSlug]   = useState(page.slug);
+  const [description, setDescription] = useState("");
+  const [customHead, setCustomHead] = useState("");
+  const [customFoot, setCustomFoot] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getEditorPage(siteId, page.id).then(doc => {
+      if (cancelled || !doc) return;
+      setDescription(doc.description ?? "");
+      setCustomHead(doc.customHead ?? "");
+      setCustomFoot(doc.customFoot ?? "");
+      setLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [siteId, page.id]);
+
+  async function submit() {
+    setError(null);
+    const t = title.trim();
+    let s = slug.trim();
+    if (!t || !s) { setError("Title and slug are required."); return; }
+    if (!s.startsWith("/")) s = "/" + s;
+    setBusy(true);
+    const out = await updateEditorPage(siteId, page.id, {
+      title: t,
+      slug: s,
+      description: description.trim() || undefined,
+      customHead: customHead || undefined,
+      customFoot: customFoot || undefined,
+    });
+    setBusy(false);
+    if (!out) { setError("Save failed."); return; }
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <ModalShell title="Page settings" onClose={busy ? () => {} : onClose} wide>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Title</span>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-brand-cream focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Slug</span>
+          <input
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] font-mono text-brand-cream focus:outline-none focus:border-cyan-400/40"
+          />
+        </label>
+      </div>
+      <label className="block">
+        <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">SEO description</span>
+        <textarea
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Short summary for search engines."
+          className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+        />
+      </label>
+      <details>
+        <summary className="text-[11px] text-brand-cream/55 cursor-pointer hover:text-brand-cream">Custom head / foot scripts</summary>
+        <div className="mt-2 space-y-2">
+          <label className="block">
+            <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Custom head</span>
+            <textarea
+              value={customHead}
+              onChange={e => setCustomHead(e.target.value)}
+              rows={3}
+              placeholder="<script>…</script> or <link …>"
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Custom foot</span>
+            <textarea
+              value={customFoot}
+              onChange={e => setCustomFoot(e.target.value)}
+              rows={3}
+              placeholder="<script>…</script>"
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+            />
+          </label>
+        </div>
+      </details>
+      {!loaded && <p className="text-[11px] text-brand-cream/45">Loading…</p>}
+      {error && <p className="text-[11px] text-red-300">{error}</p>}
+      <ModalActions
+        onCancel={onClose}
+        onSubmit={() => void submit()}
+        submitLabel={busy ? "Saving…" : "Save"}
+        disabled={busy || !loaded}
+      />
+    </ModalShell>
+  );
+}
+
+// ── Modal shell + actions ──────────────────────────────────────────────────
+
+function ModalShell({
+  title, onClose, children, wide,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        onClick={e => e.stopPropagation()}
+        className={`w-full ${wide ? "max-w-xl" : "max-w-md"} rounded-2xl border border-cyan-400/20 bg-[#0a0e1a] p-5 space-y-4`}
+      >
+        <header className="flex items-center justify-between">
+          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400">{title}</p>
+          <button onClick={onClose} className="text-brand-cream/55 hover:text-brand-cream text-lg leading-none">×</button>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalActions({
+  onCancel, onSubmit, submitLabel, disabled,
+}: {
+  onCancel: () => void;
+  onSubmit: () => void;
+  submitLabel: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-2 pt-1">
+      <button onClick={onCancel} className="text-[11px] text-brand-cream/55 hover:text-brand-cream px-3 py-1.5">
+        Cancel
+      </button>
+      <button
+        onClick={onSubmit}
+        disabled={disabled}
+        className="px-3 py-1.5 rounded-md text-[11px] font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20 disabled:opacity-40"
+      >
+        {submitLabel}
+      </button>
     </div>
   );
 }
