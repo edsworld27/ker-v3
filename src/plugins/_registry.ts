@@ -49,6 +49,7 @@ import wiki from "./wiki";
 import inventory from "./inventory";
 import reviewsV2 from "./reviews";
 import social from "./social";
+import notifications from "./notifications";
 
 // First-party plugins. Order is presentation-only (marketplace
 // rendering); install dependencies are enforced by the runtime.
@@ -84,6 +85,7 @@ const PLUGINS: AquaPlugin[] = [
   auditlog,
   backups,
   webhooks,
+  notifications,
   repo,
   i18n,
 ];

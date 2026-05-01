@@ -13,7 +13,8 @@ import { ensureHydrated } from "@/portal/server/storage";
 import { recordSubmission, getFormsConfig } from "@/portal/server/formSubmissions";
 import { sendEmail } from "@/portal/server/email";
 import { emit } from "@/portal/server/eventBus";
-import "@/portal/server/webhooks"; // ensure event bus is wired
+import "@/portal/server/webhooks";       // event bus → outbound webhooks
+import "@/portal/server/notifications";  // event bus → in-app + email digest
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

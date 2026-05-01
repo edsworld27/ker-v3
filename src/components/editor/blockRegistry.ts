@@ -68,6 +68,7 @@ import BeforeAfterBlock from "./blocks/BeforeAfterBlock";
 import MarqueeBlock from "./blocks/MarqueeBlock";
 import AppShowcaseBlock from "./blocks/AppShowcaseBlock";
 import SocialProofBarBlock from "./blocks/SocialProofBarBlock";
+import BookingWidgetBlock from "./blocks/BookingWidgetBlock";
 
 export interface BlockRenderProps {
   block: Block;
@@ -1025,6 +1026,25 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "text",       label: "Text", type: "text" },
       { key: "rating",     label: "Average rating (0–5)", type: "number" },
       { key: "reviewCount", label: "Review count", type: "number" },
+    ],
+  },
+  "booking-widget": {
+    type: "booking-widget",
+    label: "Booking widget",
+    icon: "📅",
+    category: "commerce",
+    isContainer: false,
+    Component: BookingWidgetBlock,
+    defaultProps: {
+      heading: "Book an appointment",
+      subheading: "Pick a service and time that works for you.",
+      showStaff: true,
+    },
+    fields: [
+      { key: "heading",    label: "Heading", type: "text" },
+      { key: "subheading", label: "Sub-heading", type: "textarea" },
+      { key: "showStaff",  label: "Show staff picker (when service has multiple)", type: "boolean", default: true },
+      { key: "orgId",      label: "Org id (override; auto-detected by default)", type: "text" },
     ],
   },
 };

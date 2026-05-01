@@ -653,7 +653,8 @@ export type BlockType =
   | "gallery" | "quote" | "map" | "banner" | "author-bio" | "member-gate"
   | "donation-button"
   | "tabs" | "accordion" | "timeline" | "card-grid" | "before-after"
-  | "marquee" | "app-showcase" | "social-proof-bar";
+  | "marquee" | "app-showcase" | "social-proof-bar"
+  | "booking-widget";
 
 // Per-block style overrides. Optional — empty object means inherit. The
 // renderer maps these to inline styles so the editor preview matches the
