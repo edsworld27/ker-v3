@@ -15,6 +15,7 @@ import {
   hasSecret,
 } from "@/lib/admin/portalSettings";
 import Tip from "@/components/admin/Tip";
+import { buildEditorUrl } from "@/lib/portalEditMode";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -1298,6 +1299,25 @@ function PortalSnippet({ site, portalOrigin, heartbeat, now, state }: {
         <p className="text-[10px] text-brand-cream/30">
           Heartbeats are stored in memory and reset when the server restarts. Persistence ships with Phase B (tracking config).
         </p>
+
+        {/* T1 #8 — Visual editor launcher. Opens the storefront in a new tab
+            with ?portal_edit=1 so the in-place overlay arms automatically. */}
+        <div className="rounded-lg border border-brand-orange/30 bg-brand-orange/5 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-brand-orange uppercase tracking-wider">Visual editor</p>
+            <p className="text-[11px] text-brand-cream/65 leading-relaxed mt-0.5">
+              Open the live site with the in-place editor armed. Click any region marked <code className="font-mono text-brand-cream/85">data-portal-edit</code> to edit it without leaving the page. Saves go to draft; publish from the workflow bar above.
+            </p>
+          </div>
+          <a
+            href={buildEditorUrl(site.primaryDomain || site.domains[0], "/")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-[11px] px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold hover:bg-brand-orange/90 inline-flex items-center gap-1.5"
+          >
+            Open editor <span aria-hidden>↗</span>
+          </a>
+        </div>
       </div>
     </div>
   );

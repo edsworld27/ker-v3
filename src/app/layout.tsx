@@ -14,6 +14,7 @@ import FeatureGate from "@/components/FeatureGate";
 import SiteResolver from "@/components/SiteResolver";
 import PortalTagInjector from "@/components/PortalTagInjector";
 import WebVitalsReporter from "@/components/web-vitals-reporter";
+import PortalEditOverlay from "@/components/PortalEditOverlay";
 
 // ChatBot is client-only, rarely opened on first paint, and pulls in a
 // chunk of UI + per-site config. Lazy-loading with `ssr: false` keeps it
@@ -76,6 +77,7 @@ export default function RootLayout({
           <SiteResolver />
           <PortalTagInjector />
           <WebVitalsReporter />
+          <PortalEditOverlay />
           <ImpersonationBar />
           <ForcePasswordChange />
           <ThemeInjector />
