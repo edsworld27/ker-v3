@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { AUTH_EVENT, getSession, isAdmin, signOut, type Session } from "@/lib/auth";
 import { useContent } from "@/lib/useContent";
 import { listPublishedNavPages, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 const ABOUT_LINKS = [
   { label: "About Us",      href: "/about",           desc: "The full story — all in one place" },
@@ -95,7 +96,9 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        data-navbar
+        style={{ top: "var(--impersonation-bar-h, 0px)" }}
+        className={`fixed left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
             ? "bg-brand-black/95 backdrop-blur-md border-b border-white/5"
             : "bg-transparent"
@@ -193,6 +196,7 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeSwitcher />
             {hydrated && session ? (
               <div ref={profileRef} className="relative hidden sm:block">
                 <button

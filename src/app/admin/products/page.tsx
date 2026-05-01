@@ -19,7 +19,7 @@ export default function AdminProductsPage() {
   const [range, setRange] = useState("all");
 
   useEffect(() => {
-    const refresh = () => { setProducts(getProducts()); setCollections(listCollections()); };
+    const refresh = () => { setProducts(getProducts({ includeHidden: true })); setCollections(listCollections()); };
     refresh();
     const u1 = onProductsChange(refresh);
     const u2 = onCollectionsChange(refresh);
@@ -28,6 +28,10 @@ export default function AdminProductsPage() {
 
   function toggleSale(p: Product) {
     saveOverride(p.slug, { onSale: !p.onSale });
+  }
+
+  function toggleHidden(p: Product) {
+    saveOverride(p.slug, { hidden: !(p as Product & { hidden?: boolean }).hidden });
   }
 
   const filtered = products.filter(p => {
@@ -86,7 +90,9 @@ export default function AdminProductsPage() {
             <div
               key={p.slug}
               className={`rounded-2xl border bg-brand-black-card overflow-hidden transition-colors ${
-                p.archived ? "border-white/5 opacity-50" : "border-white/8 hover:border-white/15"
+                p.archived ? "border-white/5 opacity-50" :
+                (p as Product & { hidden?: boolean }).hidden ? "border-dashed border-white/15 opacity-70" :
+                "border-white/8 hover:border-white/15"
               }`}
             >
               <Link href={`/admin/products/${p.slug}`} className="block">
@@ -96,6 +102,11 @@ export default function AdminProductsPage() {
                     <img src={p.image} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <span className="text-5xl text-brand-cream/20">◆</span>
+                  )}
+                  {(p as Product & { hidden?: boolean }).hidden && (
+                    <span className="absolute top-3 left-3 text-[10px] tracking-widest uppercase font-bold px-2 py-1 rounded bg-white/20 text-white backdrop-blur-sm">
+                      Hidden
+                    </span>
                   )}
                   {p.onSale && p.salePrice && (
                     <span className="absolute top-3 left-3 text-[10px] tracking-widest uppercase font-bold px-2 py-1 rounded bg-brand-orange text-white">
@@ -146,9 +157,20 @@ export default function AdminProductsPage() {
                   >
                     Edit details →
                   </Link>
+                  <button
+                    onClick={() => toggleHidden(p)}
+                    title={(p as Product & { hidden?: boolean }).hidden ? "Show on storefront" : "Hide from storefront"}
+                    className={`px-2.5 py-2 rounded-lg border text-xs transition-colors ${
+                      (p as Product & { hidden?: boolean }).hidden
+                        ? "border-brand-amber/40 text-brand-amber hover:border-brand-amber/70"
+                        : "border-white/10 text-brand-cream/40 hover:text-brand-cream/80 hover:border-white/30"
+                    }`}
+                  >
+                    {(p as Product & { hidden?: boolean }).hidden ? "👁" : "🫥"}
+                  </button>
                   {"_custom" in p && (
                     <button
-                      onClick={() => { if (confirm(`Delete "${p.name}"?`)) { deleteCustomProduct(p.slug); setProducts(getProducts()); } }}
+                      onClick={() => { if (confirm(`Delete "${p.name}"?`)) { deleteCustomProduct(p.slug); setProducts(getProducts({ includeHidden: true })); } }}
                       className="px-2.5 py-2 rounded-lg border border-white/10 text-xs text-brand-cream/40 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
                     >
                       ✕

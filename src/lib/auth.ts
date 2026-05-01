@@ -18,9 +18,10 @@
 // The existing src/lib/shopifyCustomer.ts holds the matching GraphQL strings
 // pre-written and ready to call once you wire env vars in.
 
-const SESSION_KEY = "lk_session_v1";
-const USERS_KEY   = "lk_users_v1";
-const TOKENS_KEY  = "lk_tokens_v1";
+const SESSION_KEY          = "lk_session_v1";
+const USERS_KEY            = "lk_users_v1";
+const TOKENS_KEY           = "lk_tokens_v1";
+const IMPERSONATION_KEY    = "lk_impersonation_backup_v1";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ export interface User {
   provider: "email" | "google";
   role: Role;
   createdAt: number;
+  mustChangePassword?: boolean;  // set by admin; forces password change on next login
 }
 
 export interface Session {
@@ -57,7 +59,8 @@ export interface Session {
 }
 
 interface StoredUser extends User {
-  passwordHash?: string;   // tiny non-secure hash; demo only
+  passwordHash?: string;     // tiny non-secure hash; demo only
+  tempPassword?: string;     // plaintext temp password visible to admin before user changes it
 }
 
 interface VerifyToken { kind: "verify" | "reset"; email: string; expires: number; }
@@ -344,4 +347,143 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
   // TODO Shopify: customerResetByUrl({ resetUrl, password: newPassword }).
   return { ok: true };
+}
+
+// ── Admin user creation ───────────────────────────────────────────────────────
+
+export interface AdminCreateUserInput {
+  email: string;
+  name: string;
+  role?: Role;
+  tempPassword: string;
+}
+
+export function adminCreateUser(input: AdminCreateUserInput): { ok: true; user: User } | { ok: false; error: string } {
+  const email = norm(input.email);
+  const users = loadUsers();
+  if (users[email]) return { ok: false, error: "An account with that email already exists." };
+
+  const stored: StoredUser = {
+    id: makeId(),
+    email,
+    name: input.name.trim() || email.split("@")[0],
+    emailVerified: true,            // admin-created accounts skip email verify
+    provider: "email",
+    role: input.role ?? "customer",
+    createdAt: Date.now(),
+    passwordHash: tinyHash(input.tempPassword),
+    tempPassword: input.tempPassword, // kept until user sets own password
+    mustChangePassword: true,
+  };
+  users[email] = stored;
+  saveUsers(users);
+
+  const { passwordHash: _a, tempPassword: _b, ...publicUser } = stored; void _a; void _b;
+  return { ok: true, user: publicUser };
+}
+
+export function listAllUsers(): User[] {
+  const users = loadUsers();
+  return Object.values(users).map(({ passwordHash: _a, ...u }) => { void _a; return u as User; });
+}
+
+export function deleteUser(email: string) {
+  const users = loadUsers();
+  delete users[norm(email)];
+  saveUsers(users);
+}
+
+// ── Force password change ─────────────────────────────────────────────────────
+
+export function needsPasswordChange(): boolean {
+  const session = getSession();
+  return !!session?.user.mustChangePassword;
+}
+
+export async function changePassword(newPassword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (newPassword.length < 8) return { ok: false, error: "Password must be at least 8 characters." };
+
+  const session = getSession();
+  if (!session) return { ok: false, error: "Not signed in." };
+
+  const users = loadUsers();
+  const user = users[norm(session.user.email)];
+  if (!user) return { ok: false, error: "Account not found." };
+
+  user.passwordHash = tinyHash(newPassword);
+  user.mustChangePassword = false;
+  delete user.tempPassword;
+  users[norm(session.user.email)] = user;
+  saveUsers(users);
+
+  // Update the live session to clear the flag
+  const updatedUser: User = { ...session.user, mustChangePassword: false };
+  write(SESSION_KEY, { ...session, user: updatedUser });
+  notifyAuthChange();
+
+  return { ok: true };
+}
+
+// ── Impersonation ─────────────────────────────────────────────────────────────
+
+export interface ImpersonationState {
+  targetUser: User;
+  adminSession: Session;
+}
+
+export function isImpersonating(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!localStorage.getItem(IMPERSONATION_KEY);
+}
+
+export function getImpersonationState(): ImpersonationState | null {
+  return read<ImpersonationState | null>(IMPERSONATION_KEY, null);
+}
+
+export function startImpersonation(targetEmail: string): { ok: true } | { ok: false; error: string } {
+  const adminSession = getSession();
+  if (!adminSession) return { ok: false, error: "Not signed in." };
+  if (!isAdmin(adminSession) && !isImpersonating()) {
+    // Allow already-impersonating admins to switch targets
+    return { ok: false, error: "Only admins can impersonate users." };
+  }
+
+  // If already impersonating, first restore admin session
+  const realAdminSession = isImpersonating()
+    ? getImpersonationState()?.adminSession ?? adminSession
+    : adminSession;
+
+  const users = loadUsers();
+  const target = users[norm(targetEmail)];
+  if (!target) return { ok: false, error: "User not found." };
+
+  const { passwordHash: _a, tempPassword: _b, ...publicTarget } = target;
+  void _a; void _b;
+
+  // Back up the real admin session
+  const state: ImpersonationState = {
+    targetUser: publicTarget,
+    adminSession: realAdminSession,
+  };
+  write(IMPERSONATION_KEY, state);
+
+  // Start impersonation session (no expiry — admin controls duration)
+  const impersonationSession: Session = {
+    user: publicTarget,
+    accessToken: makeAccessToken(),
+    expiresAt: Date.now() + 1000 * 60 * 60 * 8, // 8 hours max
+  };
+  write(SESSION_KEY, impersonationSession);
+  notifyAuthChange();
+  return { ok: true };
+}
+
+export function stopImpersonation(): void {
+  const state = getImpersonationState();
+  if (!state) return;
+
+  // Restore admin session
+  write(SESSION_KEY, state.adminSession);
+  localStorage.removeItem(IMPERSONATION_KEY);
+  notifyAuthChange();
 }

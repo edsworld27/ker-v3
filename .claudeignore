@@ -1,0 +1,57 @@
+# Files Claude should never read or send.
+# Claude Code already honours .gitignore — this file is the explicit allow-list
+# of additional patterns we don't want in any prompt context.
+
+# Dependencies (also covered by .gitignore, listed here for safety)
+node_modules/
+.pnp
+.pnp.*
+.yarn/
+
+# Build artefacts
+.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+
+# Lockfiles — large and almost never useful in conversation
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# IDE / OS junk
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# TypeScript / next build metadata
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+.pnpm-debug.log*
+
+# Test coverage
+coverage/
+
+# Env / secrets — never read these
+.env
+.env.*
+
+# Generated assets (large binaries)
+public/**/*.mp4
+public/**/*.mov
+public/**/*.zip
+public/**/*.psd
+public/**/*.ai
+
+# Claude session caches
+.claude/
+.cursor/

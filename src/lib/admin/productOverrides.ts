@@ -35,6 +35,8 @@ export interface ProductOverride {
   badge?: string;
   badgeColor?: string;
   archived?: boolean;
+  hidden?: boolean;            // hidden from storefront but visible in admin
+  scheduledPublishAt?: number; // timestamp — auto-publish at this date
   stockSku?: string;
   showLowStock?: boolean;
   updatedAt: number;

@@ -26,6 +26,7 @@ export interface Product {
   badge?: string;
   badgeColor?: string;
   archived?: boolean;
+  hidden?: boolean;
   stockSku?: string;       // links to inventory item SKU
   showLowStock?: boolean;  // show "Only X left" badge when stock is low
   available?: number;      // computed: onHand - reserved (undefined = not tracked)
@@ -744,6 +745,7 @@ interface OverrideShape {
   badge?: string;
   badgeColor?: string;
   archived?: boolean;
+  hidden?: boolean;
   stockSku?: string;
   showLowStock?: boolean;
 }
@@ -782,6 +784,7 @@ function applyOverride(p: Product, o: OverrideShape | undefined): Product {
     badge:        o.badge        ?? p.badge,
     badgeColor:   o.badgeColor   ?? p.badgeColor,
     archived:     o.archived     ?? p.archived,
+    hidden:       o.hidden ?? p.hidden,
     stockSku:     o.stockSku     ?? p.stockSku,
     showLowStock: o.showLowStock ?? p.showLowStock,
   };
@@ -803,11 +806,13 @@ export function getProduct(slug: string): Product | undefined {
   return withAvailable(applyOverride(base, overrides[slug]), inv);
 }
 
-export function getProducts(): Product[] {
+export function getProducts(opts?: { includeHidden?: boolean }): Product[] {
   const overrides = loadOverrides();
   const inv = loadInventory();
   const all = [...PRODUCTS, ...loadCustomProducts()];
-  return all.map((p) => withAvailable(applyOverride(p, overrides[p.slug]), inv));
+  return all
+    .map((p) => withAvailable(applyOverride(p, overrides[p.slug]), inv))
+    .filter((p) => opts?.includeHidden || !p.hidden);
 }
 
 export const CHANGE_EVENT = "lk-products-change";

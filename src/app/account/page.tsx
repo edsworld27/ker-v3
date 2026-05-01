@@ -12,6 +12,11 @@ import {
   type Session, type User,
 } from "@/lib/auth";
 import { getOrCreateCodeForUser, type ReferralCode } from "@/lib/referralCodes";
+import CookiePreferencesModal from "@/components/CookiePreferencesModal";
+import {
+  getLoginCustomisation, onLoginCustomisationChange,
+  type LoginCustomisation,
+} from "@/lib/admin/loginCustomisation";
 
 // ── Mock orders + referrals ─────────────────────────────────────────────────
 //
@@ -44,7 +49,7 @@ const MOCK_REFERRALS = [
   { name: "Tom B.",    date: "7 Mar 2026",  status: "Converted", earned: 10 },
 ];
 
-type DashTab = "orders" | "affiliate";
+type DashTab = "orders" | "affiliate" | "privacy";
 
 export default function AccountPage() {
   return (
@@ -56,7 +61,8 @@ export default function AccountPage() {
 
 function AccountContent() {
   const searchParams = useSearchParams();
-  const initialTab: DashTab = searchParams.get("tab") === "affiliate" ? "affiliate" : "orders";
+  const rawTab = searchParams.get("tab");
+  const initialTab: DashTab = rawTab === "affiliate" ? "affiliate" : rawTab === "privacy" ? "privacy" : "orders";
 
   const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -105,6 +111,7 @@ function AccountContent() {
 type Mode = "signin" | "signup";
 
 function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
+  const [cfg, setCfg] = useState<LoginCustomisation>(() => getLoginCustomisation());
   const [mode,     setMode]     = useState<Mode>("signin");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -112,7 +119,13 @@ function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
   const [busy,     setBusy]     = useState<"google" | "email" | null>(null);
   const [error,    setError]    = useState<string | null>(null);
 
+  useEffect(() => onLoginCustomisationChange(() => setCfg(getLoginCustomisation())), []);
+
   const isSignIn = mode === "signin";
+  const headline    = isSignIn ? cfg.headline    : cfg.signupHeadline;
+  const subheadline = isSignIn ? cfg.subheadline : cfg.signupSubheadline;
+  const btnLabel    = isSignIn ? cfg.loginButtonLabel : cfg.signupButtonLabel;
+  const primaryColor = cfg.primaryColor || "#E8621A";
 
   async function handleGoogle() {
     setError(null); setBusy("google");
@@ -133,124 +146,196 @@ function AuthForm({ onLogin }: { onLogin: (s: Session) => void }) {
     onLogin(r.session);
   }
 
+  const formInner = (
+    <div className="w-full max-w-md mx-auto px-6 sm:px-8 py-14 sm:py-20">
+      {/* Logo */}
+      {cfg.showLogo && cfg.logoUrl && (
+        <img src={cfg.logoUrl} alt="Logo" className="h-10 mb-6 object-contain" />
+      )}
+
+      <div className="flex items-center gap-3 mb-5">
+        <div className="adinkra-line w-10" />
+        <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Account</span>
+      </div>
+      <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl leading-tight mb-3"
+        style={cfg.textColor ? { color: cfg.textColor } : undefined}>
+        {headline}
+      </h1>
+      <p className="text-brand-cream/65 leading-relaxed mb-8"
+        style={cfg.textColor ? { color: `${cfg.textColor}99` } : undefined}>
+        {subheadline}
+      </p>
+
+      {/* Social proof */}
+      {cfg.showSocialProof && cfg.socialProofText && (
+        <p className="text-xs text-brand-cream/45 bg-white/4 border border-white/8 rounded-lg px-4 py-2.5 mb-6 text-center">
+          ⭐ {cfg.socialProofText}
+        </p>
+      )}
+
+      {/* Mode tabs — only if signup is enabled */}
+      {cfg.enableSignup && (
+        <div className="grid grid-cols-2 mb-6 rounded-xl bg-brand-black-card p-1 border border-white/5">
+          {(["signin", "signup"] as Mode[]).map(m => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); setError(null); }}
+              className="py-2.5 rounded-lg text-sm font-medium transition-colors"
+              style={mode === m
+                ? { background: primaryColor, color: "#fff" }
+                : { color: "rgba(255,255,255,0.55)" }}
+            >
+              {m === "signin" ? "Log in" : "Sign up"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Google button */}
+      {cfg.enableGoogle && (
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={busy !== null}
+          className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border border-white/15 bg-brand-black-card hover:bg-white/[0.04] disabled:opacity-50 text-sm font-medium text-brand-cream transition-colors"
+        >
+          <GoogleIcon />
+          {busy === "google" ? "Connecting…" : isSignIn ? "Continue with Google" : "Sign up with Google"}
+        </button>
+      )}
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 my-6">
+        <div className="flex-1 h-px bg-white/8" />
+        <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/30">or use email</span>
+        <div className="flex-1 h-px bg-white/8" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {!isSignIn && cfg.enableSignup && (
+          <Field label="Name">
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              required placeholder="Your name" className={inputCls} />
+          </Field>
+        )}
+        <Field label="Email">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            required placeholder="you@example.com" className={inputCls} />
+        </Field>
+        <Field
+          label="Password"
+          right={isSignIn && cfg.enableForgotPassword
+            ? <Link href="/account/forgot-password" className="text-[11px] hover:underline" style={{ color: primaryColor }}>Forgot?</Link>
+            : undefined}
+        >
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            required minLength={8} placeholder={isSignIn ? "Your password" : "At least 8 characters"}
+            className={inputCls} />
+        </Field>
+
+        {error && (
+          <div className="text-xs text-red-300/90 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <button type="submit" disabled={busy !== null}
+          className="w-full py-4 rounded-xl disabled:opacity-50 text-white text-sm font-semibold tracking-wide shadow-lg transition-all hover:-translate-y-0.5 disabled:hover:translate-y-0"
+          style={{ background: primaryColor, boxShadow: `0 8px 24px ${primaryColor}26` }}>
+          {busy === "email" ? "Working…" : btnLabel}
+        </button>
+      </form>
+
+      <p className="text-xs text-brand-cream/40 mt-6 text-center">
+        By continuing you agree to our{" "}
+        <Link href="/privacy" className="text-brand-cream/60 hover:underline">Privacy Policy</Link>.
+      </p>
+
+      {/* Footer links */}
+      {cfg.footerLinks.length > 0 && (
+        <div className="flex flex-wrap gap-4 justify-center mt-4 pt-4 border-t border-white/8">
+          {cfg.footerLinks.map(l => (
+            <Link key={l.href} href={l.href} className="text-xs text-brand-cream/40 hover:text-brand-cream transition-colors">
+              {l.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 pt-6 border-t border-white/8">
+        <Link
+          href="/admin"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all"
+          style={{ borderColor: `${primaryColor}4d`, color: primaryColor, background: `${primaryColor}14` }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          Admin Access
+        </Link>
+      </div>
+    </div>
+  );
+
+  const customCss = cfg.customCSS
+    ? <style dangerouslySetInnerHTML={{ __html: cfg.customCSS }} />
+    : null;
+
+  if (cfg.layout === "split") {
+    const overlayAlpha = Math.round(cfg.heroOverlayOpacity * 255).toString(16).padStart(2, "0");
+    const overlayHex   = `${cfg.heroOverlayColor}${overlayAlpha}`;
+    return (
+      <>
+        {customCss}
+        <Navbar />
+        <main className="w-full min-h-screen flex" style={cfg.bgColor ? { background: cfg.bgColor } : undefined}>
+          {/* Left hero panel */}
+          <div
+            className="hidden lg:flex lg:w-[45%] xl:w-1/2 relative overflow-hidden shrink-0 items-end p-12"
+            style={cfg.heroImage ? { backgroundImage: `url(${cfg.heroImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: "#111" }}
+          >
+            <div className="absolute inset-0" style={{ background: overlayHex }} />
+            <div className="relative z-10">
+              <p className="font-display text-3xl xl:text-4xl text-white font-bold leading-tight">{headline}</p>
+              <p className="text-white/70 mt-2 text-sm leading-relaxed">{subheadline}</p>
+            </div>
+          </div>
+          {/* Right form panel */}
+          <div className="flex-1 flex items-center justify-center pt-20 overflow-y-auto"
+            style={cfg.cardColor ? { background: cfg.cardColor } : undefined}>
+            {formInner}
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (cfg.layout === "minimal") {
+    return (
+      <>
+        {customCss}
+        <Navbar />
+        <main className="w-full pt-20 sm:pt-24 min-h-screen"
+          style={{ background: cfg.bgColor || "transparent" }}>
+          {formInner}
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Default: centered
   return (
     <>
+      {customCss}
       <Navbar />
-      <main className="w-full pt-20 sm:pt-24 bg-brand-black min-h-screen">
-        <div className="w-full max-w-md mx-auto px-6 sm:px-8 py-14 sm:py-20">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="adinkra-line w-10" />
-            <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">Account</span>
-          </div>
-          <h1 className="font-display font-bold text-brand-cream text-3xl sm:text-4xl xl:text-5xl leading-tight mb-3">
-            {isSignIn ? "Welcome back" : "Create your account"}
-          </h1>
-          <p className="text-brand-cream/65 leading-relaxed mb-8">
-            {isSignIn
-              ? "Sign in to view your orders and your affiliate dashboard."
-              : "Create an account to track orders, share your referral discount code, and join the Odo community."}
-          </p>
-
-          {/* Mode tabs */}
-          <div className="grid grid-cols-2 mb-6 rounded-xl bg-brand-black-card p-1 border border-white/5">
-            {(["signin", "signup"] as Mode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(null); }}
-                className={`py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  mode === m ? "bg-brand-orange text-white" : "text-brand-cream/55 hover:text-brand-cream"
-                }`}
-              >
-                {m === "signin" ? "Log in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-
-          {/* Google button */}
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={busy !== null}
-            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border border-white/15 bg-brand-black-card hover:bg-white/[0.04] disabled:opacity-50 text-sm font-medium text-brand-cream transition-colors"
-          >
-            <GoogleIcon />
-            {busy === "google" ? "Connecting…" : isSignIn ? "Continue with Google" : "Sign up with Google"}
-          </button>
-
-          {/* Continue with Shop — explained but disabled in this scaffold */}
-          <details className="mt-3 text-xs text-brand-cream/40">
-            <summary className="cursor-pointer hover:text-brand-cream/70 transition-colors">
-              Why no &quot;Continue with Shop&quot;?
-            </summary>
-            <p className="mt-2 leading-relaxed">
-              Shop&apos;s native login takes shoppers straight to Shopify&apos;s hosted account
-              page — which means we lose this custom dashboard, the affiliate code, and the
-              referral history. Continue with Google keeps you signed into our dashboard
-              while still pulling your real orders from Shopify.
-            </p>
-          </details>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-white/8" />
-            <span className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/30">or use email</span>
-            <div className="flex-1 h-px bg-white/8" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isSignIn && (
-              <Field label="Name">
-                <input type="text" value={name} onChange={e => setName(e.target.value)}
-                  required placeholder="Your name" className={inputCls} />
-              </Field>
-            )}
-            <Field label="Email">
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                required placeholder="you@example.com" className={inputCls} />
-            </Field>
-            <Field
-              label="Password"
-              right={isSignIn
-                ? <Link href="/account/forgot-password" className="text-[11px] text-brand-orange hover:underline">Forgot?</Link>
-                : undefined}
-            >
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                required minLength={8} placeholder={isSignIn ? "Your password" : "At least 8 characters"}
-                className={inputCls} />
-            </Field>
-
-            {error && (
-              <div className="text-xs text-red-300/90 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={busy !== null}
-              className="w-full py-4 rounded-xl bg-brand-orange hover:bg-brand-orange-light disabled:opacity-50 text-white text-sm font-semibold tracking-wide shadow-lg shadow-brand-orange/15 transition-all hover:-translate-y-0.5 disabled:hover:translate-y-0">
-              {busy === "email" ? "Working…" : isSignIn ? "Log in" : "Create account"}
-            </button>
-          </form>
-
-          <p className="text-xs text-brand-cream/40 mt-6 text-center">
-            By continuing you agree to our{" "}
-            <Link href="/privacy" className="text-brand-cream/60 hover:underline">Privacy Policy</Link>.
-          </p>
-
-          <div className="mt-6 pt-6 border-t border-white/8">
-            <Link
-              href="/admin"
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-brand-orange/30 bg-brand-orange/8 text-brand-orange hover:bg-brand-orange/15 hover:border-brand-orange/50 transition-all text-sm font-medium"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-              </svg>
-              Admin Access
-            </Link>
-          </div>
-        </div>
+      <main className="w-full pt-20 sm:pt-24 bg-brand-black min-h-screen"
+        style={cfg.bgColor ? { background: cfg.bgColor } : undefined}>
+        {formInner}
       </main>
       <Footer />
     </>
@@ -321,6 +406,7 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
               {([
                 { id: "orders",    label: "Orders" },
                 { id: "affiliate", label: "Affiliate Dashboard" },
+                { id: "privacy",   label: "Privacy & Data" },
               ] as { id: DashTab; label: string }[]).map(t => (
                 <button
                   key={t.id}
@@ -343,6 +429,7 @@ function Dashboard({ user, initialTab, onLogout, onRefresh }: {
           <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">
             {tab === "orders"    && <OrdersTab />}
             {tab === "affiliate" && <AffiliateTab user={user} />}
+            {tab === "privacy"   && <PrivacyTab />}
           </div>
         </section>
       </main>
@@ -624,6 +711,86 @@ function AffiliateTab({ user }: { user: User }) {
         </a>
       </div>
 
+    </div>
+  );
+}
+
+// ── Privacy & Data tab ───────────────────────────────────────────────────────
+
+function PrivacyTab() {
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [prefTab, setPrefTab] = useState<"cookies" | "data">("cookies");
+
+  return (
+    <div className="space-y-6">
+      {/* Cookie preferences */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="font-display text-lg text-brand-cream">Cookie preferences</h3>
+          <p className="text-sm text-brand-cream/45 mt-1">Control which cookies are active on your account.</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            {[
+              { key: "necessary", label: "Strictly necessary", desc: "Always on — required for the site to function.", fixed: true },
+              { key: "functional", label: "Functional", desc: "Cart, preferences, personalisation." },
+              { key: "analytics", label: "Analytics", desc: "Usage patterns to improve the site." },
+              { key: "marketing", label: "Marketing", desc: "Personalised ads on social platforms." },
+            ].map(cat => (
+              <div key={cat.key} className="rounded-xl border border-white/8 p-3">
+                <p className="font-medium text-brand-cream text-xs mb-0.5">{cat.label}</p>
+                <p className="text-[11px] text-brand-cream/40 leading-relaxed">{cat.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setPrefTab("cookies"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
+            >
+              Manage cookie settings
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Data rights */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="font-display text-lg text-brand-cream">Your data rights (GDPR)</h3>
+          <p className="text-sm text-brand-cream/45 mt-1">Download or delete data we hold about you in this browser.</p>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-brand-cream/55 leading-relaxed">
+            We store your session, cart, orders, and preferences in your browser. You have the right to access, download,
+            or permanently delete this data at any time.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setPrefTab("data"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg border border-brand-orange/40 text-brand-orange hover:bg-brand-orange/10 font-semibold transition-colors"
+            >
+              ↓ Download my data
+            </button>
+            <button
+              onClick={() => { setPrefTab("data"); setShowPrefs(true); }}
+              className="text-xs px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 font-semibold transition-colors"
+            >
+              Delete my data
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card px-6 py-5">
+        <p className="text-sm font-medium text-brand-cream mb-1">Questions about your data?</p>
+        <p className="text-sm text-brand-cream/50 leading-relaxed">
+          Email <a href="mailto:privacy@luvandker.com" className="text-brand-orange hover:underline">privacy@luvandker.com</a> — we respond within 72 hours.
+        </p>
+      </div>
+
+      {showPrefs && <CookiePreferencesModal onClose={() => setShowPrefs(false)} initialTab={prefTab} />}
     </div>
   );
 }

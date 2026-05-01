@@ -1,5 +1,7 @@
 "use client";
 
+import { logActivity } from "./activity";
+
 // Order store. localStorage-backed in dev so the admin dashboard works
 // end-to-end with no DB. In production this is replaced by your Postgres /
 // Supabase tables — every function below is the read/write API that the rest
@@ -142,8 +144,16 @@ export function upsertOrder(order: Order) {
 export function setOrderStatus(id: string, status: OrderStatus) {
   const s = read();
   if (!s[id]) return;
+  const prev = s[id].status;
   s[id].status = status;
   write(s);
+  logActivity({
+    category: "orders",
+    action: `Order ${id} status: ${prev} → ${status}`,
+    resourceId: id,
+    resourceLink: `/admin/orders/${id}`,
+    diff: { status: { from: prev, to: status } },
+  });
 }
 
 export function attachTracking(id: string, tracking: Tracking) {

@@ -15,7 +15,10 @@ import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { getValue, onContentChange } from "@/lib/admin/content";
 import { resolveMediaRef, onMediaChange } from "@/lib/admin/media";
-import { getConsent, onConsentChange, setConsent, type ConsentState } from "@/lib/admin/seoConsent";
+import { getConsent, onConsentChange, type ConsentState } from "@/lib/admin/seoConsent";
+import { getConsentPreferences, onConsentPrefsChange, acceptAll, declineAll } from "@/lib/consent";
+import CookiePreferencesModal from "@/components/CookiePreferencesModal";
+import { getActiveSeoOverride } from "@/lib/admin/abtests";
 
 function valOr(key: string, fb = "") { return (getValue(key) ?? fb).trim(); }
 function boolVal(key: string, fb = false): boolean {
@@ -49,18 +52,21 @@ export default function SiteHead() {
 
   const pageId = pageIdFor(pathname);
 
-  // Resolve title & description (page → global default).
+  // A/B SEO override for this path (if a running test targets this page).
+  const seoAB = getActiveSeoOverride(pathname);
+
+  // Resolve title & description (A/B override → page CMS → global default).
   const siteName = valOr("global.site.name", "Luv & Ker");
   const titleSuffix = getValue("global.site.titleSuffix") ?? ` | ${siteName}`;
-  const pageTitle = valOr(`seo.${pageId}.title`);
+  const pageTitle = seoAB?.title || valOr(`seo.${pageId}.title`);
   const finalTitle = pageTitle ? `${pageTitle}${titleSuffix}` : "";
 
-  const desc = valOr(`seo.${pageId}.description`) || valOr("global.site.defaultDescription");
+  const desc = seoAB?.description || valOr(`seo.${pageId}.description`) || valOr("global.site.defaultDescription");
   const keywords = valOr(`seo.${pageId}.keywords`);
   const robots = valOr(`seo.${pageId}.robots`, "index,follow");
   const canonical = valOr(`seo.${pageId}.canonical`);
-  const ogTitle = valOr(`seo.${pageId}.ogTitle`) || pageTitle;
-  const ogDesc = valOr(`seo.${pageId}.ogDescription`) || desc;
+  const ogTitle = seoAB?.ogTitle || valOr(`seo.${pageId}.ogTitle`) || pageTitle;
+  const ogDesc = seoAB?.ogDescription || valOr(`seo.${pageId}.ogDescription`) || desc;
   const ogImageRaw = valOr(`seo.${pageId}.ogImage`) || valOr("global.site.defaultOgImage");
   const ogImage = ogImageRaw ? resolveMediaRef(ogImageRaw) : "";
   const twitterCard = valOr(`seo.${pageId}.twitterCard`, "summary_large_image");
@@ -245,44 +251,60 @@ function HtmlInjector({ target, html }: { target: "head" | "body-start" | "body-
 function CookieBanner() {
   const [, setTick] = useState(0);
   const [consent, setConsentLocal] = useState<ConsentState>("unknown");
+  const [showPrefs, setShowPrefs] = useState(false);
   useEffect(() => {
     setConsentLocal(getConsent());
     const o = onConsentChange(() => { setConsentLocal(getConsent()); setTick(t => t + 1); });
     const o2 = onContentChange(() => setTick(t => t + 1));
-    return () => { o(); o2(); };
+    const o3 = onConsentPrefsChange(() => { setConsentLocal(getConsent()); setTick(t => t + 1); });
+    return () => { o(); o2(); o3(); };
   }, []);
 
   const enabled = boolVal("global.cookies.enabled", true);
   if (!enabled) return null;
-  if (consent !== "unknown") return null;
 
-  const headline = valOr("global.cookies.headline", "Cookies & analytics");
-  const message = valOr("global.cookies.message", "We use cookies to improve your experience.");
-  const acceptLabel = valOr("global.cookies.acceptLabel", "Accept");
-  const declineLabel = valOr("global.cookies.declineLabel", "Decline");
+  // Check granular prefs too
+  const prefs = getConsentPreferences();
+  if (consent !== "unknown" || prefs.decided) return showPrefs ? (
+    <CookiePreferencesModal onClose={() => setShowPrefs(false)} />
+  ) : null;
+
+  const headline = valOr("global.cookies.headline", "Cookies & privacy");
+  const message = valOr("global.cookies.message", "We use cookies to improve your experience and for analytics.");
   const policyHref = valOr("global.cookies.policyHref", "/privacy");
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-sm z-50 rounded-2xl bg-brand-black-soft border border-white/10 shadow-2xl p-5">
-      <p className="text-[11px] tracking-[0.22em] uppercase text-brand-amber mb-2">{headline}</p>
-      <p className="text-sm text-brand-cream/75 leading-relaxed mb-4">
-        {message}{" "}
-        <a href={policyHref} className="text-brand-orange hover:underline">Privacy policy</a>.
-      </p>
-      <div className="flex gap-2">
-        <button
-          onClick={() => setConsent("accepted")}
-          className="flex-1 px-3 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white text-xs font-semibold"
-        >
-          {acceptLabel}
-        </button>
-        <button
-          onClick={() => setConsent("declined")}
-          className="flex-1 px-3 py-2 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream text-xs"
-        >
-          {declineLabel}
-        </button>
+    <>
+      <div className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-sm z-[350] rounded-2xl bg-brand-black-soft border border-white/10 shadow-2xl p-5">
+        <p className="text-[11px] tracking-[0.22em] uppercase text-brand-amber mb-2">{headline}</p>
+        <p className="text-sm text-brand-cream/75 leading-relaxed mb-4">
+          {message}{" "}
+          <a href={policyHref} className="text-brand-orange hover:underline">Privacy policy</a>.
+        </p>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={acceptAll}
+              className="flex-1 px-3 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-light text-white text-xs font-semibold"
+            >
+              Accept all
+            </button>
+            <button
+              onClick={declineAll}
+              className="flex-1 px-3 py-2 rounded-lg border border-white/15 text-brand-cream/70 hover:text-brand-cream text-xs"
+            >
+              Decline all
+            </button>
+          </div>
+          <button
+            onClick={() => setShowPrefs(true)}
+            className="text-xs text-brand-cream/40 hover:text-brand-cream text-center py-1"
+          >
+            Manage preferences
+          </button>
+        </div>
       </div>
-    </div>
+      {showPrefs && <CookiePreferencesModal onClose={() => setShowPrefs(false)} />}
+    </>
   );
 }

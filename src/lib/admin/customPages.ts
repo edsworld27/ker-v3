@@ -41,6 +41,7 @@ export interface CustomPage {
   slug: string;
   title: string;
   status: PageStatus;
+  hidden?: boolean;
   blocks: Block[];
   seo: CustomPageSeo;
   showInNav: boolean;
@@ -186,6 +187,14 @@ export function moveBlock(pageId: string, blockId: string, dir: -1 | 1) {
 
 export function publishPage(id: string) { updatePage(id, { status: "published" }); }
 export function unpublishPage(id: string) { updatePage(id, { status: "draft" }); }
+export function togglePageHidden(id: string) {
+  const p = getPage(id);
+  if (p) updatePage(id, { hidden: !p.hidden });
+}
+export function getPublishedPage(slug: string): CustomPage | null {
+  const p = getPageBySlug(slug);
+  return p && p.status === "published" && !p.hidden ? p : null;
+}
 
 export function onPagesChange(handler: () => void): () => void {
   if (typeof window === "undefined") return () => {};
