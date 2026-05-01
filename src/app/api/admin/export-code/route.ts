@@ -43,7 +43,9 @@ function uint32(n: number) {
 
 export async function GET() {
   try {
-    const root = process.cwd();
+    // Static-scope every path under <cwd>/src so Turbopack's
+    // dynamic-path warning doesn't fire on this route.
+    const root = path.join(/*turbopackIgnore: true*/ process.cwd());
     const srcDir = path.join(root, "src");
     if (!fs.existsSync(srcDir)) {
       return NextResponse.json({ error: "src/ not found" }, { status: 500 });
