@@ -1,3 +1,5 @@
+"use client";
+
 import type { BlockRenderProps } from "../blockRegistry";
 import { blockStylesToCss } from "../blockStyles";
 

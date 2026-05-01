@@ -9,7 +9,7 @@
 // UI can show "saved" without ever reading the value back. Empty input =
 // secret cleared; the placeholder string in the input means leave-as-is.
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   loadSettings, saveSettings, resetSettings, onSettingsChange, DEFAULT_SETTINGS,
@@ -42,6 +42,14 @@ interface BackendInfoResponse {
 }
 
 export default function AdminPortalSettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-[12px] text-brand-cream/45">Loading…</div>}>
+      <AdminPortalSettingsInner />
+    </Suspense>
+  );
+}
+
+function AdminPortalSettingsInner() {
   const searchParams = useSearchParams();
   const setupSiteId = searchParams?.get("setup") ?? null;
   const setupMode = (searchParams?.get("mode") ?? "existing") as "existing" | "new";
