@@ -230,12 +230,67 @@ export interface PortalSettings {
   deployment: {
     previewBaseUrl?: string;
   };
+  compliance?: ComplianceSettings;
 }
 
 // Patch type: each top-level section may be supplied partially. Callers
 // can send { github: { repoUrl: "…" } } and keep defaultBranch untouched.
 export type PortalSettingsPatch = {
   [K in keyof PortalSettings]?: Partial<PortalSettings[K]>;
+};
+
+// ─── Compliance (E-3) ──────────────────────────────────────────────────────
+//
+// Mode selects a baseline policy that gates which third-party providers
+// can be configured, how long the audit log is retained, and what admin
+// actions require extra confirmation. HIPAA is the strictest; "none" is
+// the development default with no restrictions.
+
+export type ComplianceMode = "none" | "gdpr" | "hipaa" | "soc2";
+
+export interface ComplianceSettings {
+  mode: ComplianceMode;
+  // Override the default audit retention for the current mode. 0 = use
+  // the mode's recommended default.
+  auditRetentionDaysOverride?: number;
+  // Admin-acknowledged warnings — used to suppress repeat banners on
+  // settings the admin has accepted as non-compliant in their context.
+  acknowledgedWarnings?: string[];
+}
+
+// Provider lists the modes restrict. Maintained here (rather than at
+// each enforcement site) so the rules are auditable in one place.
+//
+// "BAA" = the provider offers a Business Associate Agreement. Without
+// one, shipping any URL/identifier that could be PHI is a violation.
+// HIPAA blocks every tracker / embed lacking a BAA pathway.
+export const NON_BAA_TRACKER_PROVIDERS: ReadonlyArray<string> = [
+  "ga4",          // Google does not BAA the consumer GA4
+  "gtm",          // Container; can ship anything, blocked conservatively
+  "meta-pixel",
+  "tiktok-pixel",
+  "hotjar",
+  "clarity",
+];
+
+export const NON_BAA_EMBED_PROVIDERS: ReadonlyArray<string> = [
+  "crisp",
+  "intercom",
+  "tidio",
+  "calendly",
+  "cal-com",
+  "youtube",
+  "vimeo",
+];
+
+// Audit log retention (in days) per mode. The activity logger purges
+// entries older than this on each write. Override via
+// compliance.auditRetentionDaysOverride.
+export const RETENTION_DAYS: Record<ComplianceMode, number> = {
+  "none":  90,                  // sensible default, not legally driven
+  "gdpr":  6 * 30,              // 6 months
+  "soc2":  365,                 // 1 year (typical SOC 2 requirement)
+  "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
 };
 
 // ─── Embed provider metadata ───────────────────────────────────────────────

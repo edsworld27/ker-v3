@@ -3,7 +3,15 @@
 // Admin activity log. Every mutation in the admin should call logActivity()
 // so there's an audit trail of who changed what and when.
 //
-// Stored in localStorage, capped at 500 entries (oldest evicted).
+// Today: per-admin localStorage, capped at MAX_ENTRIES (oldest evicted).
+//
+// Compliance caveat: HIPAA / SOC 2 modes (see /admin/compliance) require
+// retention measured in years and tamper-evident storage — neither of
+// which a per-browser localStorage log can satisfy on its own. The
+// compliance dashboard surfaces the *intended* retention; a follow-up
+// will mirror entries to the cloud-side portal storage so the log
+// survives device loss and is shared across the team. For now this
+// store is best-effort + best-recent.
 
 import { getSession } from "@/lib/auth";
 

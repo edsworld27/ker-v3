@@ -143,6 +143,7 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
         { type: "link", id: "features", label: "Feature flags", href: "/admin/features", resource: "settings" },
         { type: "link", id: "customise", label: "Customise",    href: "/admin/customise", resource: "settings" },
         { type: "link", id: "portal-settings", label: "Portal", href: "/admin/portal-settings", resource: "settings" },
+        { type: "link", id: "compliance", label: "Compliance", href: "/admin/compliance", resource: "settings" },
         { type: "link", id: "activity", label: "Activity log",  href: "/admin/activity", resource: "settings" },
       ],
     },

@@ -26,6 +26,7 @@ export async function GET() {
       promote: true,              // POST /api/portal/promote/[siteId] opens a PR (D-3)
       backendSelector: true,      // PORTAL_BACKEND env switches storage; /api/portal/storage-info reports active (D-4)
       cloudArchitected: true,     // server-side storage + settings, async hydration, KV-ready (Cloud-1)
+      compliance: true,           // /admin/compliance + GET/POST /api/portal/compliance (E-3)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,

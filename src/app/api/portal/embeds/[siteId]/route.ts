@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEmbeds, setEmbeds, getPublicEmbeds } from "@/portal/server/embeds";
 import { ensureHydrated } from "@/portal/server/storage";
+import { isEmbedProviderAllowed, getComplianceMode } from "@/portal/server/compliance";
 import type { Embed, EmbedProvider, EmbedPosition, ConsentCategory } from "@/portal/server/types";
 
 // GET  /api/portal/embeds/[siteId]   — public, CORS-open. Returns the
@@ -72,6 +73,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ siteId: st
   if (errors.length) {
     return NextResponse.json({ ok: false, error: "validation", details: errors }, { status: 400 });
   }
+
+  // Compliance gate (E-3): HIPAA mode forbids enabling embeds whose
+  // provider doesn't offer a BAA pathway. Disabled embeds can still
+  // be persisted as historical config.
+  const blocked = valid.filter(e => e.enabled && !isEmbedProviderAllowed(e.provider));
+  if (blocked.length > 0) {
+    return NextResponse.json({
+      ok: false,
+      error: `Compliance mode "${getComplianceMode()}" forbids enabling these embed providers: ${blocked.map(b => b.provider).join(", ")}.`,
+      blockedProviders: blocked.map(b => b.provider),
+    }, { status: 412 });
+  }
+
   const saved = setEmbeds(siteId, valid);
   return NextResponse.json({ ok: true, embeds: saved });
 }
