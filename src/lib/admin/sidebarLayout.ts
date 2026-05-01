@@ -107,6 +107,7 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
       description: "Content, pages, theme, sections",
       items: [
         { type: "link", id: "website",  label: "Content",   href: "/admin/website",  resource: "website", badgeKey: "drafts" },
+        { type: "link", id: "visual-editor", label: "Visual editor", href: "/admin/sites", resource: "website" },
         { type: "link", id: "blog",     label: "Blog",      href: "/admin/blog",     resource: "blog" },
         { type: "link", id: "faq",      label: "FAQ",       href: "/admin/faq",      resource: "faq" },
         { type: "link", id: "pages",    label: "Pages",     href: "/admin/pages",    resource: "pages" },

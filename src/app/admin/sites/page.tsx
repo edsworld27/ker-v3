@@ -1304,7 +1304,7 @@ function PortalSnippet({ site, portalOrigin, heartbeat, now, state }: {
             with ?portal_edit=1 so the in-place overlay arms automatically. */}
         <div className="rounded-lg border border-brand-orange/30 bg-brand-orange/5 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-brand-orange uppercase tracking-wider">Visual editor</p>
+            <p className="text-[11px] font-semibold text-brand-orange uppercase tracking-wider">In-place editor</p>
             <p className="text-[11px] text-brand-cream/65 leading-relaxed mt-0.5">
               Open the live site with the in-place editor armed. Click any region marked <code className="font-mono text-brand-cream/85">data-portal-edit</code> to edit it without leaving the page. Saves go to draft; publish from the workflow bar above.
             </p>
@@ -1316,6 +1316,24 @@ function PortalSnippet({ site, portalOrigin, heartbeat, now, state }: {
             className="shrink-0 text-[11px] px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold hover:bg-brand-orange/90 inline-flex items-center gap-1.5"
           >
             Open editor <span aria-hidden>↗</span>
+          </a>
+        </div>
+
+        {/* V-C — Block-based visual page builder. Each site can author full
+            pages from the block library and render them via PortalPageRenderer
+            on the host. */}
+        <div className="rounded-lg border border-brand-amber/30 bg-brand-amber/5 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-brand-amber uppercase tracking-wider">Visual page builder</p>
+            <p className="text-[11px] text-brand-cream/65 leading-relaxed mt-0.5">
+              Drag-and-drop block editor like Webflow / Squarespace / Wix. Build whole pages with the block library, publish, and the host renders them via <code className="font-mono text-brand-cream/85">&lt;PortalPageRenderer slug&quot;…&quot; /&gt;</code>.
+            </p>
+          </div>
+          <a
+            href={`/admin/sites/${site.id}/pages`}
+            className="shrink-0 text-[11px] px-3 py-2 rounded-lg bg-brand-amber text-brand-black font-semibold hover:opacity-90 inline-flex items-center gap-1.5"
+          >
+            Pages <span aria-hidden>→</span>
           </a>
         </div>
       </div>
