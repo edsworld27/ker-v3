@@ -308,6 +308,31 @@ export const RETENTION_DAYS: Record<ComplianceMode, number> = {
   "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
 };
 
+// ─── Embed theme (G-1) ─────────────────────────────────────────────────────
+//
+// Per-site customisation for the embed widget (chatbot-style sign-in
+// loaded from /portal/embed.js + /embed/login). Lets each tenant style
+// their own portal: brand colour, logo, copy, and a switchable admin-
+// access button that links the operator straight into /admin.
+//
+// All fields optional — the embed falls back to portal defaults
+// (brand orange, "Sign in" label, no logo) when nothing's configured.
+
+export interface EmbedTheme {
+  // Visual
+  brandColor?: string;           // hex, used for the button + accents
+  logoUrl?: string;
+  faviconUrl?: string;
+  // Copy
+  welcomeHeadline?: string;      // big heading inside the iframe
+  welcomeSubtitle?: string;      // smaller line under the heading
+  signInLabel?: string;          // floating button label
+  // Admin-access button (G-1's "two logins" entry point)
+  showAdminLink?: boolean;       // default false
+  adminLinkLabel?: string;       // e.g. "Admin sign-in →"
+  adminUrl?: string;             // override the default /admin URL
+}
+
 // ─── Activity log (cloud-audit) ─────────────────────────────────────────────
 //
 // Mirror of the per-browser localStorage activity log. Server-side so

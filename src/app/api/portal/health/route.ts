@@ -36,6 +36,7 @@ export async function GET() {
       injectTag: true,            // POST /api/portal/inject-tag opens a PR adding the portal script tag (F-3)
       embedLogin: true,           // /embed/login iframeable, self-contained portal session (cross-origin safe)
       embedLoader: true,          // /portal/embed.js chatbot-style JS loader for floating + inline widgets
+      embedTheme: true,           // /api/portal/embed-theme/[siteId] per-site customisation (G-1)
       aiConvert: true,            // AI Convert prompt modal in the setup checklist (F-2)
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

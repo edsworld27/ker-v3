@@ -37,6 +37,30 @@ export async function GET(req: NextRequest) {
     var label   = (script && script.getAttribute("data-label")) || "Sign in";
     var portal  = ${JSON.stringify(portalOrigin)};
     var iframeSrc = portal + "/embed/login?site=" + encodeURIComponent(siteId);
+    var themeUrl  = portal + "/api/portal/embed-theme/" + encodeURIComponent(siteId);
+
+    // Theme is fetched async — host paints with default brand colour
+    // first, then re-paints once the theme JSON arrives. That avoids
+    // a render-blocking request before showing the button.
+    var theme = {};
+    var brand = "#FF6B35";
+    fetch(themeUrl, { mode: "cors", credentials: "omit", cache: "default" })
+      .then(function(r) { return r.ok ? r.json() : {}; })
+      .then(function(t) {
+        theme = (t && typeof t === "object") ? t : {};
+        if (theme.brandColor) {
+          brand = theme.brandColor;
+          if (button) button.style.background = brand;
+          if (panel)  panel.style.borderColor = brand + "33"; // 20% alpha-ish
+        }
+        if (theme.signInLabel && button && !buttonLabelOverridden) {
+          label = theme.signInLabel;
+          button.textContent = label;
+        }
+      })
+      .catch(function(){});
+
+    var buttonLabelOverridden = false;     // flips true once auth-changed alters it
 
     function makeIframe() {
       var f = document.createElement("iframe");
@@ -73,7 +97,7 @@ export async function GET(req: NextRequest) {
     button.type = "button";
     button.setAttribute("aria-label", "Open portal sign-in");
     button.textContent = label;
-    button.style.cssText = "all:initial;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:9999px;background:#FF6B35;color:#fff;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-family:inherit";
+    button.style.cssText = "all:initial;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:9999px;background:" + brand + ";color:#fff;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-family:inherit";
 
     var panel = document.createElement("div");
     panel.style.cssText = "display:none;position:absolute;bottom:60px;right:0;width:360px;height:480px;background:#0E0F12;border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5);transform-origin:bottom right";
@@ -110,8 +134,10 @@ export async function GET(req: NextRequest) {
       if (e.data.type === "auth-changed") {
         if (e.data.authed && e.data.name) {
           button.textContent = "✓ " + e.data.name;
+          buttonLabelOverridden = true;
         } else if (!e.data.authed) {
           button.textContent = label;
+          buttonLabelOverridden = false;
         }
       }
     });

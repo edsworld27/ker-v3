@@ -33,6 +33,19 @@ interface ParentSignal {
   height?: number;        // for "resize"
 }
 
+interface EmbedTheme {
+  brandColor?: string;
+  logoUrl?: string;
+  welcomeHeadline?: string;
+  welcomeSubtitle?: string;
+  signInLabel?: string;
+  showAdminLink?: boolean;
+  adminLinkLabel?: string;
+  adminUrl?: string;
+}
+
+const DEFAULT_BRAND = "#FF6B35";
+
 export default function PortalEmbedLoginPage() {
   const [siteId, setSiteId] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -40,6 +53,7 @@ export default function PortalEmbedLoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedInAs, setSignedInAs] = useState<{ email: string; name: string } | null>(null);
+  const [theme, setTheme] = useState<EmbedTheme>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -56,6 +70,15 @@ export default function PortalEmbedLoginPage() {
         setSignedInAs({ email: session.user.email, name: session.user.name });
         signal({ source: "portal-embed", type: "auth-changed", siteId: id, authed: true, email: session.user.email, name: session.user.name });
       }
+    })();
+
+    // Pull the per-site embed theme so the iframe paints with the
+    // tenant's brand colour, logo, and copy.
+    void (async () => {
+      try {
+        const res = await fetch(`/api/portal/embed-theme/${encodeURIComponent(id)}`, { cache: "no-store" });
+        if (res.ok) setTheme(await res.json() as EmbedTheme);
+      } catch {}
     })();
 
     signal({ source: "portal-embed", type: "ready", siteId: id });
@@ -105,21 +128,29 @@ export default function PortalEmbedLoginPage() {
     signal({ source: "portal-embed", type: "auth-changed", siteId, authed: false });
   }
 
+  const brand = theme.brandColor || DEFAULT_BRAND;
+  const headline = theme.welcomeHeadline || (signedInAs ? "Signed in" : "Welcome");
+  const subtitle = theme.welcomeSubtitle ?? (signedInAs
+    ? `You're signed in as ${signedInAs.name}`
+    : siteId ? `Sign in to ${siteId}` : "Sign in to continue");
+  const signInLabel = theme.signInLabel || "Sign in";
+  const adminUrl = theme.adminUrl || "/admin";
+  const adminLabel = theme.adminLinkLabel || "Admin sign-in →";
+
   return (
     <div className="min-h-screen bg-brand-black text-brand-cream font-body antialiased flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="rounded-2xl border border-white/10 bg-brand-black-soft p-6 shadow-2xl">
-          <p className="text-[10px] tracking-[0.28em] uppercase text-brand-amber mb-2">Portal</p>
+          {theme.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={theme.logoUrl} alt="" className="h-8 w-auto mb-3" />
+          ) : (
+            <p className="text-[10px] tracking-[0.28em] uppercase mb-2" style={{ color: brand }}>Portal</p>
+          )}
           <h1 className="font-display text-2xl text-brand-cream mb-1">
-            {signedInAs ? "Signed in" : "Welcome"}
+            {headline}
           </h1>
-          <p className="text-[12px] text-brand-cream/45 mb-5">
-            {signedInAs
-              ? <>You&apos;re signed in as <strong className="text-brand-cream">{signedInAs.name}</strong></>
-              : siteId
-                ? <>Sign in to <strong className="text-brand-cream">{siteId}</strong></>
-                : "Sign in to continue"}
-          </p>
+          <p className="text-[12px] text-brand-cream/55 mb-5">{subtitle}</p>
 
           {signedInAs ? (
             <div className="space-y-3">
@@ -142,7 +173,8 @@ export default function PortalEmbedLoginPage() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-white/30"
+                style={{ outlineColor: brand }}
               />
               <input
                 type="password"
@@ -151,17 +183,31 @@ export default function PortalEmbedLoginPage() {
                 placeholder="Password"
                 autoComplete="current-password"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-white/30"
               />
               {error && <p className="text-[11px] text-red-400">{error}</p>}
               <button
                 type="submit"
                 disabled={busy || !email || !password}
-                className="w-full px-3 py-2.5 rounded-xl bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-semibold disabled:opacity-40 transition-colors"
+                className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                style={{ background: brand }}
               >
-                {busy ? "Signing in…" : "Sign in"}
+                {busy ? "Signing in…" : signInLabel}
               </button>
             </form>
+          )}
+
+          {theme.showAdminLink && !signedInAs && (
+            <div className="mt-5 pt-4 border-t border-white/5 text-center">
+              <a
+                href={adminUrl}
+                target="_top"
+                rel="noopener noreferrer"
+                className="text-[12px] text-brand-cream/60 hover:text-brand-cream"
+              >
+                {adminLabel}
+              </a>
+            </div>
           )}
 
           <p className="text-[10px] text-brand-cream/30 mt-5 text-center">

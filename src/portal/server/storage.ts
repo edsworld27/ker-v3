@@ -22,6 +22,7 @@ import { dirname, resolve } from "path";
 import type {
   Heartbeat, SiteTrackingConfig, SiteContentState,
   SiteManifestSchema, Embed, PortalSettings, Discovery, ActivityEntry,
+  EmbedTheme,
 } from "./types";
 
 interface PortalState {
@@ -33,6 +34,7 @@ interface PortalState {
   settings: PortalSettings | null;     // null = "no settings saved yet" (use defaults)
   discoveries: Record<string, Discovery>;  // E-2 auto-detect inbox, keyed by host
   activity: ActivityEntry[];            // cloud-audit: durable activity log
+  embedThemes: Record<string, EmbedTheme>;  // G-1 per-site embed customisation
 }
 
 const empty = (): PortalState => ({
@@ -40,6 +42,7 @@ const empty = (): PortalState => ({
   schemas: {}, embeds: {}, settings: null,
   discoveries: {},
   activity: [],
+  embedThemes: {},
 });
 
 // ─── Backend interface (async) ─────────────────────────────────────────────
@@ -392,6 +395,7 @@ function parseBlob(raw: string): PortalState {
       settings: parsed.settings ?? null,
       discoveries: parsed.discoveries ?? {},
       activity: Array.isArray(parsed.activity) ? parsed.activity : [],
+      embedThemes: parsed.embedThemes ?? {},
     };
   } catch {
     return empty();

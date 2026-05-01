@@ -571,6 +571,9 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Embeds — chatbots, calendars, video, custom HTML */}
           <EmbedsBlock siteId={site.id} />
 
+          {/* Embed appearance — per-site customisation for the portal sign-in widget */}
+          <EmbedAppearanceBlock siteId={site.id} />
+
           {/* Content overrides — instrumented regions on the host site */}
           <ContentOverridesBlock siteId={site.id} />
 
@@ -2072,6 +2075,188 @@ function DiscoveryInbox({ onConfirm }: {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Embed appearance (G-1) ────────────────────────────────────────────────
+//
+// Per-site customisation for the portal sign-in widget — colours, logo,
+// copy, admin-access button. Saves to /api/portal/embed-theme/<siteId>.
+// The embed iframe + embed.js loader fetch the same shape on boot.
+
+interface AdminEmbedTheme {
+  brandColor?: string;
+  logoUrl?: string;
+  welcomeHeadline?: string;
+  welcomeSubtitle?: string;
+  signInLabel?: string;
+  showAdminLink?: boolean;
+  adminLinkLabel?: string;
+  adminUrl?: string;
+}
+
+function EmbedAppearanceBlock({ siteId }: { siteId: string }) {
+  const [theme, setTheme] = useState<AdminEmbedTheme | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      try {
+        const res = await fetch(`/api/portal/embed-theme/${encodeURIComponent(siteId)}`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as AdminEmbedTheme;
+        if (!cancelled) setTheme(data);
+      } catch {}
+      finally { if (!cancelled) setLoading(false); }
+    }
+    void pull();
+    return () => { cancelled = true; };
+  }, [siteId]);
+
+  // Debounced save: 600ms after the last edit.
+  useEffect(() => {
+    if (!dirty || !theme) return;
+    const id = setTimeout(async () => {
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/portal/embed-theme/${encodeURIComponent(siteId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(theme),
+        });
+        if (res.ok) { setSavedAt(Date.now()); setDirty(false); }
+      } catch {}
+      finally { setSaving(false); }
+    }, 600);
+    return () => clearTimeout(id);
+  }, [dirty, theme, siteId]);
+
+  function patch(p: Partial<AdminEmbedTheme>) {
+    setTheme(prev => ({ ...(prev ?? {}), ...p }));
+    setDirty(true);
+  }
+
+  const t = theme ?? {};
+  const brand = t.brandColor || "#FF6B35";
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Embed appearance</p>
+        <Tip text="Customises the per-site portal sign-in widget — the floating button on host pages and the iframe sign-in card. Same theme drives /portal/embed.js and /embed/login. Saves cloud-side so changes propagate to every host within ~30s." />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {loading ? "loading…" : ""}
+        </span>
+        {savedAt && Date.now() - savedAt < 2500 && (
+          <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Saved</span>
+        )}
+        {saving && !savedAt && <span className="text-[10px] text-brand-cream/40">saving…</span>}
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Brand colour</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={brand}
+                onChange={e => patch({ brandColor: e.target.value })}
+                className="w-9 h-9 rounded-lg border border-white/15 cursor-pointer bg-transparent shrink-0"
+              />
+              <input
+                type="text"
+                value={t.brandColor ?? ""}
+                onChange={e => patch({ brandColor: e.target.value })}
+                placeholder="#FF6B35"
+                className={INPUT + " font-mono text-xs flex-1"}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Logo URL</label>
+            <input
+              value={t.logoUrl ?? ""}
+              onChange={e => patch({ logoUrl: e.target.value })}
+              placeholder="https://… (shown in the iframe header)"
+              className={INPUT + " font-mono text-xs"}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Welcome headline</label>
+          <input
+            value={t.welcomeHeadline ?? ""}
+            onChange={e => patch({ welcomeHeadline: e.target.value })}
+            placeholder='e.g. "Welcome back, friend"'
+            className={INPUT}
+          />
+        </div>
+        <div>
+          <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Welcome subtitle</label>
+          <input
+            value={t.welcomeSubtitle ?? ""}
+            onChange={e => patch({ welcomeSubtitle: e.target.value })}
+            placeholder='e.g. "Sign in to manage your subscription"'
+            className={INPUT}
+          />
+        </div>
+        <div>
+          <label className="text-[11px] tracking-[0.18em] uppercase text-brand-cream/50 mb-1.5 block">Floating-button label</label>
+          <input
+            value={t.signInLabel ?? ""}
+            onChange={e => patch({ signInLabel: e.target.value })}
+            placeholder='e.g. "Sign in" (default)'
+            className={INPUT}
+          />
+        </div>
+
+        {/* Admin-access button */}
+        <div className="rounded-lg border border-white/8 bg-brand-black/40 p-3 space-y-2">
+          <div className="flex items-start gap-3">
+            <button
+              onClick={() => patch({ showAdminLink: !t.showAdminLink })}
+              className={`mt-0.5 w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0 ${
+                t.showAdminLink ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"
+              }`}
+              aria-pressed={!!t.showAdminLink}
+            >
+              <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-brand-cream">Show admin sign-in link</p>
+              <p className="text-[11px] text-brand-cream/45 leading-relaxed mt-0.5">
+                Adds a small &quot;Admin sign-in →&quot; link below the customer sign-in form. Targets <code className="font-mono text-brand-cream/65">_top</code> so it breaks out of the iframe into the full <code className="font-mono">/admin</code> experience. Two distinct logins from one widget.
+              </p>
+            </div>
+          </div>
+          {t.showAdminLink && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <input
+                value={t.adminLinkLabel ?? ""}
+                onChange={e => patch({ adminLinkLabel: e.target.value })}
+                placeholder='Label · default "Admin sign-in →"'
+                className={INPUT + " text-xs py-1.5"}
+              />
+              <input
+                value={t.adminUrl ?? ""}
+                onChange={e => patch({ adminUrl: e.target.value })}
+                placeholder='Target URL · default "/admin"'
+                className={INPUT + " text-xs py-1.5 font-mono"}
+              />
+            </div>
+          )}
+        </div>
+
+        <p className="text-[10px] text-brand-cream/30">
+          The embed loader caches theme JSON ~30s. New host pages pick up changes within that window; tabs already open re-paint the floating button on next load.
+        </p>
       </div>
     </div>
   );
