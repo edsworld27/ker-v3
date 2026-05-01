@@ -191,11 +191,82 @@ function formatAge(ms: number): string {
   return `${Math.round(ms / 86_400_000)}d ago`;
 }
 
+// ─── DNS check helper (Google DoH) ──────────────────────────────────────────
+//
+// Public DNS-over-HTTPS endpoint, no API key, CORS-open. Cached for 60s on
+// the page so opening/closing a SiteRow doesn't re-hit the network. The
+// shape mirrors the slice we actually use from Google's response.
+
+type DnsStatus = "loading" | "ok" | "no-record" | "error";
+
+interface DnsCacheEntry {
+  status: DnsStatus;
+  ip?: string;
+  message?: string;
+  fetchedAt: number;
+}
+
+const DNS_TTL_MS = 60_000;
+
+interface DohResponse {
+  Status?: number;
+  Answer?: Array<{ name: string; type: number; TTL?: number; data: string }>;
+  Comment?: string;
+}
+
+async function resolveDomainA(domain: string): Promise<DnsCacheEntry> {
+  try {
+    const res = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) {
+      return { status: "error", message: `HTTP ${res.status}`, fetchedAt: Date.now() };
+    }
+    const data = await res.json() as DohResponse;
+    // type 1 = A record. Some upstreams return CNAMEs in Answer too.
+    const aRecord = (data.Answer ?? []).find(a => a.type === 1);
+    if (aRecord) {
+      return { status: "ok", ip: aRecord.data, fetchedAt: Date.now() };
+    }
+    return { status: "no-record", message: data.Comment ?? "No A record returned", fetchedAt: Date.now() };
+  } catch (e) {
+    return { status: "error", message: e instanceof Error ? e.message : "network error", fetchedAt: Date.now() };
+  }
+}
+
+type SortMode = "name" | "status" | "recent";
+
+// Sorts a copy of `sites` for display. The lib's `listSites()` already
+// keeps the primary site first; this re-orders within the rest based on
+// the selector at the top of the page.
+function sortSites(sites: Site[], mode: SortMode): Site[] {
+  const copy = [...sites];
+  copy.sort((a, b) => {
+    // Primary always wins regardless of sort mode — it's the home base.
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+    if (mode === "name") return a.name.localeCompare(b.name);
+    if (mode === "status") {
+      const aLive = a.status === "live" ? 0 : 1;
+      const bLive = b.status === "live" ? 0 : 1;
+      if (aLive !== bLive) return aLive - bLive;
+      return a.name.localeCompare(b.name);
+    }
+    // "recent" — newest first; tie-break on name.
+    if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
+    return a.name.localeCompare(b.name);
+  });
+  return copy;
+}
+
 export default function AdminSitesPage() {
   const [sites,  setSites]  = useState<Site[]>([]);
   const [active, setActive] = useState<string>("");
   const [variants, setVariants] = useState<ThemeVariant[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Multiple sites can be open at once now (used by Expand all / Collapse
+  // all + per-row toggle). Keeps the editor stateful across sort changes.
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  const [sortMode, setSortMode] = useState<SortMode>("name");
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -205,6 +276,9 @@ export default function AdminSitesPage() {
   const [heartbeats, setHeartbeats] = useState<Record<string, Heartbeat>>({});
   const [now, setNow] = useState<number>(() => Date.now());
   const [portalOrigin, setPortalOrigin] = useState<string>("");
+  // Cache of domain → DNS resolution (60s TTL). Lives on the page so a
+  // collapsed-then-reopened row reuses the result instead of re-fetching.
+  const [dnsCache, setDnsCache] = useState<Record<string, DnsCacheEntry>>({});
 
   function refresh() {
     setSites(listSites());
@@ -265,9 +339,37 @@ export default function AdminSitesPage() {
       });
       router.push(`/admin/portal-settings?${params.toString()}`);
     } else {
-      setEditingId(created.id);
+      setOpenIds(prev => {
+        const next = new Set(prev);
+        next.add(created.id);
+        return next;
+      });
     }
   }
+
+  function toggleOpen(id: string) {
+    setOpenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function expandAll() {
+    setOpenIds(new Set(sites.map(s => s.id)));
+  }
+
+  function collapseAll() {
+    setOpenIds(new Set());
+  }
+
+  function patchDnsCache(domain: string, entry: DnsCacheEntry) {
+    setDnsCache(prev => ({ ...prev, [domain]: entry }));
+  }
+
+  const sortedSites = sortSites(sites, sortMode);
+  const allOpen = sites.length > 0 && sites.every(s => openIds.has(s.id));
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
@@ -287,12 +389,37 @@ export default function AdminSitesPage() {
             {sites.length} {sites.length === 1 ? "site" : "sites"} · {sites.reduce((n, s) => n + s.domains.length, 0)} domains
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
-        >
-          + New site
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Sort selector — primary still pinned to top regardless. */}
+          <label className="flex items-center gap-1.5 text-[11px] text-brand-cream/55">
+            <span className="uppercase tracking-wider">Sort</span>
+            <select
+              value={sortMode}
+              onChange={e => setSortMode(e.target.value as SortMode)}
+              className="bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-xs text-brand-cream focus:outline-none focus:border-brand-orange/50"
+              title="Reorder the sites list. The primary site is always pinned at the top."
+            >
+              <option value="name">By name</option>
+              <option value="status">By status (live first)</option>
+              <option value="recent">Recently created</option>
+            </select>
+          </label>
+          {sites.length > 1 && (
+            <button
+              onClick={() => (allOpen ? collapseAll() : expandAll())}
+              className="text-[11px] px-3 py-1.5 rounded-lg border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30"
+              title={allOpen ? "Collapse every site row" : "Expand every site row"}
+            >
+              {allOpen ? "Collapse all" : "Expand all"}
+            </button>
+          )}
+          <button
+            onClick={() => setCreating(true)}
+            className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
+          >
+            + New site
+          </button>
+        </div>
       </div>
 
       {/* New site form */}
@@ -393,17 +520,19 @@ export default function AdminSitesPage() {
 
       {/* Sites list */}
       <div className="space-y-4">
-        {sites.map(site => (
+        {sortedSites.map(site => (
           <SiteRow
             key={site.id}
             site={site}
             isActive={site.id === active}
-            isOpen={editingId === site.id}
+            isOpen={openIds.has(site.id)}
             variants={variants}
             heartbeat={heartbeats[site.id]}
             now={now}
             portalOrigin={portalOrigin}
-            onToggle={() => setEditingId(editingId === site.id ? null : site.id)}
+            dnsCache={dnsCache}
+            onDnsResolved={patchDnsCache}
+            onToggle={() => toggleOpen(site.id)}
           />
         ))}
       </div>
@@ -418,7 +547,14 @@ export default function AdminSitesPage() {
   );
 }
 
-function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigin, onToggle }: {
+// Tooltip copy for the live/draft status badge — explains the actual
+// behaviour rather than just labelling. Matches the spec.
+const STATUS_TOOLTIP: Record<"live" | "draft", string> = {
+  live:  "Published. Visitors can reach this site through any of its domains.",
+  draft: "Admin-only. Won't serve to host visitors — only previews from inside /admin work.",
+};
+
+function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigin, dnsCache, onDnsResolved, onToggle }: {
   site: Site;
   isActive: boolean;
   isOpen: boolean;
@@ -426,9 +562,12 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
   heartbeat: Heartbeat | undefined;
   now: number;
   portalOrigin: string;
+  dnsCache: Record<string, DnsCacheEntry>;
+  onDnsResolved: (domain: string, entry: DnsCacheEntry) => void;
   onToggle: () => void;
 }) {
   const [domain, setDomain] = useState("");
+  const domainInputRef = useRef<HTMLInputElement | null>(null);
   const conn = connectionState(heartbeat, now);
 
   function handleAddDomain() {
@@ -437,41 +576,100 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
     setDomain("");
   }
 
+  function focusDomainInput() {
+    // Used by the inline "+ Add domain" CTA in the empty-state — focuses
+    // the input the admin would otherwise have to scroll to.
+    domainInputRef.current?.focus();
+    domainInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return (
     <div className={`rounded-2xl border overflow-hidden ${isActive ? "border-brand-orange/40 bg-brand-orange/5" : "border-white/8 bg-brand-black-card"}`}>
       {/* Header row */}
-      <button onClick={onToggle} className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-white/[0.02]">
-        <div className="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/25 flex items-center justify-center shrink-0 overflow-hidden">
-          {site.logoUrl ? (
-            <img src={site.logoUrl} alt="" className="w-full h-full object-contain" />
-          ) : (
-            <span className="font-display text-lg font-bold text-brand-orange">{site.name.charAt(0)}</span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium text-brand-cream">{site.name}</p>
-            {site.isPrimary && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-amber/20 text-brand-amber font-semibold uppercase tracking-wider">Primary</span>}
-            {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange font-semibold uppercase tracking-wider">Editing</span>}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${site.status === "live" ? "bg-green-500/20 text-green-400" : "bg-white/8 text-brand-cream/40"}`}>
-              {site.status}
-            </span>
-            <ConnectionDot state={conn} heartbeat={heartbeat} now={now} />
+      <div className="w-full px-5 py-4 flex items-center gap-3 hover:bg-white/[0.02]">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-4 flex-1 min-w-0 text-left"
+          aria-expanded={isOpen}
+          aria-label={`${isOpen ? "Collapse" : "Expand"} ${site.name}`}
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/25 flex items-center justify-center shrink-0 overflow-hidden">
+            {site.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={site.logoUrl} alt="" className="w-full h-full object-contain" />
+            ) : (
+              <span className="font-display text-lg font-bold text-brand-orange">{site.name.charAt(0)}</span>
+            )}
           </div>
-          <p className="text-[11px] text-brand-cream/45 truncate font-mono mt-0.5">
-            {site.domains.length === 0 ? "no domains yet" : site.domains.join(" · ")}
-          </p>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          className={`text-brand-cream/30 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium text-brand-cream">{site.name}</p>
+              {site.isPrimary && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-amber/20 text-brand-amber font-semibold uppercase tracking-wider">Primary</span>}
+              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange font-semibold uppercase tracking-wider">Editing</span>}
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${site.status === "live" ? "bg-green-500/20 text-green-400" : "bg-white/8 text-brand-cream/40"}`}
+                title={STATUS_TOOLTIP[site.status]}
+              >
+                {site.status}
+              </span>
+              <ConnectionDot state={conn} heartbeat={heartbeat} now={now} />
+            </div>
+            <p className="text-[11px] text-brand-cream/45 truncate font-mono mt-0.5">
+              {site.domains.length === 0 ? "no domains yet" : site.domains.join(" · ")}
+            </p>
+          </div>
+        </button>
+
+        {/* Primary star — moved here from the Actions row so it isn't
+            danger-zone adjacent. Non-primary sites see an empty star they
+            can click to promote; the active primary shows a filled
+            (amber) star. */}
+        {!site.isPrimary ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Set "${site.name}" as the primary site?\n\nThe primary site is the agency's home base — what visitors see at the apex domain when no other site matches, and what's used for absolute URLs.`)) {
+                setPrimarySite(site.id);
+              }
+            }}
+            title="Set as primary site"
+            className="shrink-0 p-1.5 rounded-md text-brand-cream/30 hover:text-brand-amber hover:bg-brand-amber/10 transition-colors"
+            aria-label={`Set ${site.name} as primary site`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </button>
+        ) : (
+          <span
+            title="This is the primary site. Promote a different site to swap."
+            className="shrink-0 p-1.5 text-brand-amber"
+            aria-label="Primary site"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.8">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </span>
+        )}
+
+        <button
+          onClick={onToggle}
+          className="shrink-0 p-1.5 rounded-md text-brand-cream/30 hover:text-brand-cream hover:bg-white/5"
+          aria-hidden
+          tabIndex={-1}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
 
       {/* Editor */}
       {isOpen && (
         <div className="border-t border-white/5 p-5 space-y-5 bg-black/10">
-          {/* Identity */}
+          {/* Identity grid — name, tagline, status. Logo + favicon get
+              richer widgets below; theme is its own tile picker too. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Display name">
               <input value={site.name} onChange={e => updateSite(site.id, { name: e.target.value })} className={INPUT} />
@@ -479,22 +677,10 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             <Field label="Tagline (optional)">
               <input value={site.tagline ?? ""} onChange={e => updateSite(site.id, { tagline: e.target.value })} className={INPUT} placeholder="One-line strapline" />
             </Field>
-            <Field label="Logo URL" tip="Used in the navbar and email receipts. Leave empty to fall back to the brand mark.">
-              <input value={site.logoUrl ?? ""} onChange={e => updateSite(site.id, { logoUrl: e.target.value })} className={INPUT + " font-mono"} placeholder="https://…" />
-            </Field>
-            <Field label="Favicon URL">
-              <input value={site.faviconUrl ?? ""} onChange={e => updateSite(site.id, { faviconUrl: e.target.value })} className={INPUT + " font-mono"} placeholder="https://…" />
-            </Field>
-            <Field label="Theme variant" tip="Pick which visual variant this site renders by default. Variants are managed under Theme → Variants.">
-              <select
-                value={site.themeVariantId ?? "dark"}
-                onChange={e => updateSite(site.id, { themeVariantId: e.target.value })}
-                className={INPUT}
-              >
-                {variants.map(v => <option key={v.id} value={v.id}>{v.icon} {v.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Status">
+            <Field
+              label="Status"
+              tip="Live = published, visitors can reach it via the domains below. Draft = admin-only, won't serve to host visitors."
+            >
               <select
                 value={site.status}
                 onChange={e => updateSite(site.id, { status: e.target.value as "draft" | "live" })}
@@ -506,6 +692,13 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             </Field>
           </div>
 
+          {/* Logo + favicon — drag-and-drop, previews, validation. */}
+          <LogoUploader site={site} />
+          <FaviconUploader site={site} />
+
+          {/* Theme variant tile picker — replaces the plain <select>. */}
+          <ThemeVariantPicker site={site} variants={variants} />
+
           {/* Description */}
           <Field label="Description (about/SEO)">
             <textarea value={site.description ?? ""} onChange={e => updateSite(site.id, { description: e.target.value })} rows={2} className={INPUT} />
@@ -516,36 +709,39 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Domains</p>
               <Tip text="Every domain that should serve this site. Visitors are routed by hostname (www and non-www are treated identically). The primary domain is used for absolute URLs." />
+              <span className="ml-auto text-[10px] text-brand-cream/40">
+                {site.domains.length} {site.domains.length === 1 ? "domain" : "domains"}
+              </span>
             </div>
             <div className="p-4 space-y-2">
               {site.domains.length === 0 ? (
-                <p className="text-xs text-brand-cream/40 italic">No domains yet — add one below.</p>
+                <div className="rounded-lg border border-brand-amber/30 bg-brand-amber/5 p-3 space-y-2">
+                  <p className="text-xs text-brand-amber/90 leading-relaxed">
+                    <strong className="text-brand-amber">No domains yet.</strong> Visitors won&apos;t reach this site until you add at least one. Use the input below, then point the domain&apos;s DNS A record at your host.
+                  </p>
+                  <button
+                    onClick={focusDomainInput}
+                    className="text-[11px] px-3 py-1.5 rounded-lg border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/10 font-semibold"
+                  >
+                    + Add domain
+                  </button>
+                </div>
               ) : (
                 site.domains.map(d => (
-                  <div key={d} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-black border border-white/5">
-                    <span className="font-mono text-sm text-brand-cream flex-1 truncate">{d}</span>
-                    {site.primaryDomain === d ? (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-amber/20 text-brand-amber font-semibold uppercase tracking-wider">Primary</span>
-                    ) : (
-                      <button
-                        onClick={() => setPrimaryDomain(site.id, d)}
-                        className="text-[11px] text-brand-cream/45 hover:text-brand-cream"
-                      >
-                        Make primary
-                      </button>
-                    )}
-                    <button
-                      onClick={() => removeDomain(site.id, d)}
-                      className="text-brand-cream/40 hover:text-red-400 text-sm"
-                      aria-label={`Remove ${d}`}
-                    >
-                      ×
-                    </button>
-                  </div>
+                  <DomainRow
+                    key={d}
+                    domain={d}
+                    isPrimary={site.primaryDomain === d}
+                    cache={dnsCache[d]}
+                    onResolved={entry => onDnsResolved(d, entry)}
+                    onMakePrimary={() => setPrimaryDomain(site.id, d)}
+                    onRemove={() => removeDomain(site.id, d)}
+                  />
                 ))
               )}
               <form onSubmit={e => { e.preventDefault(); handleAddDomain(); }} className="flex gap-2">
                 <input
+                  ref={domainInputRef}
                   value={domain}
                   onChange={e => setDomain(e.target.value)}
                   placeholder="e.g. felicia.com"
@@ -557,7 +753,7 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
               </form>
               <p className="text-[11px] text-brand-cream/30 leading-relaxed">
                 Point each domain&apos;s DNS A record to your hosting provider, then add it here.
-                The site loads automatically based on hostname.
+                Click <strong className="text-brand-cream/55">Check DNS</strong> on a row to verify resolution from Google&apos;s public DNS.
               </p>
             </div>
           </div>
@@ -577,17 +773,10 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Content overrides — instrumented regions on the host site */}
           <ContentOverridesBlock siteId={site.id} />
 
-          {/* Actions */}
+          {/* Actions — danger zone only. "Make primary" lives in the
+              header star above so it's not adjacent to Delete. */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            {!site.isPrimary && (
-              <button
-                onClick={() => setPrimarySite(site.id)}
-                className="text-[11px] px-3 py-1.5 rounded-lg border border-brand-amber/30 text-brand-amber hover:bg-brand-amber/10"
-              >
-                Make primary
-              </button>
-            )}
-            {!site.isPrimary && (
+            {!site.isPrimary ? (
               <button
                 onClick={() => {
                   if (confirm(`Delete "${site.name}"? Domains will be unrouted.`)) {
@@ -598,13 +787,407 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
               >
                 Delete site
               </button>
-            )}
-            {site.isPrimary && (
+            ) : (
               <p className="text-[11px] text-brand-cream/35 italic">The primary site cannot be deleted.</p>
             )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Logo upload UX ─────────────────────────────────────────────────────────
+//
+// Paste-URL input with a live preview, plus a drag-and-drop target that
+// converts dropped images to data URIs (FileReader.readAsDataURL). Mirrors
+// how the existing media library handles uploads — no new deps, no server
+// round-trip required for previewing.
+
+function LogoUploader({ site }: { site: Site }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const url = site.logoUrl ?? "";
+
+  function handleFile(file: File | null | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("That file doesn't look like an image.");
+      return;
+    }
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        updateSite(site.id, { logoUrl: result });
+      }
+    };
+    reader.onerror = () => setError("Couldn't read that file.");
+    reader.readAsDataURL(file);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    handleFile(e.dataTransfer.files?.[0]);
+  }
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Logo</p>
+        <Tip text="Used in the navbar and email receipts. Paste a URL or drag-and-drop an image — dropped files are stored inline as a data URI so you can preview without uploading anywhere." />
+      </div>
+      <div className="p-4 flex flex-col sm:flex-row gap-3">
+        {/* Drag-drop preview tile (acts as the click-to-pick target too). */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative w-full sm:w-48 h-28 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0 ${
+            dragOver ? "border-brand-orange bg-brand-orange/10" : "border-white/15 hover:border-white/25 bg-brand-black/40"
+          }`}
+          title="Click to pick a file or drag-and-drop here"
+        >
+          {url ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="Logo preview" className="max-h-16 max-w-[80%] object-contain" />
+              <p className="text-[10px] text-brand-cream/45 mt-1">click or drop to replace</p>
+            </>
+          ) : (
+            <>
+              <div className="w-8 h-8 rounded bg-brand-orange/15 border border-brand-orange/25 flex items-center justify-center font-display text-sm font-bold text-brand-orange">
+                {site.name.charAt(0)}
+              </div>
+              <p className="text-[10px] text-brand-cream/55 mt-1">fallback to brand mark</p>
+              <p className="text-[10px] text-brand-cream/35">drop image to set</p>
+            </>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ""; }}
+            className="hidden"
+          />
+        </div>
+        {/* URL input + clear button. Disable the input when the value is a
+            data: URI (the inline-image case) so admins don't accidentally
+            paste over a multi-megabyte string. */}
+        <div className="flex-1 min-w-0 space-y-2">
+          <input
+            value={url.startsWith("data:") ? "" : url}
+            onChange={e => updateSite(site.id, { logoUrl: e.target.value })}
+            placeholder={url.startsWith("data:") ? "(inline image — clear below to paste a URL)" : "https://example.com/logo.png"}
+            className={INPUT + " font-mono text-xs"}
+            disabled={url.startsWith("data:")}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            {url && (
+              <button
+                onClick={() => updateSite(site.id, { logoUrl: "" })}
+                className="px-2 py-1 rounded-md border border-white/15 text-brand-cream/55 hover:text-brand-cream hover:border-white/30"
+              >
+                Clear
+              </button>
+            )}
+            {url.startsWith("data:") && (
+              <span className="px-2 py-0.5 rounded-full bg-brand-orange/15 text-brand-orange text-[10px] font-semibold uppercase tracking-wider">
+                inline image
+              </span>
+            )}
+            {!url && (
+              <span className="text-brand-cream/40 text-[10px]">
+                Empty = the navbar falls back to the brand mark ({site.name.charAt(0)}).
+              </span>
+            )}
+          </div>
+          {error && <p className="text-[11px] text-red-400">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Favicon upload UX ──────────────────────────────────────────────────────
+//
+// Tiny 16×16 actual-size preview, paste-URL input, "use logo as favicon"
+// shortcut, inline validation that flips a tick once the image actually
+// loads.
+
+function FaviconUploader({ site }: { site: Site }) {
+  const url = site.faviconUrl ?? "";
+  const [loadState, setLoadState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+
+  // Reset load state whenever the URL changes — re-runs the <img> probe.
+  useEffect(() => {
+    if (!url) { setLoadState("idle"); return; }
+    setLoadState("loading");
+  }, [url]);
+
+  // Quick-and-dirty client-side validation: empty/data-uri are always ok,
+  // anything else must look URL-shaped. The actual reachability check is
+  // the hidden <img>'s onLoad/onError below.
+  const looksValid = !url
+    || url.startsWith("data:image/")
+    || /^https?:\/\/.+/.test(url)
+    || url.startsWith("/");
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Favicon</p>
+        <Tip text="Browser tab icon. PNG or .ico, ideally 32×32 or 64×64 (browsers downscale). Use the 'Use logo as favicon' shortcut to copy the logo URL across in one click." />
+      </div>
+      <div className="p-4 flex flex-col sm:flex-row gap-3 sm:items-start">
+        {/* 16×16 actual-size preview, framed so it's visible on dark bg. */}
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          <div className="w-12 h-12 rounded-md bg-brand-black border border-white/10 flex items-center justify-center p-1">
+            {url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={url}
+                alt="Favicon preview"
+                width={16}
+                height={16}
+                className="w-4 h-4 object-contain"
+                onLoad={() => setLoadState("ok")}
+                onError={() => setLoadState("error")}
+              />
+            ) : (
+              <span className="text-[9px] uppercase tracking-wider text-brand-cream/30">none</span>
+            )}
+          </div>
+          <p className="text-[9px] uppercase tracking-wider text-brand-cream/40">16 × 16</p>
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <input
+            value={url}
+            onChange={e => updateSite(site.id, { faviconUrl: e.target.value })}
+            placeholder="https://example.com/favicon.png  ·  /favicon.ico  ·  data:image/…"
+            className={INPUT + " font-mono text-xs"}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <button
+              onClick={() => {
+                if (!site.logoUrl) return;
+                updateSite(site.id, { faviconUrl: site.logoUrl });
+              }}
+              disabled={!site.logoUrl}
+              className="px-2 py-1 rounded-md border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+              title={site.logoUrl ? "Copies the logo URL into the favicon slot" : "Set a logo first"}
+            >
+              Use logo as favicon
+            </button>
+            {url && (
+              <button
+                onClick={() => updateSite(site.id, { faviconUrl: "" })}
+                className="px-2 py-1 rounded-md border border-white/15 text-brand-cream/55 hover:text-brand-cream hover:border-white/30"
+              >
+                Clear
+              </button>
+            )}
+            {/* Validity indicators */}
+            {url && !looksValid && (
+              <span className="text-amber-400" title="Doesn't look like a valid URL — paste the full https://… address.">
+                ⚠ unusual URL
+              </span>
+            )}
+            {url && looksValid && loadState === "loading" && (
+              <span className="text-brand-cream/40">checking…</span>
+            )}
+            {url && looksValid && loadState === "ok" && (
+              <span className="text-green-400 font-semibold" title="Image loaded successfully">
+                ✓ loads
+              </span>
+            )}
+            {url && looksValid && loadState === "error" && (
+              <span className="text-red-400" title="Image failed to load — check the URL or CORS.">
+                ✗ failed to load
+              </span>
+            )}
+            {!url && (
+              <span className="text-brand-cream/40 text-[10px]">
+                Empty = the host site keeps whatever favicon it already declares.
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Theme variant tile picker ──────────────────────────────────────────────
+//
+// Replaces the previous plain <select>. Each variant becomes a card with
+// its icon, name, and a small colour swatch (derived from the variant's
+// `colors.orange` / `colors.purple` overrides where present, falling back
+// to the default theme palette otherwise). The active variant gets a
+// visible coloured ring so admins can see at a glance which is selected.
+
+const DEFAULT_VARIANT_SWATCH = ["#E8621A", "#6B2D8B", "#FAF5EE"] as const;
+
+function variantSwatch(v: ThemeVariant): readonly [string, string, string] {
+  const c = v.overrides?.colors as Record<string, string> | undefined;
+  return [
+    c?.orange ?? DEFAULT_VARIANT_SWATCH[0],
+    c?.purple ?? DEFAULT_VARIANT_SWATCH[1],
+    c?.cream  ?? DEFAULT_VARIANT_SWATCH[2],
+  ] as const;
+}
+
+function ThemeVariantPicker({ site, variants }: { site: Site; variants: ThemeVariant[] }) {
+  const activeId = site.themeVariantId ?? "dark";
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-cream/55">Theme variant</p>
+        <Tip text="Pick which visual variant this site renders by default. Variants are managed under Theme → Variants and apply across the entire storefront. The selected card has a coloured ring." />
+        <span className="ml-auto text-[10px] text-brand-cream/40">
+          {variants.length} {variants.length === 1 ? "variant" : "variants"}
+        </span>
+      </div>
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {variants.map(v => {
+          const isActive = v.id === activeId;
+          const [c1, c2, c3] = variantSwatch(v);
+          return (
+            <button
+              key={v.id}
+              onClick={() => updateSite(site.id, { themeVariantId: v.id })}
+              className={`text-left p-3 rounded-xl border transition-colors flex flex-col gap-2 ${
+                isActive
+                  ? "border-brand-orange bg-brand-orange/10 ring-2 ring-brand-orange/40 ring-offset-2 ring-offset-brand-black"
+                  : "border-white/10 hover:border-white/25 bg-brand-black/40"
+              }`}
+              aria-pressed={isActive}
+              title={v.description}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base leading-none" aria-hidden>{v.icon}</span>
+                <span className={`text-xs font-medium truncate ${isActive ? "text-brand-cream" : "text-brand-cream/80"}`}>
+                  {v.name}
+                </span>
+                {isActive && (
+                  <span className="ml-auto text-[9px] uppercase tracking-wider text-brand-orange font-semibold">Active</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-6 h-6 rounded-full border border-white/10" style={{ background: c1 }} />
+                <span className="w-6 h-6 rounded-full border border-white/10 -ml-2" style={{ background: c2 }} />
+                <span className="w-6 h-6 rounded-full border border-white/10 -ml-2" style={{ background: c3 }} />
+                {v.isBuiltIn && (
+                  <span className="ml-auto text-[9px] uppercase tracking-wider text-brand-cream/35">built-in</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Domain row with DNS check ──────────────────────────────────────────────
+//
+// Each domain in the list. The "Check DNS" button hits Google's public
+// DoH endpoint (https://dns.google/resolve?…) — no API key, no auth, CORS
+// open. Cached results are reused for 60s via the page-level dnsCache so
+// collapsing/re-opening a row doesn't refetch.
+
+function DomainRow({ domain, isPrimary, cache, onResolved, onMakePrimary, onRemove }: {
+  domain: string;
+  isPrimary: boolean;
+  cache: DnsCacheEntry | undefined;
+  onResolved: (entry: DnsCacheEntry) => void;
+  onMakePrimary: () => void;
+  onRemove: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const fresh = cache && (Date.now() - cache.fetchedAt) < DNS_TTL_MS;
+
+  async function check() {
+    if (busy) return;
+    setBusy(true);
+    onResolved({ status: "loading", fetchedAt: Date.now() });
+    const entry = await resolveDomainA(domain);
+    onResolved(entry);
+    setBusy(false);
+  }
+
+  return (
+    <div className="rounded-lg bg-brand-black border border-white/5 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <span className="font-mono text-sm text-brand-cream flex-1 truncate">{domain}</span>
+        {isPrimary ? (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-amber/20 text-brand-amber font-semibold uppercase tracking-wider">Primary</span>
+        ) : (
+          <button
+            onClick={onMakePrimary}
+            className="text-[11px] text-brand-cream/45 hover:text-brand-cream"
+          >
+            Make primary
+          </button>
+        )}
+        <button
+          onClick={check}
+          disabled={busy}
+          className="text-[11px] px-2 py-1 rounded-md border border-white/15 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+          title="Resolve this domain via Google's public DNS (no API key, no auth)"
+        >
+          {busy ? "Checking…" : fresh ? "Re-check" : "Check DNS"}
+        </button>
+        <button
+          onClick={onRemove}
+          className="text-brand-cream/40 hover:text-red-400 text-sm"
+          aria-label={`Remove ${domain}`}
+        >
+          ×
+        </button>
+      </div>
+      {cache && (
+        <DnsStatusRow entry={cache} />
+      )}
+    </div>
+  );
+}
+
+function DnsStatusRow({ entry }: { entry: DnsCacheEntry }) {
+  if (entry.status === "loading") {
+    return (
+      <div className="px-3 pb-2 text-[11px] text-brand-cream/45">
+        Resolving via dns.google…
+      </div>
+    );
+  }
+  if (entry.status === "ok") {
+    return (
+      <div className="px-3 pb-2 text-[11px] flex items-center gap-2">
+        <span className="text-green-400 font-semibold">✓ resolves</span>
+        <code className="font-mono text-brand-cream/85 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">{entry.ip}</code>
+        <span className="text-brand-cream/35 ml-auto">checked {formatAge(Date.now() - entry.fetchedAt)}</span>
+      </div>
+    );
+  }
+  if (entry.status === "no-record") {
+    return (
+      <div className="px-3 pb-2 text-[11px] flex items-center gap-2">
+        <span className="text-brand-amber font-semibold">⚠ no A record</span>
+        <span className="text-brand-cream/55 truncate">{entry.message ?? "Add an A record at your registrar."}</span>
+        <span className="text-brand-cream/35 ml-auto shrink-0">checked {formatAge(Date.now() - entry.fetchedAt)}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="px-3 pb-2 text-[11px] flex items-center gap-2">
+      <span className="text-red-400 font-semibold">✗ network error</span>
+      <span className="text-brand-cream/55 truncate">{entry.message}</span>
+      <span className="text-brand-cream/35 ml-auto shrink-0">checked {formatAge(Date.now() - entry.fetchedAt)}</span>
     </div>
   );
 }

@@ -41,6 +41,7 @@ export async function GET() {
       deploymentGuide: true,      // /admin/portal-settings deployment paths card (T1 #1)
       tagStability: true,         // T1 #9 — tag rate cap, sampling, backoff, disable() + heartbeat body cap + per-site rate limit
       ecommerceAudited: true,     // T1 #7 — webhook idempotency, cart persistence, clear-on-success, line-item validation, double-discount guard
+      sitesAdminPolished: true,   // T1 #10 — favicon/logo upload UX, theme variant tile picker, DNS check helper, sortable site list, primary star moved out of danger zone
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.
       orders: false,
