@@ -7,6 +7,7 @@ import {
   onSitesChange, normaliseDomain, type Site,
 } from "@/lib/admin/sites";
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
+import { getSettings as getPortalSettings, onSettingsChange as onPortalSettingsChange } from "@/lib/admin/portalSettings";
 import Tip from "@/components/admin/Tip";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
@@ -1092,10 +1093,21 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
   saving: boolean;
   onApplied: (next: AdminContentState) => void;
 }) {
-  const [busy, setBusy] = useState<"" | "publish" | "discard" | "revert" | "preview">("");
+  const [busy, setBusy] = useState<"" | "publish" | "discard" | "revert" | "preview" | "promote">("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [promotedPr, setPromotedPr] = useState<{ url: string; number: number } | null>(null);
+  const [portalSettings, setPortalSettings] = useState(() => getPortalSettings());
+
+  // Keep settings in sync with the portal-settings page edits.
+  useEffect(() => {
+    const off = onPortalSettingsChange(() => setPortalSettings(getPortalSettings()));
+    return off;
+  }, []);
+
+  const githubReady = !!portalSettings.github.repoUrl && !!portalSettings.github.pat;
+  const hasPublished = state ? Object.keys(state.published).length > 0 : false;
 
   const unpublishedKeys = state ? diffOverrideKeys(state.published, state.draft) : [];
   const unpublishedCount = unpublishedKeys.length;
@@ -1159,14 +1171,47 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
       });
       if (!res.ok) { setError("Could not mint preview token"); return; }
       const { token } = await res.json() as { token: string };
-      // Build the preview URL. We only know the host base if the admin set
-      // a domain on the site OR a previewBaseUrl in portal-settings; for
-      // now, copy a query string the admin can paste onto whichever URL
-      // they're testing. The full URL belongs to D-4 once settings.deployment
-      // .previewBaseUrl is wired in.
+      // Build the preview URL. If a deployment.previewBaseUrl is set, use
+      // it as the base; otherwise just the query string for the admin to
+      // paste onto whatever URL they're testing.
+      const base = portalSettings.deployment.previewBaseUrl?.replace(/\/$/, "") ?? "";
       const param = `portal_preview=draft&pt=${encodeURIComponent(token)}`;
-      setPreviewUrl(`?${param}`);
-      try { await navigator.clipboard.writeText(`?${param}`); } catch {}
+      const url = base ? `${base}${base.includes("?") ? "&" : "?"}${param}` : `?${param}`;
+      setPreviewUrl(url);
+      try { await navigator.clipboard.writeText(url); } catch {}
+    } finally { setBusy(""); }
+  }
+
+  async function handlePromote() {
+    if (!githubReady) {
+      setError("Configure a GitHub repo URL and a Personal Access Token in /admin/portal-settings before promoting.");
+      return;
+    }
+    if (!hasPublished) {
+      setError("Publish the draft first — only published content gets promoted.");
+      return;
+    }
+    const message = prompt("Optional commit/PR note:", "") ?? undefined;
+    setBusy("promote"); setError(null); setPromotedPr(null);
+    try {
+      const res = await fetch(`/api/portal/promote/${encodeURIComponent(siteId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repoUrl: portalSettings.github.repoUrl,
+          baseBranch: portalSettings.github.defaultBranch,
+          pat: portalSettings.github.pat,
+          message,
+        }),
+      });
+      const data = await res.json() as { ok: boolean; prUrl?: string; prNumber?: number; error?: string };
+      if (!data.ok || !data.prUrl) {
+        setError(data.error ?? `Promote failed (${res.status})`);
+        return;
+      }
+      setPromotedPr({ url: data.prUrl, number: data.prNumber ?? 0 });
+    } catch (e) {
+      setError(`Promote failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally { setBusy(""); }
   }
 
@@ -1211,8 +1256,36 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
           >
             {busy === "publish" ? "Publishing…" : "Publish"}
           </button>
+          <button
+            onClick={handlePromote}
+            disabled={!hasPublished || !!busy}
+            title={
+              !githubReady
+                ? "Configure GitHub repo + PAT in /admin/portal-settings"
+                : !hasPublished
+                  ? "Publish first — only published state gets promoted"
+                  : "Open a PR that commits the published overrides into the repo"
+            }
+            className="text-[11px] px-3 py-1.5 rounded-lg border border-brand-amber/40 text-brand-amber hover:bg-brand-amber/10 font-semibold disabled:opacity-30"
+          >
+            {busy === "promote" ? "Opening PR…" : "Promote → repo"}
+          </button>
         </div>
       </div>
+
+      {promotedPr && (
+        <p className="text-[11px] text-green-400 px-1">
+          PR opened:&nbsp;
+          <a
+            href={promotedPr.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-green-300"
+          >
+            #{promotedPr.number} on GitHub ↗
+          </a>
+        </p>
+      )}
 
       {previewUrl && (
         <p className="text-[11px] text-brand-cream/60 px-1">

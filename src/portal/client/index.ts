@@ -152,11 +152,27 @@ function fetchOverrides(url: string, signal?: AbortSignal): Promise<Record<strin
   return promise;
 }
 
+// Shape of `portal.overrides.json` — what the D-3 promote PR commits at
+// the repo root. Hosts can `import overrides from "@/portal.overrides.json"`
+// and pass the inner `overrides` map as `seed` so the SSR HTML reflects
+// the last-promoted state, with the runtime portal fetch only filling in
+// anything published since.
+export interface PortalOverridesFile {
+  $schema?: string;
+  siteId: string;
+  publishedAt?: number;
+  overrides: Record<string, { value: string; type: OverrideType }>;
+}
+
 export interface LoadPortalContentOptions<T extends ManifestSchema> {
   siteId: string;
   portal: string;          // origin or origin+path of the portal deployment
   schema: T;
   signal?: AbortSignal;
+  // Build-time seed (D-3): the contents of `portal.overrides.json` if
+  // promote PRs have been merged. Either pass `seedFile.overrides` or the
+  // whole file — both shapes accepted. Runtime fetch results merge on top.
+  seed?: Record<string, { value: string; type: OverrideType }> | PortalOverridesFile;
 }
 
 // Fetch overrides for `siteId`, merge into the schema defaults and return
@@ -166,31 +182,56 @@ export interface LoadPortalContentOptions<T extends ManifestSchema> {
 export async function loadPortalContent<T extends ManifestSchema>(
   opts: LoadPortalContentOptions<T>,
 ): Promise<ResolvedPortal<T>> {
-  const { siteId, portal, schema, signal } = opts;
+  const { siteId, portal, schema, signal, seed } = opts;
   const base = portal.replace(/\/$/, "");
   const url = `${base}/api/portal/content/${encodeURIComponent(siteId)}`;
   const defaults = buildDefaults(schema);
+  const seedMap = normaliseSeed(seed);
 
   let overrides: Record<string, { value: string; type: OverrideType }> = {};
   try {
     overrides = await fetchOverrides(url, signal);
   } catch {
-    return defaults;
+    return mergeOverrides(defaults, seedMap);
   }
 
+  // Three-way merge: defaults < seed (build-time promote) < runtime portal.
+  return mergeOverrides(defaults, seedMap, overrides);
+}
+
+function normaliseSeed(
+  seed: LoadPortalContentOptions<ManifestSchema>["seed"],
+): Record<string, { value: string; type: OverrideType }> {
+  if (!seed) return {};
+  // PortalOverridesFile carries `siteId` alongside `overrides`. Use that as
+  // the discriminator rather than just `"overrides" in …`, which would
+  // false-positive on a flat map whose first key happens to be "overrides".
+  const candidate = seed as Partial<PortalOverridesFile>;
+  if (typeof candidate.siteId === "string" && candidate.overrides && typeof candidate.overrides === "object") {
+    return candidate.overrides;
+  }
+  return seed as Record<string, { value: string; type: OverrideType }>;
+}
+
+function mergeOverrides<T extends ManifestSchema>(
+  defaults: ResolvedPortal<T>,
+  ...layers: Record<string, { value: string; type: OverrideType }>[]
+): ResolvedPortal<T> {
   // Deep-clone the defaults so callers can't see a shared reference.
   const merged = {} as Record<string, Record<string, string>>;
   for (const [section, fields] of Object.entries(defaults as Record<string, Record<string, string>>)) {
     merged[section] = { ...fields };
   }
-  for (const [flatKey, rule] of Object.entries(overrides)) {
-    if (!rule || typeof rule.value !== "string") continue;
-    const dot = flatKey.indexOf(".");
-    if (dot < 0) continue;            // schema speaks section.key only
-    const section = flatKey.slice(0, dot);
-    const key = flatKey.slice(dot + 1);
-    if (!merged[section] || !(key in merged[section])) continue;  // unknown key → ignore
-    merged[section][key] = rule.value;
+  for (const layer of layers) {
+    for (const [flatKey, rule] of Object.entries(layer)) {
+      if (!rule || typeof rule.value !== "string") continue;
+      const dot = flatKey.indexOf(".");
+      if (dot < 0) continue;
+      const section = flatKey.slice(0, dot);
+      const key = flatKey.slice(dot + 1);
+      if (!merged[section] || !(key in merged[section])) continue;
+      merged[section][key] = rule.value;
+    }
   }
   return merged as ResolvedPortal<T>;
 }
