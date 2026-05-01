@@ -212,12 +212,20 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     category: "content",
     isContainer: false,
     Component: ButtonBlock,
-    defaultProps: { label: "Click me", href: "#", variant: "primary" },
+    defaultProps: { label: "Click me", href: "#", variant: "primary", hoverAnim: "lift" },
     fields: [
       { key: "label", label: "Label", type: "text", default: "Click me" },
       { key: "href", label: "URL", type: "url", default: "#" },
       { key: "variant", label: "Style", type: "select", default: "primary", options: [
         { value: "primary", label: "Primary" }, { value: "secondary", label: "Secondary" }, { value: "ghost", label: "Ghost" },
+      ] },
+      { key: "hoverAnim", label: "Hover effect", type: "select", default: "lift", options: [
+        { value: "none",   label: "None" },
+        { value: "lift",   label: "Lift" },
+        { value: "glow",   label: "Glow" },
+        { value: "shrink", label: "Shrink" },
+        { value: "shine",  label: "Shine" },
+        { value: "wiggle", label: "Wiggle" },
       ] },
     ],
   },

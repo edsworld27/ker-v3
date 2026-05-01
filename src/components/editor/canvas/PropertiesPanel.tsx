@@ -4,8 +4,8 @@
 // currently-selected block. Updates flow back through onChange so the
 // parent canvas can debounce-save the page.
 
-import { useState } from "react";
-import type { Block, BlockStyles } from "@/portal/server/types";
+import { useEffect, useState } from "react";
+import type { Block, BlockA11y, BlockStyles } from "@/portal/server/types";
 import { getBlockDefinition, type PropField } from "../blockRegistry";
 import { STYLE_FIELD_GROUPS } from "../blockStyles";
 import AssetPicker from "../AssetPicker";
@@ -20,7 +20,7 @@ interface PropertiesPanelProps {
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
 export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove }: PropertiesPanelProps) {
-  const [tab, setTab] = useState<"props" | "styles" | "code">("props");
+  const [tab, setTab] = useState<"props" | "styles" | "a11y" | "code">("props");
 
   if (!block) {
     return (
@@ -57,14 +57,19 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
       <div className="flex border-b border-white/8">
         <button onClick={() => setTab("props")}  className={tabClass(tab === "props")}>Props</button>
         <button onClick={() => setTab("styles")} className={tabClass(tab === "styles")}>Styles</button>
+        <button onClick={() => setTab("a11y")}   className={tabClass(tab === "a11y")}>A11y</button>
         <button onClick={() => setTab("code")}   className={tabClass(tab === "code")}>Code</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {tab === "props" && block.type === "heading" && (
+          <HeadingLevelPills value={Number(block.props.level ?? 2)} onChange={lvl => setProp("level", lvl)} />
+        )}
         {tab === "props" && (def?.fields ?? []).map(field => <PropFieldRow key={field.key} field={field} value={block.props[field.key]} onChange={v => setProp(field.key, v)} />)}
         {tab === "props" && (def?.fields.length ?? 0) === 0 && (
           <p className="text-[11px] text-brand-cream/45 leading-relaxed">No editable props for this block. Use the Styles tab to tweak appearance.</p>
         )}
         {tab === "styles" && <StyleEditor styles={block.styles ?? {}} onChange={setStyle} />}
+        {tab === "a11y" && <A11yEditor a11y={block.a11y ?? {}} onPatch={a => onPatch({ a11y: { ...(block.a11y ?? {}), ...a } })} />}
         {tab === "code" && <BlockCodeEditor block={block} onPatch={onPatch} />}
       </div>
       <div className="p-3 border-t border-white/8 flex gap-2">
@@ -77,6 +82,56 @@ export default function PropertiesPanel({ block, onPatch, onDuplicate, onRemove 
 
 function tabClass(active: boolean) {
   return `flex-1 py-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase ${active ? "text-brand-orange border-b-2 border-brand-orange" : "text-brand-cream/55 hover:text-brand-cream"}`;
+}
+
+function HeadingLevelPills({ value, onChange }: { value: number; onChange: (lvl: number) => void }) {
+  return (
+    <Field label="Heading level">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5, 6].map(lvl => (
+          <button
+            key={lvl}
+            type="button"
+            onClick={() => onChange(lvl)}
+            className={`flex-1 py-1.5 rounded text-[12px] font-semibold ${value === lvl ? "bg-brand-orange text-white" : "bg-white/5 text-brand-cream/65 hover:bg-white/10"}`}
+            title={`Convert to H${lvl}`}
+          >
+            H{lvl}
+          </button>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function A11yEditor({ a11y, onPatch }: { a11y: BlockA11y; onPatch: (patch: Partial<BlockA11y>) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] text-brand-cream/45 leading-relaxed">
+        Accessibility attributes applied to the block&apos;s outer DOM element. Empty fields are ignored.
+      </p>
+      <Field label="aria-label" help="Used for icon-only buttons + decorative regions a screen reader couldn't otherwise describe">
+        <input type="text" value={a11y.ariaLabel ?? ""} onChange={e => onPatch({ ariaLabel: e.target.value || undefined })} className={INPUT} />
+      </Field>
+      <Field label="aria-labelledby" help="ID of a heading or label that names this region">
+        <input type="text" value={a11y.ariaLabelledBy ?? ""} onChange={e => onPatch({ ariaLabelledBy: e.target.value || undefined })} className={INPUT + " font-mono"} placeholder="some-heading-id" />
+      </Field>
+      <Field label="role" help="ARIA role override (rare — most blocks have a sensible default)">
+        <input type="text" value={a11y.role ?? ""} onChange={e => onPatch({ role: e.target.value || undefined })} className={INPUT + " font-mono"} placeholder="complementary, banner, main, …" />
+      </Field>
+      <Field label="HTML id (anchor target)" help="Lets you link to this block via #id">
+        <input type="text" value={a11y.htmlId ?? ""} onChange={e => onPatch({ htmlId: e.target.value || undefined })} className={INPUT + " font-mono"} placeholder="pricing" />
+      </Field>
+      <Field label="tabindex" help="Custom focus order (advanced)">
+        <input type="number" value={a11y.tabIndex ?? ""} onChange={e => onPatch({ tabIndex: e.target.value === "" ? undefined : Number(e.target.value) })} className={INPUT} />
+      </Field>
+      <Field label="aria-hidden">
+        <button type="button" onClick={() => onPatch({ ariaHidden: !(a11y.ariaHidden === true) })} className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-colors ${a11y.ariaHidden ? "bg-brand-orange justify-end" : "bg-white/15 justify-start"}`}>
+          <span className="w-4 h-4 rounded-full bg-white" />
+        </button>
+      </Field>
+    </div>
+  );
 }
 
 // Direct JSON editor for the selected block. Useful when the visual

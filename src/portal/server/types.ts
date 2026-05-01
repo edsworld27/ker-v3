@@ -664,6 +664,28 @@ export interface Block {
   props: Record<string, unknown>;
   styles?: BlockStyles;
   children?: Block[];          // present for container/section/row/column/grid blocks
+  a11y?: BlockA11y;            // SEO-A1: accessibility attributes
+  seo?: BlockSeo;              // SEO-A1: per-block schema fragment (json-ld piece)
+}
+
+// Accessibility attributes applied to the block's outer DOM element.
+// Empty fields are ignored. Never overwritten by the block component
+// itself — admins always win over the default behaviour.
+export interface BlockA11y {
+  ariaLabel?: string;          // for icon-only buttons + decorative containers
+  ariaLabelledBy?: string;     // id of a heading/label that names this region
+  role?: string;               // ARIA role override (e.g. "complementary", "main")
+  ariaHidden?: boolean;        // hide from screen readers entirely
+  alt?: string;                // image-only — falls back to props.alt when set
+  tabIndex?: number;           // for custom focus order
+  htmlId?: string;             // anchor target id, eg. "#pricing"
+}
+
+// Per-block SEO microdata. Optional structured-data fragment that gets
+// rolled into the page-level JSON-LD on render.
+export interface BlockSeo {
+  schemaType?: string;         // e.g. "Product", "FAQPage", "Article"
+  schemaProps?: Record<string, unknown>;
 }
 
 export interface EditorPage {
@@ -684,6 +706,31 @@ export interface EditorPage {
   // page without polluting the global head.
   customHead?: string;
   customFoot?: string;
+  // Full SEO panel (SEO-A1). All optional — sensible defaults derived
+  // from `title`/`description`. Sitemap reads `excludeFromSitemap` +
+  // `priority` + `changefreq`; robots reads `noindex`/`nofollow`.
+  seo?: PageSeo;
+}
+
+export interface PageSeo {
+  title?: string;              // <title> override (defaults to page.title + site suffix)
+  metaDescription?: string;
+  keywords?: string[];
+  canonical?: string;          // canonical URL override
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;            // 1200x630 ideal
+  ogType?: "website" | "article" | "product";
+  twitterCard?: "summary" | "summary_large_image";
+  noindex?: boolean;
+  nofollow?: boolean;
+  // Sitemap fields
+  excludeFromSitemap?: boolean;
+  priority?: number;           // 0.0 - 1.0
+  changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+  // Raw JSON-LD blob for advanced users — embedded as <script
+  // type="application/ld+json"> at the top of the page.
+  jsonLd?: string;
 }
 
 // ─── Asset library (P-2) ───────────────────────────────────────────────────

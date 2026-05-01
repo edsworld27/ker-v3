@@ -59,6 +59,11 @@ export async function GET() {
       promoteAll: true,           // W-1 — promote bundles pages + content + site code into one PR
       multiDb: true,              // W-1 — per-org database credentials captured (data model + UI; routing scaffolded)
       setupChecklist: true,       // W-1 — end-to-end status panel on /aqua
+      seoEditor: true,            // SEO-A1 — per-page SEO panel + /admin/seo dashboard
+      sitemap: true,              // SEO-A1 — /sitemap.xml + /robots.txt generated from pages
+      blockA11y: true,            // SEO-A1 — aria-label/role/htmlId/tabindex/ariaHidden per block
+      buttonHoverAnims: true,     // SEO-A1 — lift/glow/shrink/wiggle/shine on Button blocks
+      headingSwitcher: true,      // SEO-A1 — inline H1…H6 pills on selected heading
       org: true,                  // G-2 org/tenant model
       // Client-only (localStorage) — exposed via portal module imports but
       // not yet via HTTP. Need DB persistence first.

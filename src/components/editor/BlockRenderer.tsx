@@ -39,13 +39,31 @@ function BlockNode({ block, editorMode }: { block: Block; editorMode: boolean })
     return null;
   }
   const Component = def.Component;
-  const node = (
+  const componentNode = (
     <Component
       block={block}
       editorMode={editorMode}
       renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} />}
     />
   );
+  // A11y wrapper — applies admin-set ARIA attributes to a transparent
+  // div around the component. Only emitted when the admin has set at
+  // least one attribute, so DOM stays clean by default.
+  const a = block.a11y;
+  const hasA11y = a && (a.ariaLabel || a.ariaLabelledBy || a.role || a.ariaHidden || a.htmlId || a.tabIndex !== undefined);
+  const node = hasA11y ? (
+    <div
+      id={a!.htmlId || undefined}
+      role={a!.role || undefined}
+      aria-label={a!.ariaLabel || undefined}
+      aria-labelledby={a!.ariaLabelledBy || undefined}
+      aria-hidden={a!.ariaHidden ? true : undefined}
+      tabIndex={a!.tabIndex}
+      style={{ display: "contents" }}
+    >
+      {componentNode}
+    </div>
+  ) : componentNode;
 
   // Per-block responsive override style tag — only when overrides exist.
   // Targets `[data-block-id="<id>"]` which we attach below.

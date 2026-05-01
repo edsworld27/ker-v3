@@ -373,6 +373,93 @@ export default function EditorPage() {
   );
 }
 
+function SeoPanel({ page, onPageMutate }: { page: EditorPage; onPageMutate: (patch: Partial<EditorPage>) => void }) {
+  const seo = page.seo ?? {};
+  function patch(p: Partial<NonNullable<EditorPage["seo"]>>) {
+    onPageMutate({ seo: { ...seo, ...p } });
+  }
+  const inputClass = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
+  return (
+    <div className="rounded-2xl border border-white/8 bg-brand-black-soft p-3 space-y-3">
+      <p className="text-[10px] tracking-[0.18em] uppercase text-brand-cream/55">SEO + meta</p>
+      <label className="block">
+        <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">Title (overrides page title)</span>
+        <input value={seo.title ?? ""} onChange={e => patch({ title: e.target.value || undefined })} className={inputClass} />
+      </label>
+      <label className="block">
+        <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">Meta description</span>
+        <textarea value={seo.metaDescription ?? page.description ?? ""} onChange={e => patch({ metaDescription: e.target.value || undefined })} rows={3} className={inputClass} />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">Canonical</span>
+          <input value={seo.canonical ?? ""} onChange={e => patch({ canonical: e.target.value || undefined })} placeholder="https://…" className={inputClass + " font-mono"} />
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">og:image</span>
+          <input value={seo.ogImage ?? ""} onChange={e => patch({ ogImage: e.target.value || undefined })} placeholder="https://…" className={inputClass + " font-mono"} />
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">og:type</span>
+          <select value={seo.ogType ?? ""} onChange={e => patch({ ogType: (e.target.value || undefined) as "website" | "article" | "product" | undefined })} className={inputClass}>
+            <option value="">(default) website</option>
+            <option value="article">article</option>
+            <option value="product">product</option>
+            <option value="website">website</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">twitter:card</span>
+          <select value={seo.twitterCard ?? ""} onChange={e => patch({ twitterCard: (e.target.value || undefined) as "summary" | "summary_large_image" | undefined })} className={inputClass}>
+            <option value="">(default)</option>
+            <option value="summary">summary</option>
+            <option value="summary_large_image">summary_large_image</option>
+          </select>
+        </label>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="flex items-center gap-2 text-[11px] text-brand-cream/65">
+          <input type="checkbox" checked={seo.noindex === true} onChange={e => patch({ noindex: e.target.checked || undefined })} />
+          noindex
+        </label>
+        <label className="flex items-center gap-2 text-[11px] text-brand-cream/65">
+          <input type="checkbox" checked={seo.nofollow === true} onChange={e => patch({ nofollow: e.target.checked || undefined })} />
+          nofollow
+        </label>
+        <label className="flex items-center gap-2 text-[11px] text-brand-cream/65">
+          <input type="checkbox" checked={seo.excludeFromSitemap === true} onChange={e => patch({ excludeFromSitemap: e.target.checked || undefined })} />
+          skip sitemap
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">priority</span>
+          <input type="number" min="0" max="1" step="0.1" value={seo.priority ?? ""} onChange={e => patch({ priority: e.target.value === "" ? undefined : Number(e.target.value) })} className={inputClass} placeholder="0.7" />
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">changefreq</span>
+          <select value={seo.changefreq ?? ""} onChange={e => patch({ changefreq: (e.target.value || undefined) as "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never" | undefined })} className={inputClass}>
+            <option value="">(weekly)</option>
+            <option value="always">always</option>
+            <option value="hourly">hourly</option>
+            <option value="daily">daily</option>
+            <option value="weekly">weekly</option>
+            <option value="monthly">monthly</option>
+            <option value="yearly">yearly</option>
+            <option value="never">never</option>
+          </select>
+        </label>
+      </div>
+      <label className="block">
+        <span className="block text-[10px] uppercase tracking-[0.18em] text-brand-cream/45 mb-1">Custom JSON-LD (advanced)</span>
+        <textarea value={seo.jsonLd ?? ""} onChange={e => patch({ jsonLd: e.target.value || undefined })} rows={5} spellCheck={false} placeholder='{"@context":"https://schema.org","@type":"Product"…}' className={inputClass + " font-mono"} />
+      </label>
+    </div>
+  );
+}
+
 // Raw JSON editor for the entire page — block tree + custom head + foot.
 // Edit + blur to commit; parse failures keep the prior value. Lets the
 // admin hand-wire what the visual UI can't express (custom CSS,
@@ -425,8 +512,9 @@ function CodeView({
         </div>
       </div>
 
-      {/* Custom head + foot */}
+      {/* SEO + custom head + foot */}
       <div className="flex flex-col gap-3">
+        {page && <SeoPanel page={page} onPageMutate={onPageMutate} />}
         <CodePane
           label="Page <head> code"
           help="Injected at the top of this page only. Use for one-off scripts/styles, schema, page-specific tracking."
