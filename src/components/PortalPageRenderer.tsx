@@ -18,7 +18,7 @@
 // the SiteResolver bootstrap; falls back to a `siteId` prop.
 
 import { useEffect, useMemo, useState } from "react";
-import type { Block, ThemeRecord } from "@/portal/server/types";
+import type { Block, ThemeRecord, SplitTestGroup } from "@/portal/server/types";
 import BlockRenderer from "./editor/BlockRenderer";
 import { tokensToCssVarsClient } from "./editor/themeCss";
 
@@ -101,6 +101,7 @@ async function fetchPage(siteId: string, slug: string, preview: boolean): Promis
 
 export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previewMode, fallback, loading }: PortalPageRendererProps) {
   const [data, setData] = useState<PageResponse | null>(null);
+  const [splitTestGroups, setSplitTestGroups] = useState<SplitTestGroup[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   const siteId = useMemo(() => {
@@ -116,6 +117,12 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
     void fetchPage(siteId, slug, previewMode === true).then(d => {
       if (!cancelled) setData(d);
     });
+    // Pull running split-test groups for this site (best-effort; never
+    // blocks the page render).
+    void fetch(`/api/portal/split-tests?siteId=${encodeURIComponent(siteId)}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(j => { if (!cancelled && j.ok) setSplitTestGroups(j.groups ?? []); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [siteId, slug, previewMode]);
 
@@ -172,7 +179,7 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
         {data.page.layoutOverrides?.nav && !data.page.layoutOverrides.hideNav && (
           <BlockRenderer blocks={data.page.layoutOverrides.nav} themeId={themeId} />
         )}
-        <BlockRenderer blocks={data.page.blocks} themeId={themeId} />
+        <BlockRenderer blocks={data.page.blocks} themeId={themeId} splitTestGroups={splitTestGroups} />
         {data.page.layoutOverrides?.footer && !data.page.layoutOverrides.hideFooter && (
           <BlockRenderer blocks={data.page.layoutOverrides.footer} themeId={themeId} />
         )}

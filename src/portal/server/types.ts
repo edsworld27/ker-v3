@@ -674,6 +674,65 @@ export interface Block {
   // Per-theme style overrides (T-1). Only the deltas — `styles` is the
   // base, themeStyles[id] is layered on top when that theme is active.
   themeStyles?: Record<string, BlockStyles>;
+  // Split-test variants (X-2). When this block participates in a split
+  // test, store one variant entry per group id. The block's base
+  // props/styles is the control (variant "A"); each entry under
+  // variantsByGroup[groupId] is an alternative shown to a fraction of
+  // visitors per the SplitTestGroup config. The runtime resolver picks
+  // a variant per visitor using the group's traffic split + assignment
+  // hash, then renders that variant's props/styles overlaid on the
+  // base. Tracking is fired on render so the SplitTest dashboard can
+  // attribute conversions back to the chosen variant.
+  variantsByGroup?: Record<string, BlockVariant[]>;
+}
+
+export interface BlockVariant {
+  id: string;                  // unique within the group + block
+  name: string;                // human-readable, e.g. "B — green CTA"
+  props?: Record<string, unknown>;  // overrides base props
+  styles?: BlockStyles;             // overrides base styles
+  weight?: number;             // relative traffic share (default 1; sums normalised)
+}
+
+// Split-test group (X-2). One group can target many blocks across many
+// pages; each block lists its own variant set keyed by group id. The
+// group sets the global frequency/timing + a goal so multiple
+// independent tests can run simultaneously.
+
+export type SplitTestStatus = "draft" | "running" | "paused" | "completed";
+
+export interface SplitTestGroup {
+  id: string;
+  siteId: string;              // scoping
+  name: string;                // "Pricing-page CTA test"
+  description?: string;
+  status: SplitTestStatus;
+  startedAt?: number;
+  endsAt?: number;             // optional auto-stop
+  // Traffic share — what % of visitors enter the test. Outside the
+  // test, the control variant wins.
+  trafficPercent?: number;     // 0..100, default 100
+  // Sticky-by — how a visitor's variant assignment is hashed. Defaults
+  // to "visitor" (cookie-based stable id); "session" re-rolls per visit.
+  stickyBy?: "visitor" | "session";
+  // Conversion goal — admin-defined. Used by the dashboard to compute
+  // win rates. Free-form string so admins can match any tracker event.
+  goalEvent?: string;          // e.g. "purchase" | "signup" | "click:cta"
+  // Roll-up of all blocks participating in this group.
+  blockRefs?: Array<{ pageId: string; blockId: string }>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Recorded at runtime per (group, variant) pair — basic counters.
+// Real platforms (LaunchDarkly, GrowthBook) ship something fancier;
+// this is enough for a sortable results table.
+export interface SplitTestResult {
+  groupId: string;
+  variantId: string;
+  exposures: number;           // how many visitors saw it
+  conversions: number;         // how many fired the goal event
+  updatedAt: number;
 }
 
 // Accessibility attributes applied to the block's outer DOM element.
