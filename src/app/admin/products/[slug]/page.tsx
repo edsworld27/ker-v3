@@ -164,6 +164,9 @@ export default function AdminProductEditPage() {
               Reset to original
             </button>
           )}
+          <Link href={`/admin/products/${product.slug}/variants`} className="text-xs px-3 py-2 rounded-lg border border-brand-orange/40 bg-brand-orange/10 text-brand-orange/90 hover:bg-brand-orange/20">
+            Variants →
+          </Link>
           <Link href={`/products/${product.slug}`} target="_blank" className="text-xs px-3 py-2 rounded-lg border border-white/15 text-brand-cream/60 hover:text-brand-cream hover:border-white/30">
             View on site →
           </Link>

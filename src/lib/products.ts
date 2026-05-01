@@ -63,6 +63,64 @@ export interface Product {
     fragrance: string;
     id: string;
   }[];
+  // ── Variant system (Wix/Shopify-style) ──────────────────────────────────
+  // Options describe the dimensions a customer can pick (Colour, Size,
+  // Material…). Variants are the concrete combinations with their own
+  // price, image, SKU. Optional — products without options stay as
+  // before. See src/lib/variants.ts for the variant resolver.
+  options?: ProductOption[];
+  variants?: ProductVariant[];
+  // Surcharge applied when the customer picks a "custom" colour from the
+  // colour wheel (only relevant when an option has allowCustom: true).
+  // In pence/cents, in the product's base currency.
+  customColorSurcharge?: number;
+}
+
+// ── Option groups (Colour, Size, Material…) ─────────────────────────────
+//
+// `displayType` drives the storefront UI:
+//   "swatch"      — square colour chips (hexColor required on values)
+//   "color-wheel" — same as "swatch" + a "Custom…" button that opens a
+//                   colour wheel; produces an ephemeral custom variant
+//   "size"        — pill buttons (label only)
+//   "text"        — radio cards (label + optional image)
+//   "image"       — image swatches (image url required on values)
+//
+// `priceModifier` on a value adds/subtracts from the base price when
+// that value is selected. When a variant explicitly defines a price for
+// the option combination, the variant's price wins.
+
+export type ProductOptionDisplay = "swatch" | "color-wheel" | "size" | "text" | "image";
+
+export interface ProductOptionValue {
+  id: string;            // stable id (slug-style)
+  label: string;
+  hexColor?: string;     // required for swatch / color-wheel
+  image?: string;        // required for "image" display
+  priceModifier?: number;// pence; positive or negative delta
+  available?: boolean;   // default true
+}
+
+export interface ProductOption {
+  id: string;            // e.g. "colour", "size", "material"
+  name: string;          // display name, e.g. "Colour"
+  displayType: ProductOptionDisplay;
+  values: ProductOptionValue[];
+  required?: boolean;    // default true
+  allowCustom?: boolean; // colour-wheel only — admin opens picker for any hex
+}
+
+export interface ProductVariant {
+  id: string;
+  // Maps optionId → valueId. Custom variants from the colour wheel use
+  // a synthetic valueId of `custom:<hex>` (e.g. `custom:#ff0000`).
+  optionValues: Record<string, string>;
+  price: number;
+  salePrice?: number;
+  image?: string;
+  sku?: string;
+  available?: number;    // undefined = not tracked, infinite stock
+  isCustom?: boolean;    // true for ephemeral custom-colour variants
 }
 
 export const PRODUCTS: Product[] = [
