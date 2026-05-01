@@ -13,6 +13,7 @@ import ForcePasswordChange from "@/components/ForcePasswordChange";
 import FeatureGate from "@/components/FeatureGate";
 import SiteResolver from "@/components/SiteResolver";
 import PortalTagInjector from "@/components/PortalTagInjector";
+import PortalEditOverlay from "@/components/PortalEditOverlay";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -63,6 +64,7 @@ export default function RootLayout({
         <CartProvider>
           <SiteResolver />
           <PortalTagInjector />
+          <PortalEditOverlay />
           <ImpersonationBar />
           <ForcePasswordChange />
           <ThemeInjector />
