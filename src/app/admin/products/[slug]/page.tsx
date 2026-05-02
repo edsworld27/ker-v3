@@ -8,6 +8,8 @@ import { notify } from "@/components/admin/Toaster";
 import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
 import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { productDetailTabs } from "@/lib/admin/tabSets";
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 600KB cap for localStorage uploads
 
@@ -153,6 +155,8 @@ export default function AdminProductEditPage() {
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-5xl">
       <Link href="/admin/products" className="text-xs text-brand-cream/55 hover:text-brand-cream">← All products</Link>
+
+      <AdminTabs tabs={productDetailTabs(product.slug)} ariaLabel="Product" />
 
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
