@@ -71,6 +71,37 @@ function makeId(): string {
   return `usr_${crypto.randomBytes(8).toString("hex")}`;
 }
 
+// Minimum 8 chars (OWASP 2024 floor). Reject the most common compromised
+// passwords + trivial patterns. Not a full breached-password lookup —
+// that needs an external API — but stops the worst cases at the gate.
+const TRIVIAL_PASSWORDS = new Set([
+  "password", "password1", "password123", "passw0rd",
+  "12345678", "123456789", "1234567890",
+  "qwerty", "qwerty123", "letmein", "welcome", "admin", "admin123",
+  "iloveyou", "monkey", "dragon", "abc12345", "111111111",
+]);
+
+export interface PasswordValidationResult {
+  ok: boolean;
+  error?: string;
+}
+
+export function validatePassword(password: string): PasswordValidationResult {
+  if (typeof password !== "string") return { ok: false, error: "Password is required." };
+  if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters." };
+  if (password.length > 256) return { ok: false, error: "Password is too long (max 256 chars)." };
+  if (TRIVIAL_PASSWORDS.has(password.toLowerCase())) {
+    return { ok: false, error: "That password is too common — pick something less guessable." };
+  }
+  // Single-character spam ("aaaaaaaa", "11111111").
+  if (/^(.)\1+$/.test(password)) return { ok: false, error: "Password can't be a single repeated character." };
+  // Sequential keyboard runs ("abcdefgh", "12345678") — basic check.
+  if (/^(?:abcdefgh|qwertyui|asdfghjk|12345678|87654321)/.test(password.toLowerCase())) {
+    return { ok: false, error: "Password is too sequential — pick something less predictable." };
+  }
+  return { ok: true };
+}
+
 export interface CreateUserInput {
   email: string;
   password: string;
@@ -79,6 +110,8 @@ export interface CreateUserInput {
 }
 
 export function createUser(input: CreateUserInput): ServerUser {
+  const check = validatePassword(input.password);
+  if (!check.ok) throw new Error(check.error ?? "Invalid password");
   const email = input.email.trim().toLowerCase();
   const user: ServerUser = {
     id: makeId(),
@@ -149,7 +182,10 @@ export function deleteUser(email: string): boolean {
 
 // Update a user's password — used by /admin/team password resets and the
 // "force change on first login" flow. Always writes a fresh scrypt hash.
+// Throws if the password fails validatePassword().
 export function setUserPassword(email: string, password: string): boolean {
+  const check = validatePassword(password);
+  if (!check.ok) throw new Error(check.error ?? "Invalid password");
   const e = email.trim().toLowerCase();
   let ok = false;
   mutate(state => {
