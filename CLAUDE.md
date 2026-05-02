@@ -130,8 +130,11 @@ src/app/api/portal/             ← plugin + tenant API
 - **Custom domain provisioning** — Site already has `domains: string[]`
   + the admin shows DNS instructions, but Vercel domain attachment
   via API is manual today
-- **Real password hashing** — sha256+salt scaffold; swap to argon2id
-  before any production launch
+- **Real password hashing** — DONE. Now scrypt (Node stdlib, RFC 7914)
+  with N=16384/r=8/p=1, 16-byte random per-user salt, 32-byte derived
+  key. Legacy sha256+salt hashes upgrade transparently on next login.
+  verifyPassword uses crypto.timingSafeEqual + a dummy-hash run on
+  user-not-found to defang email-enumeration via timing.
 - **Shopify integration** — `auth.ts` carries TODO markers for the
   eventual Customer Account swap
 - **Plugin sandbox** — third-party plugins running in isolation

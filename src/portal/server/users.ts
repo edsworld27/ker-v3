@@ -131,9 +131,25 @@ export function getUser(email: string): ServerUser | undefined {
   return getState().users[email.trim().toLowerCase()];
 }
 
+// A pre-computed scrypt hash of a fixed throwaway string. Used to keep
+// verify timing roughly constant when the email doesn't match any user
+// — without it, "user-not-found" returns instantly while "user-found"
+// burns ~50ms inside scrypt, which leaks email enumeration.
+const DUMMY_HASH = (() => {
+  const salt = Buffer.alloc(SCRYPT_SALT_BYTES, 0);
+  const derived = crypto.scryptSync("x", salt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
+  return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt.toString("hex")}$${derived.toString("hex")}`;
+})();
+
 export function verifyPassword(email: string, password: string): ServerUser | null {
   const user = getUser(email);
-  if (!user) return null;
+  if (!user) {
+    // Timing-equalize: still run a scrypt verify against a dummy hash
+    // so the response time matches the user-found path. Defends against
+    // email-enumeration via timing side-channels.
+    verifyScrypt(password, DUMMY_HASH);
+    return null;
+  }
   // New scrypt hashes carry the "scrypt$" prefix; anything matching the
   // legacy 64-char hex shape is the old sha256 scaffold.
   if (isLegacySha256Hash(user.passwordHash)) {
