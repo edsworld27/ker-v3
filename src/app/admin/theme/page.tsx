@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   getDraftTheme,
   saveDraft,
@@ -385,15 +386,15 @@ export default function AdminThemePage() {
     setTimeout(() => setPublished(false), 2500);
   }
 
-  function handleDiscard() {
-    if (!confirm("Discard all unsaved theme changes?")) return;
+  async function handleDiscard() {
+    if (!(await confirm({ title: "Discard all unsaved theme changes?", danger: true, confirmLabel: "Discard" }))) return;
     discardThemeDraft();
     setTheme(getDraftTheme());
     setHasDraft(false);
   }
 
-  function handleReset() {
-    if (!confirm("Reset theme to defaults? This will overwrite both draft and published.")) return;
+  async function handleReset() {
+    if (!(await confirm({ title: "Reset theme to defaults?", message: "Overwrites both draft and published themes.", danger: true, confirmLabel: "Reset" }))) return;
     resetThemeToDefault();
     setTheme(DEFAULT_THEME);
     setHasDraft(false);
@@ -1005,8 +1006,8 @@ export default function AdminThemePage() {
                           Rename
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Delete "${v.name}"?`)) deleteVariant(v.id);
+                          onClick={async () => {
+                            if (await confirm({ title: `Delete "${v.name}"?`, danger: true, confirmLabel: "Delete" })) deleteVariant(v.id);
                           }}
                           className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-orange"
                         >

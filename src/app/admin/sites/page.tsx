@@ -8,6 +8,7 @@ import {
   onSitesChange, normaliseDomain, type Site,
 } from "@/lib/admin/sites";
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   loadSettings as loadPortalSettings,
   getSettings as getPortalSettings,
@@ -627,9 +628,13 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             (amber) star. */}
         {!site.isPrimary ? (
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              if (confirm(`Set "${site.name}" as the primary site?\n\nThe primary site is the agency's home base — what visitors see at the apex domain when no other site matches, and what's used for absolute URLs.`)) {
+              if (await confirm({
+                title: `Set "${site.name}" as the primary site?`,
+                message: "The primary site is the agency's home base — what visitors see at the apex domain when no other site matches, and what's used for absolute URLs.",
+                confirmLabel: "Make primary",
+              })) {
                 setPrimarySite(site.id);
               }
             }}
@@ -863,8 +868,8 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {!site.isPrimary ? (
               <button
-                onClick={() => {
-                  if (confirm(`Delete "${site.name}"? Domains will be unrouted.`)) {
+                onClick={async () => {
+                  if (await confirm({ title: `Delete "${site.name}"?`, message: "Domains will be unrouted. Pages + content stay but become unreachable until reattached to another site.", danger: true, confirmLabel: "Delete site" })) {
                     deleteSite(site.id);
                   }
                 }}
@@ -1501,8 +1506,8 @@ function TrackingBlock({ siteId }: { siteId: string }) {
     save({ ...ensure(), trackers: ensure().trackers.map(t => t.id === id ? { ...t, ...patch } : t) });
   }
 
-  function deleteTracker(id: string) {
-    if (!confirm("Remove this tracker?")) return;
+  async function deleteTracker(id: string) {
+    if (!(await confirm({ title: "Remove this tracker?", danger: true, confirmLabel: "Remove" }))) return;
     save({ ...ensure(), trackers: ensure().trackers.filter(t => t.id !== id) });
   }
 
@@ -1723,8 +1728,8 @@ function EmbedsBlock({ siteId }: { siteId: string }) {
     setDirty(true);
   }
 
-  function deleteEmbed(rowId: string) {
-    if (!confirm("Remove this embed?")) return;
+  async function deleteEmbed(rowId: string) {
+    if (!(await confirm({ title: "Remove this embed?", danger: true, confirmLabel: "Remove" }))) return;
     setEmbeds((embedsRef.current ?? []).filter(e => e.id !== rowId));
     setDirty(true);
   }
@@ -1951,12 +1956,12 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
     if (next) onApplied(next);
   }
   async function handleDiscard() {
-    if (!confirm(`Discard ${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}?`)) return;
+    if (!(await confirm({ title: `Discard ${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}?`, danger: true, confirmLabel: "Discard" }))) return;
     const next = await call("discard");
     if (next) onApplied(next);
   }
   async function handleRevert(snapshotId: string, label: string) {
-    if (!confirm(`Revert published content to ${label}?\n\nThe current published state will be saved to history first so you can undo.`)) return;
+    if (!(await confirm({ title: `Revert published content to ${label}?`, message: "The current published state will be saved to history first so you can undo.", danger: true, confirmLabel: "Revert" }))) return;
     setBusy("revert"); setError(null);
     try {
       const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}/revert`, {

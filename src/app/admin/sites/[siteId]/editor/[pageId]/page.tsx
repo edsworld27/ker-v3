@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Block, BlockType, EditorPage, ThemeRecord } from "@/portal/server/types";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { getPage, updatePage, publishPage, revertPage } from "@/lib/admin/editorPages";
 import { promoteSiteToGitHub } from "@/lib/admin/promote";
 import { loadThemes } from "@/lib/admin/themes";
@@ -297,7 +298,7 @@ export default function EditorPage() {
   }
 
   async function handleRevert() {
-    if (!confirm("Revert to last published version? Unsaved draft changes will be lost.")) return;
+    if (!(await confirm({ title: "Revert to last published version?", message: "Unsaved draft changes will be lost.", danger: true, confirmLabel: "Revert" }))) return;
     setBusy("revert"); setError(null);
     try {
       const next = await revertPage(siteId, pageId);

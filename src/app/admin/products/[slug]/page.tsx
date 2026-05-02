@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
 import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
@@ -78,9 +79,9 @@ export default function AdminProductEditPage() {
     setTimeout(() => setSaved(false), 1800);
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (!slug) return;
-    if (!confirm("Discard your edits and revert to the original product?")) return;
+    if (!(await confirm({ title: "Discard your edits and revert to the original product?", danger: true, confirmLabel: "Discard" }))) return;
     clearOverride(slug);
     const p = getProduct(slug);
     if (!p) return;

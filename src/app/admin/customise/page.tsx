@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   getBranding, saveBranding, resetBranding,
   listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab, moveCustomTab,
@@ -167,7 +168,7 @@ function AdminCustomisePageInner() {
 
           <div>
             <button
-              onClick={() => { if (confirm("Reset all branding to defaults?")) { resetBranding(); setBranding(getBranding()); } }}
+              onClick={async () => { if (await confirm({ title: "Reset all branding to defaults?", confirmLabel: "Reset" })) { resetBranding(); setBranding(getBranding()); } }}
               className="text-xs text-brand-cream/45 hover:text-brand-orange"
             >
               Reset branding to defaults
@@ -300,7 +301,7 @@ function AdminCustomisePageInner() {
               Preview /account ↗
             </Link>
             <button
-              onClick={() => { if (confirm("Reset login customisation to defaults?")) { resetLoginCustomisation(); setLogin(getLoginCustomisation()); } }}
+              onClick={async () => { if (await confirm({ title: "Reset login customisation to defaults?", confirmLabel: "Reset" })) { resetLoginCustomisation(); setLogin(getLoginCustomisation()); } }}
               className="text-xs text-brand-cream/45 hover:text-brand-orange"
             >
               Reset to defaults
@@ -398,7 +399,7 @@ function CustomTabRow({ tab, isFirst, isLast }: { tab: CustomTab; isFirst: boole
             <button disabled={isLast} onClick={() => moveCustomTab(tab.id, 1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↓</button>
             <button onClick={() => setEditing(true)} className="text-[11px] px-2 py-1 text-brand-cream/55 hover:text-brand-cream">Edit</button>
             <button
-              onClick={() => { if (confirm(`Delete "${tab.label}"?`)) deleteCustomTab(tab.id); }}
+              onClick={async () => { if (await confirm({ title: `Delete "${tab.label}"?`, danger: true, confirmLabel: "Delete tab" })) deleteCustomTab(tab.id); }}
               className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-brand-orange"
             >
               Delete
@@ -477,8 +478,8 @@ function SidebarEditor({
     [next[idx], next[j]] = [next[j], next[idx]];
     updatePanels(next);
   }
-  function deletePanel(id: string) {
-    if (!confirm("Delete this panel and all its items?")) return;
+  async function deletePanel(id: string) {
+    if (!(await confirm({ title: "Delete this panel and all its items?", message: "Sub-folders and links underneath are removed too.", danger: true, confirmLabel: "Delete panel" }))) return;
     updatePanels(layout.panels.filter(p => p.id !== id));
   }
   function addPanel() {
@@ -590,8 +591,8 @@ function PanelEditor({
       : it,
     ));
   }
-  function deleteItem(id: string) {
-    if (!confirm("Delete this item?")) return;
+  async function deleteItem(id: string) {
+    if (!(await confirm({ title: "Delete this item?", danger: true, confirmLabel: "Delete" }))) return;
     onItemsChange(panel.items.filter(it => it.id !== id));
   }
   function moveItem(id: string, dir: -1 | 1) {
@@ -740,8 +741,8 @@ function ItemEditor({
       items: group.items.map(c => c.id === id ? { ...c, ...patch } as SidebarItem : c),
     } as Partial<SidebarItem>);
   }
-  function deleteChild(id: string) {
-    if (!confirm("Delete this item?")) return;
+  async function deleteChild(id: string) {
+    if (!(await confirm({ title: "Delete this item?", danger: true, confirmLabel: "Delete" }))) return;
     onPatch({ items: group.items.filter(c => c.id !== id) } as Partial<SidebarItem>);
   }
   function moveChild(id: string, dir: -1 | 1) {

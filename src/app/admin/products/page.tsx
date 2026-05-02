@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getProducts, onProductsChange, type Product } from "@/lib/products";
 import { saveOverride } from "@/lib/admin/productOverrides";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { deleteCustomProduct } from "@/lib/admin/customProducts";
 import { getCollectionLabel, listCollections, onCollectionsChange } from "@/lib/admin/collections";
 import PluginRequired from "@/components/admin/PluginRequired";
@@ -175,7 +176,7 @@ function AdminProductsPageInner() {
                   </button>
                   {"_custom" in p && (
                     <button
-                      onClick={() => { if (confirm(`Delete "${p.name}"?`)) { deleteCustomProduct(p.slug); setProducts(getProducts({ includeHidden: true })); } }}
+                      onClick={async () => { if (await confirm({ title: `Delete "${p.name}"?`, message: "The product is removed from the storefront and admin lists.", danger: true, confirmLabel: "Delete product" })) { deleteCustomProduct(p.slug); setProducts(getProducts({ includeHidden: true })); } }}
                       className="px-2.5 py-2 rounded-lg border border-white/10 text-xs text-brand-cream/40 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
                     >
                       ✕

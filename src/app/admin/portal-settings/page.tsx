@@ -17,6 +17,7 @@ import {
   type PortalSettingsPatch,
 } from "@/lib/admin/portalSettings";
 import { getSite, type Site } from "@/lib/admin/sites";
+import { confirm } from "@/components/admin/ConfirmHost";
 import type { PortalSettings, DatabaseBackend } from "@/portal/server/types";
 import Tip from "@/components/admin/Tip";
 
@@ -362,7 +363,7 @@ function AdminPortalSettingsInner() {
       <div>
         <button
           onClick={async () => {
-            if (!confirm("Reset all portal settings to defaults? This will clear GitHub credentials, the chosen backend, and any preview URL.")) return;
+            if (!(await confirm({ title: "Reset all portal settings to defaults?", message: "Clears GitHub credentials, the chosen backend, and any preview URL.", danger: true, confirmLabel: "Reset" }))) return;
             try {
               const next = await resetSettings();
               setSettings(next);
