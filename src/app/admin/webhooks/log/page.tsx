@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
@@ -48,7 +49,7 @@ function WebhookLogPageInner() {
       </header>
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : log.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">No deliveries yet — outbound calls will appear here once events fire.</p>
       ) : (

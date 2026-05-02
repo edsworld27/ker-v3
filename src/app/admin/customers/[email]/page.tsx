@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import { useParams } from "next/navigation";
 import {
   getCustomerDetail, saveCustomerNotes, saveCustomerTags,
@@ -99,7 +100,7 @@ export default function CustomerDetailPage() {
   }
 
   if (customer === undefined) {
-    return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
+    return <PageSpinner wrap={false} />;
   }
 
   if (!customer) {

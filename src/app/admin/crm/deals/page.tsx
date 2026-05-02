@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 import { notify } from "@/components/admin/Toaster";
@@ -92,7 +93,7 @@ function Inner() {
       )}
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : visible.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">{filter === "all" ? "No deals yet. Create one from a contact's profile or via the API." : `No deals in "${filter}".`}</p>
       ) : (

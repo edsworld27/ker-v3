@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 import { notify } from "@/components/admin/Toaster";
 
@@ -63,7 +64,7 @@ function AffiliatesPageInner() {
     } finally { setBusy(null); }
   }
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   const pending  = list.filter(a => a.status === "pending");
   const approved = list.filter(a => a.status === "approved");
