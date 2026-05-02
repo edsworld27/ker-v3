@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import PluginRequired from "@/components/admin/PluginRequired";
 import SetupRequired from "@/components/admin/SetupRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface ApiResp {
@@ -62,7 +63,7 @@ function AdminI18nPageInner() {
     } finally { setSaving(false); }
   }
 
-  if (!data) return <main className="p-8 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (!data) return <PageSpinner />;
 
   // Pre-flight: the translation table is meaningless until at least one
   // locale is configured on the i18n plugin install. Direct the operator

@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import PluginRequired from "@/components/admin/PluginRequired";
 import SetupRequired from "@/components/admin/SetupRequired";
 import { loadSettings, hasSecret, onSettingsChange } from "@/lib/admin/portalSettings";
@@ -41,7 +42,7 @@ function RepoBrowserGate() {
     return onSettingsChange(check);
   }, []);
 
-  if (ready === "loading") return <div className="p-8 text-[12px] text-brand-cream/45">Loading…</div>;
+  if (ready === "loading") return <PageSpinner wrap={false} />;
   if (ready === "missing") {
     return (
       <SetupRequired

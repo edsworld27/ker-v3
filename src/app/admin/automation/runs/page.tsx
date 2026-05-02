@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import PluginRequired from "@/components/admin/PluginRequired";
 
 interface ActivityEntry {
@@ -59,7 +60,7 @@ function Inner() {
       )}
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : entries.length === 0 ? (
         <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6 text-center">
           <p className="text-[13px] text-brand-cream/85">No automation runs yet.</p>
