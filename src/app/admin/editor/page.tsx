@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import PluginRequired from "@/components/admin/PluginRequired";
 import DevicePreview from "@/components/admin/DevicePreview";
 import { confirm } from "@/components/admin/ConfirmHost";
@@ -51,6 +52,12 @@ export default function VisualEditorPage() {
 }
 
 function VisualEditorPageInner() {
+  // Honour ?page=<id> on first mount so listing pages can deep-link
+  // into the editor with a specific page selected. Consumed once and
+  // then ignored — switching sites later falls back to the first page.
+  const searchParams = useSearchParams();
+  const deepLinkPageId = useRef<string | null>(searchParams?.get("page") ?? null);
+
   const [sites, setSites] = useState<Site[]>([]);
   const [site, setSite] = useState<Site | null>(null);
   const [pages, setPages] = useState<PageEntry[]>([]);
@@ -107,7 +114,12 @@ function VisualEditorPageInner() {
 
       setPages(pageEntries);
       setFunnels(_funnels);
-      setTarget({ kind: "page", id: pageEntries[0]?.id ?? "_home" });
+      const requested = deepLinkPageId.current;
+      const startId = requested && pageEntries.some(p => p.id === requested)
+        ? requested
+        : pageEntries[0]?.id ?? "_home";
+      setTarget({ kind: "page", id: startId });
+      deepLinkPageId.current = null;
     }
     void load();
     return () => { cancelled = true; };

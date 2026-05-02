@@ -11,6 +11,8 @@ import {
   uploadAsset,
 } from "@/lib/admin/assets";
 import { confirm } from "@/components/admin/ConfirmHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<PortalAsset[]>([]);
@@ -62,6 +64,7 @@ export default function AssetsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <header className="flex items-baseline justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-1">Library</p>

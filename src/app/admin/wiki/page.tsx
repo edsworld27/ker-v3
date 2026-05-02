@@ -7,6 +7,8 @@ import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 interface Page {
   id: string; slug: string; title: string;
@@ -53,6 +55,7 @@ function WikiPageInner() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <header className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Wiki</p>

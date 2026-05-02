@@ -22,7 +22,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "memberships",      label: "Memberships",  href: "/admin/memberships",        order: 0 },
+    { id: "memberships",      label: "Memberships",  href: "/admin/memberships",        order: 0, panelId: "store", groupId: "members-group" },
     { id: "membership-tiers", label: "Tiers",        href: "/admin/memberships/tiers",  order: 1 },
     { id: "member-directory", label: "Members",      href: "/admin/memberships/members", order: 2 },
   ],

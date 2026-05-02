@@ -16,7 +16,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "wiki",         label: "Wiki",       href: "/admin/wiki",         order: 0 },
+    { id: "wiki",         label: "Wiki",       href: "/admin/wiki",         order: 0, panelId: "website" },
     { id: "wiki-history", label: "Revisions",  href: "/admin/wiki/history", order: 1 },
   ],
 

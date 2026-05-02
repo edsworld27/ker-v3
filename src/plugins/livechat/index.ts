@@ -19,7 +19,7 @@ const plugin: AquaPlugin = {
   conflicts: [],
 
   navItems: [
-    { id: "livechat",        label: "Live chat", href: "/admin/livechat", order: 0 },
+    { id: "livechat",        label: "Live chat", href: "/admin/livechat", order: 0, panelId: "store", groupId: "marketing-group" },
     { id: "livechat-canned", label: "Canned replies", href: "/admin/livechat/canned", order: 1 },
   ],
 

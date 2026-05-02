@@ -18,7 +18,7 @@ const plugin: AquaPlugin = {
   requires: ["website", "ecommerce"],
 
   navItems: [
-    { id: "donations",       label: "Donations", href: "/admin/donations",          order: 0 },
+    { id: "donations",       label: "Donations", href: "/admin/donations",          order: 0, panelId: "store", groupId: "members-group" },
     { id: "donation-goals",  label: "Goals",     href: "/admin/donations/goals",    order: 1 },
     { id: "donors",          label: "Donors",    href: "/admin/donations/donors",   order: 2 },
   ],

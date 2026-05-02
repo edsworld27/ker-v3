@@ -62,6 +62,20 @@ interface EmailLogState {
   emailLog?: EmailLogEntry[];
 }
 
+// Operator-edited template overrides, scoped per org. The default
+// template body lives in DEFAULT_TEMPLATES below; overrides shadow
+// any/all of subject / html / text. Cleared overrides revert to default.
+interface EmailTemplateOverride {
+  subject?: string;
+  html?: string;
+  text?: string;
+  updatedAt: number;
+}
+
+interface EmailTemplateState {
+  emailTemplates?: { [orgId: string]: { [templateId: string]: EmailTemplateOverride } };
+}
+
 const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string; text: string }> = {
   "order-confirmation": {
     subject: "Your order is confirmed — {{orderId}}",
@@ -159,12 +173,13 @@ interface ResolvedMessage {
 function resolveMessage(input: SendEmailInput): ResolvedMessage {
   const variables = input.variables ?? {};
   if (input.templateId) {
-    const template = DEFAULT_TEMPLATES[input.templateId];
-    if (template) {
+    // Operator overrides win over the bundled default for this org.
+    const merged = mergeTemplateForOrg(input.orgId, input.templateId);
+    if (merged) {
       return {
-        subject: renderTemplate(input.subject || template.subject, variables),
-        html: renderTemplate(template.html, variables),
-        text: renderTemplate(template.text, variables),
+        subject: renderTemplate(input.subject || merged.subject, variables),
+        html: renderTemplate(merged.html, variables),
+        text: renderTemplate(merged.text, variables),
       };
     }
   }
@@ -172,6 +187,20 @@ function resolveMessage(input: SendEmailInput): ResolvedMessage {
     subject: input.subject,
     html: input.html ?? "",
     text: input.text ?? input.html?.replace(/<[^>]+>/g, "") ?? "",
+  };
+}
+
+// Internal helper: bundled default template + org's saved overrides, merged.
+// Returns null if the templateId isn't one of the bundled defaults.
+function mergeTemplateForOrg(orgId: string, templateId: string): { subject: string; html: string; text: string } | null {
+  const base = DEFAULT_TEMPLATES[templateId];
+  if (!base) return null;
+  const s = getState() as unknown as EmailTemplateState;
+  const override = s.emailTemplates?.[orgId]?.[templateId];
+  return {
+    subject: override?.subject ?? base.subject,
+    html:    override?.html    ?? base.html,
+    text:    override?.text    ?? base.text,
   };
 }
 
@@ -294,4 +323,78 @@ export function listEmailLog(orgId: string, limit = 50): EmailLogEntry[] {
 
 export function listTemplates(): Array<{ id: string; subject: string }> {
   return Object.entries(DEFAULT_TEMPLATES).map(([id, t]) => ({ id, subject: t.subject }));
+}
+
+// ─── Operator template editing ────────────────────────────────────────────
+
+export interface ResolvedTemplate {
+  id: string;
+  subject: string;
+  html: string;
+  text: string;
+  isOverridden: boolean;
+  updatedAt?: number;
+}
+
+// Full body of every bundled template, with org overrides applied.
+// Used by the /admin/email Templates tab so operators can edit.
+export function listResolvedTemplates(orgId: string): ResolvedTemplate[] {
+  const s = getState() as unknown as EmailTemplateState;
+  const overrides = s.emailTemplates?.[orgId] ?? {};
+  return Object.entries(DEFAULT_TEMPLATES).map(([id, base]) => {
+    const override = overrides[id];
+    return {
+      id,
+      subject: override?.subject ?? base.subject,
+      html:    override?.html    ?? base.html,
+      text:    override?.text    ?? base.text,
+      isOverridden: Boolean(override),
+      updatedAt: override?.updatedAt,
+    };
+  });
+}
+
+export function getResolvedTemplate(orgId: string, templateId: string): ResolvedTemplate | null {
+  const merged = mergeTemplateForOrg(orgId, templateId);
+  if (!merged) return null;
+  const s = getState() as unknown as EmailTemplateState;
+  const override = s.emailTemplates?.[orgId]?.[templateId];
+  return {
+    id: templateId,
+    subject: merged.subject,
+    html: merged.html,
+    text: merged.text,
+    isOverridden: Boolean(override),
+    updatedAt: override?.updatedAt,
+  };
+}
+
+export function setTemplateOverride(
+  orgId: string,
+  templateId: string,
+  patch: { subject?: string; html?: string; text?: string },
+): boolean {
+  if (!DEFAULT_TEMPLATES[templateId]) return false;
+  mutate(state => {
+    const s = state as unknown as EmailTemplateState;
+    if (!s.emailTemplates) s.emailTemplates = {};
+    if (!s.emailTemplates[orgId]) s.emailTemplates[orgId] = {};
+    const cur = s.emailTemplates[orgId][templateId];
+    s.emailTemplates[orgId][templateId] = {
+      subject: patch.subject ?? cur?.subject,
+      html:    patch.html    ?? cur?.html,
+      text:    patch.text    ?? cur?.text,
+      updatedAt: Date.now(),
+    };
+  });
+  return true;
+}
+
+export function clearTemplateOverride(orgId: string, templateId: string): void {
+  mutate(state => {
+    const s = state as unknown as EmailTemplateState;
+    const orgOverrides = s.emailTemplates?.[orgId];
+    if (!orgOverrides) return;
+    delete orgOverrides[templateId];
+  });
 }

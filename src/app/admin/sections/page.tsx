@@ -5,6 +5,8 @@ import {
   getSections, saveSections, setSectionVisible, moveSectionUp, moveSectionDown, onSectionsChange,
   type SectionDef,
 } from "@/lib/admin/sections";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 export default function AdminSectionsPage() {
   const [sections, setSections] = useState<SectionDef[]>([]);
@@ -60,6 +62,7 @@ export default function AdminSectionsPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-2xl space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Design</p>

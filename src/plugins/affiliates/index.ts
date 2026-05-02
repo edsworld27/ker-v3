@@ -20,7 +20,7 @@ const plugin: AquaPlugin = {
   requires: ["website", "ecommerce"],
 
   navItems: [
-    { id: "affiliates",        label: "Affiliates", href: "/admin/affiliates",      order: 0 },
+    { id: "affiliates",        label: "Affiliates", href: "/admin/affiliates",      order: 0, panelId: "store", groupId: "members-group" },
     { id: "affiliate-payouts", label: "Payouts",    href: "/admin/affiliates/payouts", order: 1 },
     { id: "affiliate-stats",   label: "Stats",      href: "/admin/affiliates/stats",   order: 2 },
   ],
