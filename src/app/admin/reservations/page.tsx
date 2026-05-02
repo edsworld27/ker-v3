@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Booking {
@@ -42,7 +43,7 @@ function ReservationsPageInner() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   const upcoming = bookings.filter(b => b.status === "confirmed" && b.startMs > Date.now());
   const past = bookings.filter(b => b.status !== "cancelled" && b.endMs <= Date.now());

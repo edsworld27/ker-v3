@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Contact { id: string; email: string; name?: string; tags: string[]; createdAt: number }
@@ -41,7 +42,7 @@ function CrmPageInner() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   const openDeals = deals.filter(d => !["Won", "Lost"].includes(d.stage));
   const openValue = openDeals.reduce((sum, d) => sum + d.value, 0);
