@@ -5,7 +5,7 @@
 
 import crypto from "crypto";
 import { getState, mutate } from "./storage";
-import type { Block, EditorPage } from "./types";
+import type { Block, EditorPage, PortalRole } from "./types";
 
 function makePageId(): string {
   return `page_${crypto.randomBytes(6).toString("hex")}`;
@@ -39,6 +39,7 @@ export interface CreatePageInput {
   title: string;
   description?: string;
   blocks?: Block[];
+  portalRole?: PortalRole;
 }
 
 export function createPage(input: CreatePageInput): EditorPage {
@@ -52,6 +53,7 @@ export function createPage(input: CreatePageInput): EditorPage {
     blocks: input.blocks ?? [],
     status: "draft",
     updatedAt: Date.now(),
+    portalRole: input.portalRole,
   };
   mutate(state => {
     const bucket = ensureBucket(state, input.siteId);
@@ -70,6 +72,7 @@ export interface UpdatePageInput {
   customFoot?: string;
   seo?: EditorPage["seo"];
   layoutOverrides?: EditorPage["layoutOverrides"];
+  portalRole?: PortalRole;
 }
 
 export function updatePage(siteId: string, pageId: string, patch: UpdatePageInput): EditorPage | null {
@@ -132,4 +135,55 @@ export function revertPage(siteId: string, pageId: string): EditorPage | null {
     result = next;
   });
   return result;
+}
+
+// ─── Portal variants ──────────────────────────────────────────────────────
+//
+// Operators design customer-facing portals (login, affiliates, orders,
+// account) as ordinary EditorPages with a portalRole tag. Multiple
+// pages can share a role — the variant flagged isActivePortal=true is
+// what the customer route renders.
+
+export function listVariantsForPortal(siteId: string, role: PortalRole): EditorPage[] {
+  const bucket = getState().pages[siteId] ?? {};
+  return Object.values(bucket)
+    .filter(p => p.portalRole === role)
+    .sort((a, b) => Number(b.isActivePortal ?? false) - Number(a.isActivePortal ?? false) || a.title.localeCompare(b.title));
+}
+
+export function getActivePortalVariant(siteId: string, role: PortalRole): EditorPage | null {
+  const bucket = getState().pages[siteId] ?? {};
+  for (const page of Object.values(bucket)) {
+    if (page.portalRole === role && page.isActivePortal) return page;
+  }
+  return null;
+}
+
+// Sets exactly one variant active for (siteId, role). Pass pageId=null
+// to clear (no variant active — the customer route falls back to its
+// built-in default).
+export function setActivePortalVariant(siteId: string, role: PortalRole, pageId: string | null): boolean {
+  let ok = false;
+  mutate(state => {
+    const bucket = state.pages[siteId];
+    if (!bucket) return;
+    // First pass: clear the flag on every variant of this role.
+    for (const id of Object.keys(bucket)) {
+      const page = bucket[id];
+      if (page.portalRole === role && page.isActivePortal) {
+        bucket[id] = { ...page, isActivePortal: false, updatedAt: Date.now() };
+      }
+    }
+    // Second pass: set on the chosen variant (if any).
+    if (pageId) {
+      const target = bucket[pageId];
+      if (target && target.portalRole === role) {
+        bucket[pageId] = { ...target, isActivePortal: true, updatedAt: Date.now() };
+        ok = true;
+      }
+    } else {
+      ok = true;
+    }
+  });
+  return ok;
 }

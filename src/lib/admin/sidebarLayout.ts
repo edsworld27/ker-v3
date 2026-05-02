@@ -133,6 +133,7 @@ export const DEFAULT_LAYOUT: SidebarLayout = {
           ],
         },
         { type: "link", id: "tooltips", label: "Tooltips", href: "/admin/tooltips", resource: "settings" },
+        { type: "link", id: "portals",  label: "Portals",  href: "/admin/portals",  resource: "website" },
       ],
     },
     {

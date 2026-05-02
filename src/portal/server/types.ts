@@ -856,6 +856,12 @@ export interface BlockSeo {
   schemaProps?: Record<string, unknown>;
 }
 
+// Customer-facing portals an EditorPage can stand in for. The operator
+// designs each portal in the visual editor as one or more variants,
+// then chooses which variant is active. Public routes resolve the
+// active variant via getActivePortalVariant.
+export type PortalRole = "login" | "affiliates" | "orders" | "account";
+
 export interface EditorPage {
   id: string;
   siteId: string;
@@ -887,6 +893,17 @@ export interface EditorPage {
     nav?: Block[];               // when set, replaces the site nav for this page
     footer?: Block[];            // when set, replaces the site footer
   };
+  // Portal variant role. When set, this page is one of multiple
+  // candidate layouts for a customer-facing portal — the operator
+  // picks which variant is active per (siteId, role) and the
+  // matching public route renders it. Lets Felicia design the
+  // affiliates / orders / login portals in the visual editor and
+  // swap layouts without code changes.
+  portalRole?: PortalRole;
+  // Set on exactly one page per (siteId, portalRole). The runtime
+  // resolves the active variant via this flag. Mutating it through
+  // the dedicated server helper keeps it singleton per role.
+  isActivePortal?: boolean;
   // Full SEO panel (SEO-A1). All optional — sensible defaults derived
   // from `title`/`description`. Sitemap reads `excludeFromSitemap` +
   // `priority` + `changefreq`; robots reads `noindex`/`nofollow`.
