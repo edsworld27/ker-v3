@@ -66,7 +66,16 @@ function ForumPageInner() {
       <section>
         <h2 className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/55 mb-3">Recent topics</h2>
         {topics.length === 0 ? (
-          <p className="text-[12px] text-brand-cream/45">No topics yet.</p>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+            <p className="text-[13px] text-brand-cream/85">No topics yet.</p>
+            <p className="text-[12px] text-brand-cream/55 mt-2 max-w-sm mx-auto">
+              Topics are created by signed-in visitors on the storefront <code className="font-mono text-brand-cream/65">/forum</code> page.
+              Make sure the forum plugin&apos;s feature flag is on and your storefront has a link to it.
+            </p>
+            <Link href="/forum" target="_blank" className="inline-block mt-3 text-[11px] text-cyan-300/80 hover:text-cyan-200">
+              Open the live forum →
+            </Link>
+          </div>
         ) : (
           <ul className="space-y-1">
             {topics.slice(0, 30).map(t => (

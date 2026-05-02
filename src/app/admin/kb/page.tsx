@@ -69,7 +69,13 @@ function KBPageInner() {
       </header>
 
       {articles.length === 0 ? (
-        <p className="text-[12px] text-brand-cream/45">No articles yet.</p>
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+          <p className="text-[13px] text-brand-cream/85">No knowledge-base articles yet.</p>
+          <p className="text-[12px] text-brand-cream/55 mt-2 max-w-sm mx-auto">
+            Articles surface on your storefront <code className="font-mono text-brand-cream/65">/help</code> index. Group them under{" "}
+            <Link href="/admin/kb/categories" className="text-cyan-300/80 hover:text-cyan-200">categories</Link> for navigation.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-1">
           {articles.map(a => (
