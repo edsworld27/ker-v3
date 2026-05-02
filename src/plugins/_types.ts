@@ -101,6 +101,17 @@ export interface NavItem {
   // items depending on which features the agency turned on.
   requiresFeature?: string;
   order?: number;
+  // Declarative sidebar placement. When set, the admin sidebar layout
+  // merges this item into the named panel (and optional group) on top
+  // of DEFAULT_LAYOUT. Items already present in DEFAULT_LAYOUT are
+  // skipped (dedupe by href) so plugins never collide with hardcoded
+  // entries.
+  //   panelId — "store" | "website" | "users" | "settings"
+  //   groupId — optional folder within the panel (created if absent)
+  // Plugins without panelId continue to be filtered into DEFAULT_LAYOUT
+  // wherever they're hardcoded; setting panelId is opt-in.
+  panelId?: string;
+  groupId?: string;
 }
 
 // ─── Admin pages ───────────────────────────────────────────────────────────

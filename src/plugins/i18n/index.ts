@@ -23,7 +23,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "i18n",         label: "Translations", href: "/admin/i18n", order: 0 },
+    { id: "i18n",         label: "Translations", href: "/admin/i18n", order: 0, panelId: "settings" },
     { id: "i18n-locales", label: "Locales",      href: "/admin/i18n/locales", order: 1 },
   ],
 

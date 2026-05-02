@@ -18,7 +18,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "forum",            label: "Forum",        href: "/admin/forum",         order: 0 },
+    { id: "forum",            label: "Forum",        href: "/admin/forum",         order: 0, panelId: "website" },
     { id: "forum-moderation", label: "Moderation",   href: "/admin/forum/moderation", order: 1 },
     { id: "forum-categories", label: "Categories",   href: "/admin/forum/categories", order: 2 },
   ],

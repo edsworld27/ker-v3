@@ -16,7 +16,7 @@ const plugin: AquaPlugin = {
   description: "More flexible than E-commerce's product-only reviews. Attach a review thread to any URL or content id. Photos, verified-buyer badges, threaded replies, aggregate ratings, schema.org JSON-LD for rich snippets in search.",
 
   navItems: [
-    { id: "reviews-v2",       label: "Reviews",     href: "/admin/reviews-v2",       order: 0 },
+    { id: "reviews-v2",       label: "Reviews v2",  href: "/admin/reviews-v2",       order: 0, panelId: "store" },
     { id: "reviews-v2-pending", label: "Pending",   href: "/admin/reviews-v2/pending", order: 1 },
   ],
 

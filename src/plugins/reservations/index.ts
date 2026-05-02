@@ -21,7 +21,7 @@ const plugin: AquaPlugin = {
   requires: ["website", "email"],
 
   navItems: [
-    { id: "reservations", label: "Reservations", href: "/admin/reservations", order: 0 },
+    { id: "reservations", label: "Reservations", href: "/admin/reservations", order: 0, panelId: "store", groupId: "members-group" },
     { id: "resources",    label: "Resources",    href: "/admin/reservations/resources", order: 1 },
     { id: "calendar",     label: "Calendar",     href: "/admin/reservations/calendar", order: 2 },
   ],

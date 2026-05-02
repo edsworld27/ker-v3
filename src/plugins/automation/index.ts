@@ -19,7 +19,7 @@ const plugin: AquaPlugin = {
   requires: ["website", "email"],
 
   navItems: [
-    { id: "automation",       label: "Automations", href: "/admin/automation",          order: 0 },
+    { id: "automation",       label: "Automations", href: "/admin/automation",          order: 0, panelId: "settings" },
     { id: "automation-runs",  label: "Run history", href: "/admin/automation/runs",     order: 1 },
   ],
 
