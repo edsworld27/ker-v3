@@ -9,6 +9,8 @@ import {
 import Tip from "@/components/admin/Tip";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { prompt } from "@/components/admin/PromptHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { MARKETPLACE_TABS } from "@/lib/admin/tabSets";
 
 const STATUS_STYLE: Record<FlagStatus, string> = {
   on:      "bg-green-500/20 text-green-400",
@@ -36,6 +38,7 @@ export default function AdminFeaturesPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={MARKETPLACE_TABS} ariaLabel="Plugins" />
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

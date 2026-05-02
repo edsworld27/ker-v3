@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginMarketplace from "@/components/admin/PluginMarketplace";
 import PageSpinner from "@/components/admin/Spinner";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { MARKETPLACE_TABS } from "@/lib/admin/tabSets";
 import { getActiveOrgId, getActiveOrg, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 import { refreshInstalledPlugins } from "@/lib/admin/installedPlugins";
 import type { OrgRecord } from "@/portal/server/types";
@@ -39,6 +41,7 @@ export default function AdminMarketplacePage() {
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+      <AdminTabs tabs={MARKETPLACE_TABS} ariaLabel="Plugins" />
       <header>
         <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Marketplace</p>
         <h1 className="font-display text-3xl text-brand-cream mb-2">

@@ -24,6 +24,8 @@ import {
 } from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
 import PluginRequired from "@/components/admin/PluginRequired";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { SETTINGS_TABS } from "@/lib/admin/tabSets";
 
 type Tab = "branding" | "sidebar" | "tabs" | "login" | "export";
 
@@ -98,6 +100,7 @@ function AdminCustomisePageInner() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={SETTINGS_TABS} ariaLabel="Settings" />
       <div>
         <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Admin panel</p>
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Customise the panel</h1>
