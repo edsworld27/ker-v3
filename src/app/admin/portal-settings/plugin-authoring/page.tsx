@@ -6,10 +6,13 @@
 // figure out how things plug in.
 
 import Link from "next/link";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { MARKETPLACE_TABS } from "@/lib/admin/tabSets";
 
 export default function PluginAuthoringPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+      <AdminTabs tabs={MARKETPLACE_TABS} ariaLabel="Plugins" />
       <header>
         <Link href="/admin/portal-settings" className="text-[11px] text-cyan-400/70 hover:text-cyan-300">
           ← Portal settings

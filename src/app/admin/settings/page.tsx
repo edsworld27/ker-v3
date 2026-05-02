@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getActiveOrgId, getActiveOrg, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 import { loadSettings, hasSecret, onSettingsChange } from "@/lib/admin/portalSettings";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { SETTINGS_TABS } from "@/lib/admin/tabSets";
 import type { OrgRecord } from "@/portal/server/types";
 
 interface InstalledPlugin {
@@ -116,6 +118,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-4xl">
+      <AdminTabs tabs={SETTINGS_TABS} ariaLabel="Settings" />
       <header>
         <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Settings</p>
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">{org?.name ?? "Portal"} · integrations</h1>
