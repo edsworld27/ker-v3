@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import DevicePreview from "@/components/admin/DevicePreview";
+import { confirm } from "@/components/admin/ConfirmHost";
 import EditorTopBar, { type EditorMode } from "./EditorTopBar";
 import EditorPropertiesSidebar, { type SelectedElement } from "./EditorPropertiesSidebar";
 import EditorOutliner, { type EditorTarget } from "./EditorOutliner";
@@ -226,8 +227,7 @@ function VisualEditorPageInner() {
     if (!site) return;
     const pg = pages.find(p => p.id === id);
     if (!pg || pg.source !== "editor") return;
-    const ok = window.confirm(`Delete "${pg.title}"? This cannot be undone.`);
-    if (!ok) return;
+    if (!(await confirm({ title: `Delete "${pg.title}"?`, message: "Page + its blocks are removed. This cannot be undone.", danger: true, confirmLabel: "Delete page" }))) return;
     await deleteEditorPage(site.id, id);
     const next = await loadPages(site.id);
     setPages(next);
@@ -241,8 +241,7 @@ function VisualEditorPageInner() {
   async function handleDeleteFunnel(id: string) {
     const f = funnels.find(x => x.id === id);
     if (!f) return;
-    const ok = window.confirm(`Delete "${f.name}"? This cannot be undone.`);
-    if (!ok) return;
+    if (!(await confirm({ title: `Delete "${f.name}"?`, message: "Funnel + its stats are removed. This cannot be undone.", danger: true, confirmLabel: "Delete funnel" }))) return;
     const { deleteFunnel } = await import("@/lib/admin/funnels");
     await deleteFunnel(id);
     setFunnels(listFunnels());

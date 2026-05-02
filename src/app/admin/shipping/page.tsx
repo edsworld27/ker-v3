@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin/shipping";
 import Tip from "@/components/admin/Tip";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 export default function AdminShippingPage() {
   return <PluginRequired plugin="ecommerce" feature="shipping"><AdminShippingPageInner /></PluginRequired>;
@@ -89,7 +90,7 @@ function AdminShippingPageInner() {
                 placeholder="Free over £"
                 className="w-24 bg-brand-black border border-white/10 rounded px-2 py-1 text-xs text-brand-cream"
               />
-              <button onClick={() => { if (confirm(`Delete zone "${z.name}"?`)) deleteZone(z.id); }} className="text-[11px] text-brand-cream/40 hover:text-brand-orange">Delete</button>
+              <button onClick={async () => { if (await confirm({ title: `Delete zone "${z.name}"?`, message: "Existing orders that used this zone keep their shipping cost.", danger: true, confirmLabel: "Delete" })) deleteZone(z.id); }} className="text-[11px] text-brand-cream/40 hover:text-brand-orange">Delete</button>
             </div>
             <div className="p-4 space-y-2">
               {z.rates.map(r => (

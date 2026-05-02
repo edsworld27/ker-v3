@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface Staff { id: string; name: string; email?: string; bio?: string; active: boolean }
 
@@ -42,7 +43,7 @@ function StaffPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Remove this staff member?")) return;
+    if (!(await confirm({ title: "Remove this staff member?", message: "Their existing bookings stay assigned and visible.", danger: true, confirmLabel: "Remove" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/reservations/staff/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();
