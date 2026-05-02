@@ -131,19 +131,19 @@ function LoginScreen({ onLogin }: { onLogin: (s: Session) => void }) {
   }, []);
 
   // Optimistic — show the existing form while the variant fetch resolves
-  // so customers don't see a blank screen on slow networks.
-  if (variant === undefined || variant === null) {
-    return <AuthForm onLogin={onLogin} />;
-  }
+  // so customers don't see a blank screen on slow networks. Also fall
+  // back if the active variant exists but has no blocks (operator saved
+  // an empty variant by accident).
+  const renderableBlocks = variant?.publishedBlocks ?? variant?.blocks ?? [];
+  const useVariant = variant && renderableBlocks.length > 0;
+
+  if (!useVariant) return <AuthForm onLogin={onLogin} />;
 
   return (
     <>
       <Navbar />
       <main className="w-full pt-32 pb-20 min-h-screen bg-brand-black">
-        <BlockRenderer
-          blocks={variant.publishedBlocks ?? variant.blocks}
-          themeId={variant.themeId}
-        />
+        <BlockRenderer blocks={renderableBlocks} themeId={variant.themeId} />
       </main>
       <Footer />
     </>

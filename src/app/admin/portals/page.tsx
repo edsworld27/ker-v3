@@ -26,13 +26,22 @@ import { prompt } from "@/components/admin/PromptHost";
 import { notify } from "@/components/admin/Toaster";
 
 // Role catalogue. Order matters — drives the tab order.
-const ROLES: Array<{ id: PortalRole; label: string; eyebrow: string; description: string; defaultPath: string }> = [
+// publicHref is the customer-facing URL the active variant renders at.
+const ROLES: Array<{
+  id: PortalRole;
+  label: string;
+  eyebrow: string;
+  description: string;
+  defaultPath: string;
+  publicHref: string;
+}> = [
   {
     id: "login",
     label: "Login",
     eyebrow: "Sign-in",
     description: "What your customers see when they go to /login. Hero copy, branding, social-auth toggles, footer links.",
     defaultPath: "/portal/login",
+    publicHref: "/account",
   },
   {
     id: "affiliates",
@@ -40,6 +49,7 @@ const ROLES: Array<{ id: PortalRole; label: string; eyebrow: string; description
     eyebrow: "Partners",
     description: "Customer-facing affiliate dashboard. Stats, referral links, payouts, signup form for new affiliates.",
     defaultPath: "/portal/affiliates",
+    publicHref: "/affiliates",
   },
   {
     id: "orders",
@@ -47,6 +57,7 @@ const ROLES: Array<{ id: PortalRole; label: string; eyebrow: string; description
     eyebrow: "Account",
     description: "Customer's view of their order history. Status, tracking, reorder, refund requests.",
     defaultPath: "/portal/orders",
+    publicHref: "/account/orders",
   },
   {
     id: "account",
@@ -54,6 +65,7 @@ const ROLES: Array<{ id: PortalRole; label: string; eyebrow: string; description
     eyebrow: "Account",
     description: "Logged-in account landing — shortcuts to orders, profile, addresses, subscription, downloads.",
     defaultPath: "/portal/account",
+    publicHref: "/account",
   },
 ];
 
@@ -340,6 +352,17 @@ function AdminPortalsInner() {
                   >
                     Make active
                   </button>
+                )}
+                {v.isActivePortal && (
+                  <Link
+                    href={meta.publicHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10"
+                    title={`Opens ${meta.publicHref} in a new tab`}
+                  >
+                    View live ↗
+                  </Link>
                 )}
                 <Link
                   href={`/admin/editor?page=${v.id}`}

@@ -33,14 +33,20 @@ export default function CustomerOrdersIndexPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Empty variant → fall back to the live orders list. Operators
+  // shouldn't be able to break the orders page by accidentally
+  // activating a blank variant.
+  const renderableBlocks = variant?.publishedBlocks ?? variant?.blocks ?? [];
+  const useVariant = variant && renderableBlocks.length > 0;
+
   return (
     <>
       <Navbar />
       <main className="w-full pt-32 pb-20 min-h-screen bg-brand-black">
         {variant === undefined ? (
           <div className="max-w-3xl mx-auto px-6 text-brand-cream/45">Loading…</div>
-        ) : variant ? (
-          <BlockRenderer blocks={variant.publishedBlocks ?? variant.blocks} themeId={variant.themeId} />
+        ) : useVariant ? (
+          <BlockRenderer blocks={renderableBlocks} themeId={variant.themeId} />
         ) : (
           <DefaultOrdersList />
         )}
