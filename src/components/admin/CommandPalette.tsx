@@ -10,6 +10,7 @@ import { setAdminMode, type AdminMode } from "@/lib/admin/adminConfig";
 import { getSession } from "@/lib/auth";
 import { logActivity, clearActivity } from "@/lib/admin/activity";
 import { listSites, setActiveSiteId } from "@/lib/admin/sites";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface CommandItem {
   id: string;
@@ -46,6 +47,36 @@ const STATIC_PAGES: CommandItem[] = [
   { id: "go-sites",       label: "Manage Sites",         group: "Navigation", icon: "▦", href: "/admin/sites" },
   { id: "go-popup",       label: "Edit Discount Popup",  group: "Navigation", icon: "▦", href: "/admin/popup" },
 
+  // Plugin pages added in the production-grade pass — surface them so
+  // ⌘K works as a "jump to anything" again.
+  { id: "go-marketplace", label: "Plugin marketplace",   group: "Navigation", icon: "▦", href: "/admin/marketplace" },
+  { id: "go-editor",      label: "Live editor",          group: "Navigation", icon: "✎", href: "/admin/editor" },
+  { id: "go-crm",         label: "CRM overview",         group: "Navigation", icon: "▦", href: "/admin/crm" },
+  { id: "go-crm-contacts",label: "CRM: Contacts",        group: "Navigation", icon: "▦", href: "/admin/crm/contacts" },
+  { id: "go-crm-deals",   label: "CRM: Deals",           group: "Navigation", icon: "▦", href: "/admin/crm/deals" },
+  { id: "go-crm-tasks",   label: "CRM: Tasks",           group: "Navigation", icon: "▦", href: "/admin/crm/tasks" },
+  { id: "go-kb",          label: "Knowledge base",       group: "Navigation", icon: "▦", href: "/admin/kb" },
+  { id: "go-kb-cats",     label: "KB: Categories",       group: "Navigation", icon: "▦", href: "/admin/kb/categories" },
+  { id: "go-wiki",        label: "Wiki",                 group: "Navigation", icon: "▦", href: "/admin/wiki" },
+  { id: "go-forum",       label: "Forum",                group: "Navigation", icon: "▦", href: "/admin/forum" },
+  { id: "go-automation",  label: "Automation rules",     group: "Navigation", icon: "▦", href: "/admin/automation" },
+  { id: "go-auto-runs",   label: "Automation: Run history", group: "Navigation", icon: "▦", href: "/admin/automation/runs" },
+  { id: "go-memberships", label: "Memberships",          group: "Navigation", icon: "▦", href: "/admin/memberships" },
+  { id: "go-donations",   label: "Donations",            group: "Navigation", icon: "▦", href: "/admin/donations" },
+  { id: "go-affiliates",  label: "Affiliates",           group: "Navigation", icon: "▦", href: "/admin/affiliates" },
+  { id: "go-reservations",label: "Reservations",         group: "Navigation", icon: "▦", href: "/admin/reservations" },
+  { id: "go-resv-cal",    label: "Reservations: Calendar",group: "Navigation", icon: "▦", href: "/admin/reservations/calendar" },
+  { id: "go-email",       label: "Email",                group: "Navigation", icon: "▦", href: "/admin/email" },
+  { id: "go-notifs",      label: "Notifications",        group: "Navigation", icon: "▦", href: "/admin/notifications" },
+  { id: "go-webhooks",    label: "Webhooks",             group: "Navigation", icon: "▦", href: "/admin/webhooks" },
+  { id: "go-i18n",        label: "Translations (i18n)",  group: "Navigation", icon: "▦", href: "/admin/i18n" },
+  { id: "go-seo",         label: "SEO",                  group: "Navigation", icon: "▦", href: "/admin/seo" },
+  { id: "go-analytics",   label: "Analytics",            group: "Navigation", icon: "▦", href: "/admin/analytics" },
+  { id: "go-portal-set",  label: "Portal settings",      group: "Navigation", icon: "▦", href: "/admin/portal-settings" },
+  { id: "go-plugin-hp",   label: "Plugin health",        group: "Navigation", icon: "▦", href: "/admin/plugin-health" },
+  { id: "go-repo",        label: "Repository browser",   group: "Navigation", icon: "▦", href: "/admin/repo" },
+  { id: "go-aqua",        label: "Aqua portal (agency)", group: "Navigation", icon: "↗", href: "/aqua" },
+
   { id: "go-storefront",  label: "Open Storefront",      group: "Quick Links", icon: "↗", href: "/" },
   { id: "go-account",     label: "Open Customer Account",group: "Quick Links", icon: "↗", href: "/account" },
 ];
@@ -56,7 +87,7 @@ const ACTIONS: CommandItem[] = [
   { id: "act-mode-midnight", label: "Set admin mode: Midnight", group: "Actions", icon: "◐", action: () => setMode("midnight") },
   { id: "act-mode-sand",     label: "Set admin mode: Sand",     group: "Actions", icon: "◐", action: () => setMode("sand") },
   { id: "act-export",        label: "Export source code (.zip)", group: "Actions", icon: "↓", action: () => window.open("/api/admin/export-code") },
-  { id: "act-clear-log",     label: "Clear activity log",       group: "Actions", icon: "✕", action: () => { if (confirm("Clear activity log?")) clearActivity(); } },
+  { id: "act-clear-log",     label: "Clear activity log",       group: "Actions", icon: "✕", action: async () => { if (await confirm({ title: "Clear activity log?", message: "All audit entries are removed.", danger: true, confirmLabel: "Clear" })) clearActivity(); } },
 ];
 
 function setMode(mode: AdminMode) {
