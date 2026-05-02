@@ -17,6 +17,10 @@ import {
   getLoginCustomisation, onLoginCustomisationChange,
   type LoginCustomisation,
 } from "@/lib/admin/loginCustomisation";
+import BlockRenderer from "@/components/editor/BlockRenderer";
+import { listPortalVariants } from "@/lib/admin/editorPages";
+import { getActiveSite } from "@/lib/admin/sites";
+import type { EditorPage } from "@/portal/server/types";
 
 // ── Mock orders + referrals ─────────────────────────────────────────────────
 //
@@ -103,7 +107,47 @@ function AccountContent() {
     );
   }
 
-  return <AuthForm onLogin={(s) => setSession(s)} />;
+  return <LoginScreen onLogin={(s) => setSession(s)} />;
+}
+
+// Logged-out landing. Prefers an operator-designed "login" portal variant
+// if one is active for the current site; otherwise falls back to the
+// existing AuthForm with LoginCustomisation styling. The variant block
+// tree typically includes a LoginFormBlock that handles auth.
+function LoginScreen({ onLogin }: { onLogin: (s: Session) => void }) {
+  const [variant, setVariant] = useState<EditorPage | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const site = getActiveSite();
+      if (!site) { if (!cancelled) setVariant(null); return; }
+      const variants = await listPortalVariants(site.id, "login");
+      if (cancelled) return;
+      setVariant(variants.find(v => v.isActivePortal) ?? null);
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Optimistic — show the existing form while the variant fetch resolves
+  // so customers don't see a blank screen on slow networks.
+  if (variant === undefined || variant === null) {
+    return <AuthForm onLogin={onLogin} />;
+  }
+
+  return (
+    <>
+      <Navbar />
+      <main className="w-full pt-32 pb-20 min-h-screen bg-brand-black">
+        <BlockRenderer
+          blocks={variant.publishedBlocks ?? variant.blocks}
+          themeId={variant.themeId}
+        />
+      </main>
+      <Footer />
+    </>
+  );
 }
 
 // ── Auth form ────────────────────────────────────────────────────────────────
