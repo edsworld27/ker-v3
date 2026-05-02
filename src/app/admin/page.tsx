@@ -36,7 +36,7 @@ export default function AdminOverviewPage() {
     return [...m.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [stats, allOrders, sources]);
 
-  if (!stats) return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
+  if (!stats) return <DashboardSkeleton />;
 
   const max = Math.max(1, ...stats.revenueByDay.map(d => d.revenue));
   const topSourceRev = Math.max(1, ...sourceBreakdown.map(s => s.revenue));
@@ -166,6 +166,46 @@ function Kpi({ label, value, accent, small }: { label: string; value: string; ac
     <div className="rounded-xl border border-white/8 bg-brand-black-card p-4">
       <p className="text-[10px] tracking-[0.22em] uppercase text-brand-cream/45 mb-1.5">{label}</p>
       <p className={`font-display ${small ? "text-base" : "text-xl sm:text-2xl"} ${colour} truncate`}>{value}</p>
+    </div>
+  );
+}
+
+// Skeleton matching the dashboard layout — shows the operator that the
+// page is loading, not broken. Animates a soft shimmer across the cards.
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-7xl">
+      <div>
+        <div className="h-3 w-20 rounded bg-white/5 mb-3 animate-pulse" />
+        <div className="h-9 w-44 rounded bg-white/5 animate-pulse" />
+        <div className="h-3 w-32 rounded bg-white/5 mt-2 animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-white/8 bg-brand-black-card p-4 animate-pulse">
+            <div className="h-2.5 w-16 rounded bg-white/5 mb-2" />
+            <div className="h-7 w-20 rounded bg-white/5" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse">
+        <div className="h-3 w-28 rounded bg-white/5 mb-4" />
+        <div className="h-32 rounded bg-white/[0.03]" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse space-y-2">
+          <div className="h-3 w-32 rounded bg-white/5 mb-4" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-10 rounded bg-white/[0.03]" />
+          ))}
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse space-y-2">
+          <div className="h-3 w-24 rounded bg-white/5 mb-4" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-9 rounded bg-white/[0.03]" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

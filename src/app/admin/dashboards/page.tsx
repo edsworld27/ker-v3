@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { loadDashboard, saveDashboard, resetDashboard } from "@/lib/admin/dashboards";
 import { getActiveOrg, getActiveOrgId, onOrgsChange } from "@/lib/admin/orgs";
 import type { DashboardWidget, WidgetType } from "@/portal/server/types";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const WIDGET_LIBRARY: Array<{ type: WidgetType; label: string; defaultSpan: 1 | 2 | 3 }> = [
   { type: "stat-orders",          label: "Orders stat",         defaultSpan: 1 },
@@ -96,7 +97,7 @@ export default function DashboardsPage() {
   }
 
   async function handleReset() {
-    if (!confirm("Reset this org's dashboard to the default layout?")) return;
+    if (!(await confirm({ title: "Reset this org's dashboard to the default layout?", confirmLabel: "Reset" }))) return;
     setBusy(true); setError(null);
     try {
       const layout = await resetDashboard(orgId);

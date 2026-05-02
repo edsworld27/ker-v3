@@ -10,6 +10,7 @@ import {
   type AdminReview,
 } from "@/lib/admin/reviews";
 import { getProducts, type Product } from "@/lib/products";
+import { confirm } from "@/components/admin/ConfirmHost";
 import PluginRequired from "@/components/admin/PluginRequired";
 
 export default function AdminReviewsPage() {
@@ -48,8 +49,8 @@ function AdminReviewsPageInner() {
     setEditing(null);
   }
 
-  function handleDelete(id: string) {
-    if (!confirm("Delete this review?")) return;
+  async function handleDelete(id: string) {
+    if (!(await confirm({ title: "Delete this review?", danger: true, confirmLabel: "Delete" }))) return;
     deleteReview(id);
   }
 

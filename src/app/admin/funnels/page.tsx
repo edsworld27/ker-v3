@@ -7,6 +7,7 @@ import {
   type Funnel, type FunnelStep, type FunnelStatus, type StepType,
 } from "@/lib/admin/funnels";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const STATUS_STYLE: Record<FunnelStatus, string> = {
   active: "bg-green-500/20 text-green-400",
@@ -208,7 +209,7 @@ function AdminFunnelsPageInner() {
                   {funnel.status === "active" && <button onClick={() => setFunnelStatus(funnel.id, "paused")} className="text-xs px-3 py-1.5 border border-brand-amber/40 text-brand-amber rounded-lg">Pause</button>}
                   {funnel.status === "paused" && <button onClick={() => setFunnelStatus(funnel.id, "active")} className="text-xs px-3 py-1.5 bg-green-600/80 text-white rounded-lg font-semibold">Resume</button>}
                   <button onClick={() => setModal(funnel)} className="text-xs px-3 py-1.5 border border-white/10 text-brand-cream/50 hover:text-brand-cream rounded-lg">Edit</button>
-                  <button onClick={() => { if (confirm("Delete this funnel?")) deleteFunnel(funnel.id); }} className="text-xs px-3 py-1.5 border border-red-500/20 text-red-400/60 hover:text-red-400 rounded-lg">Delete</button>
+                  <button onClick={async () => { if (await confirm({ title: `Delete "${funnel.name}"?`, message: "This funnel and its stats will be removed.", danger: true, confirmLabel: "Delete" })) deleteFunnel(funnel.id); }} className="text-xs px-3 py-1.5 border border-red-500/20 text-red-400/60 hover:text-red-400 rounded-lg">Delete</button>
                 </div>
               </div>
 

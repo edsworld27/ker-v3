@@ -7,6 +7,7 @@ import {
   type ActivityEntry, type ActivityCategory,
 } from "@/lib/admin/activity";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const CATEGORY_COLOURS: Record<ActivityCategory, string> = {
   orders:    "bg-brand-orange/15 text-brand-orange",
@@ -131,7 +132,7 @@ export default function AdminActivityPage() {
           </p>
         </div>
         <button
-          onClick={() => { if (confirm("Clear all activity history? This cannot be undone.")) clearActivity(); }}
+          onClick={async () => { if (await confirm({ title: "Clear all activity history?", message: "This cannot be undone.", danger: true, confirmLabel: "Clear all" })) clearActivity(); }}
           disabled={entries.length === 0}
           className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream disabled:opacity-40 disabled:cursor-not-allowed"
         >

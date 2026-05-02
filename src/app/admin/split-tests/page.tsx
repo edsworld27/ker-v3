@@ -14,6 +14,7 @@ import {
   patchGroup, statusTone,
 } from "@/lib/admin/splitTests";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -136,7 +137,7 @@ function SplitTestsPageInner() {
                   {(["draft", "running", "paused", "completed"] as const).map(s => (
                     <button key={s} onClick={() => patchGroup(g.id, { setStatus: s })} className={`text-[10px] px-2 py-0.5 rounded-full transition-colors ${g.status === s ? statusTone(s) : "text-brand-cream/40 hover:text-brand-cream"}`}>{s}</button>
                   ))}
-                  <button onClick={async () => { if (confirm("Delete this group + all its results?")) { await deleteGroup(g.id); void refresh(); } }} className="ml-auto text-[10px] text-brand-cream/40 hover:text-red-400">Delete</button>
+                  <button onClick={async () => { if (await confirm({ title: "Delete this group + all its results?", danger: true, confirmLabel: "Delete" })) { await deleteGroup(g.id); void refresh(); } }} className="ml-auto text-[10px] text-brand-cream/40 hover:text-red-400">Delete</button>
                 </div>
 
                 {/* Results table */}
