@@ -187,6 +187,31 @@ function AdminPortalsInner() {
     } finally { setBusy(false); }
   }
 
+  async function handleDuplicate(page: EditorPage) {
+    if (busy || !siteId) return;
+    setBusy(true);
+    try {
+      // Slug needs to stay unique per site — append a short timestamp
+      // suffix so multiple duplicates don't clash.
+      const suffix = Date.now().toString(36).slice(-4);
+      const baseSlug = page.slug.replace(/-(copy-?[a-z0-9]*)$/, "");
+      const copy = await createPage(siteId, {
+        slug: `${baseSlug}-copy-${suffix}`,
+        title: `${page.title} (copy)`,
+        description: page.description,
+        blocks: page.blocks,
+        portalRole: page.portalRole,
+      });
+      if (!copy) {
+        notify({ tone: "error", title: "Couldn't duplicate variant", message: "The server didn't return a page." });
+        return;
+      }
+      const list = await listPortalVariants(siteId, role);
+      setVariants(list);
+      notify({ tone: "ok", title: "Duplicated", message: `${copy.title} is ready to edit.` });
+    } finally { setBusy(false); }
+  }
+
   const meta = ROLES.find(r => r.id === role)!;
   const activeSite = sites.find(s => s.id === siteId);
 
@@ -316,6 +341,15 @@ function AdminPortalsInner() {
                 >
                   Edit in editor →
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleDuplicate(v)}
+                  disabled={busy}
+                  className="text-[11px] px-3 py-1.5 rounded-md border border-white/10 text-brand-cream/65 hover:text-brand-cream hover:border-white/30 disabled:opacity-40"
+                  title="Duplicate variant"
+                >
+                  Duplicate
+                </button>
                 <button
                   type="button"
                   onClick={() => void handleDelete(v)}
