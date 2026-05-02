@@ -38,6 +38,10 @@ import { promoteSiteToGitHub, type PromoteResult } from "@/lib/admin/promote";
 import {
   type Funnel, listFunnels, refreshFunnels, createFunnel, onFunnelsChange,
 } from "@/lib/admin/funnels";
+import {
+  getEditorComplexity, setEditorComplexity, onEditorComplexityChange,
+  type EditorComplexity,
+} from "@/lib/admin/editorMode";
 import type { EditorPage } from "@/portal/server/types";
 
 interface PageEntry {
@@ -76,7 +80,19 @@ function VisualEditorPageInner() {
   const [pageSettingsId, setPageSettingsId] = useState<string | null>(null);
   const [siteSettingsOpen, setSiteSettingsOpen] = useState(false);
   const [history, setHistory] = useState<{ canUndo: boolean; canRedo: boolean }>({ canUndo: false, canRedo: false });
+  const [complexity, setComplexity] = useState<EditorComplexity>(() => getEditorComplexity());
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Sync complexity across tabs / settings tab in /admin/customise.
+  useEffect(() => onEditorComplexityChange(() => setComplexity(getEditorComplexity())), []);
+
+  function changeComplexity(c: EditorComplexity) {
+    setComplexity(c);
+    setEditorComplexity(c);
+    // Simple mode always lives in Live; flip the inner editor mode if
+    // the operator switches to Simple while sitting on Block / Code.
+    if (c === "simple" && mode !== "live") setMode("live");
+  }
   // History controls registered by EditorBlockStage so the topbar's
   // ↶/↷ buttons can drive its internal undo/redo stacks.
   const historyApiRef = useRef<{
@@ -269,6 +285,7 @@ function VisualEditorPageInner() {
 
   // Topbar widgets only make sense for page editing.
   const isPageTarget = target.kind === "page";
+  const isSimple = complexity === "simple";
 
   return (
     <main className="h-[calc(100vh-0px)] flex flex-col bg-[#0a0a0a]">
@@ -293,27 +310,34 @@ function VisualEditorPageInner() {
         onRedo={mode === "block" ? () => historyApiRef.current?.redo() : undefined}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
+        complexity={complexity}
+        onComplexityChange={changeComplexity}
       />
 
-      {isPageTarget && mode === "live" && (
+      {isPageTarget && mode === "live" && !isSimple && (
         <DevicePreview state={deviceState} onChange={s => { setDeviceState(s); saveDeviceState(s); }} />
       )}
 
       <div className="flex-1 min-h-0 flex">
-        <EditorOutliner
-          siteName={site?.name ?? "Site"}
-          pages={pages}
-          funnels={funnels}
-          target={target}
-          onSelectPage={handleSelectPage}
-          onSelectFunnel={handleSelectFunnel}
-          onCreatePage={() => setNewPageOpen(true)}
-          onCreateFunnel={() => setNewFunnelOpen(true)}
-          onDeletePage={id => void handleDeletePage(id)}
-          onDeleteFunnel={id => void handleDeleteFunnel(id)}
-          onPageSettings={id => setPageSettingsId(id)}
-          onSiteSettings={() => setSiteSettingsOpen(true)}
-        />
+        {/* Outliner is full-page navigation — Simple mode hides it so the
+            canvas gets the full width; the Page picker in the topbar
+            stays available for switching pages. */}
+        {!isSimple && (
+          <EditorOutliner
+            siteName={site?.name ?? "Site"}
+            pages={pages}
+            funnels={funnels}
+            target={target}
+            onSelectPage={handleSelectPage}
+            onSelectFunnel={handleSelectFunnel}
+            onCreatePage={() => setNewPageOpen(true)}
+            onCreateFunnel={() => setNewFunnelOpen(true)}
+            onDeletePage={id => void handleDeletePage(id)}
+            onDeleteFunnel={id => void handleDeleteFunnel(id)}
+            onPageSettings={id => setPageSettingsId(id)}
+            onSiteSettings={() => setSiteSettingsOpen(true)}
+          />
+        )}
 
         {/* Stage selection: funnel → centred funnel editor; block (editor
             page) → inline three-pane block stage with own library + props;
@@ -402,8 +426,9 @@ function VisualEditorPageInner() {
             </div>
 
             {/* Right properties sidebar — Live mode only (Block has its own,
-                Code has none). */}
-            {isPageTarget && mode === "live" && (
+                Code has none). Simple mode hides it; the operator clicks
+                blocks to edit them inline in the iframe instead. */}
+            {isPageTarget && mode === "live" && !isSimple && (
               <EditorPropertiesSidebar
                 selected={selected}
                 onClose={() => setSelected(null)}
