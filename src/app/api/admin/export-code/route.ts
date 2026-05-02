@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { requireAdmin } from "@/lib/server/auth";
 
 // Builds a ZIP of the entire src/ directory using only Node built-ins.
 // Uses STORE compression (no DEFLATE) to avoid pulling in a zip library.
 // Each file is added with a CRC32 and proper local/central-directory headers.
+//
+// Source code is sensitive (env-style secrets, plugin configs in plain
+// strings) — gate behind requireAdmin so an unauthenticated visitor can't
+// download the whole tree.
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -42,6 +47,12 @@ function uint32(n: number) {
 }
 
 export async function GET() {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
   try {
     // Static-scope every path under <cwd>/src so Turbopack's
     // dynamic-path warning doesn't fire on this route.
