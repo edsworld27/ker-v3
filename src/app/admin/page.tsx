@@ -91,7 +91,16 @@ export default function AdminOverviewPage() {
             <Link href="/admin/orders" className="text-xs text-brand-cream/55 hover:text-brand-cream">View all →</Link>
           </div>
           <div className="space-y-1">
-            {recent.length === 0 && <p className="text-sm text-brand-cream/45">No orders yet.</p>}
+            {recent.length === 0 && (
+              <div className="py-8 text-center">
+                <p className="text-sm text-brand-cream/55">No orders yet.</p>
+                <p className="text-xs text-brand-cream/40 mt-1.5">
+                  When a customer checks out, the order shows up here. Set up{" "}
+                  <Link href="/admin/products" className="text-brand-orange/80 hover:text-brand-orange">products</Link>{" "}or share your{" "}
+                  <Link href="/" target="_blank" className="text-brand-orange/80 hover:text-brand-orange">storefront →</Link>
+                </p>
+              </div>
+            )}
             {recent.map(o => (
               <Link
                 key={o.id}

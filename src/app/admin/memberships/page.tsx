@@ -78,7 +78,13 @@ function MembershipsPageInner() {
                 <span className="text-[11px] text-brand-cream/65 tabular-nums">{members.length} members</span>
               </header>
               {members.length === 0 ? (
-                <p className="text-[11px] text-brand-cream/40">No members in this tier yet.</p>
+                <div className="py-3">
+                  <p className="text-[11px] text-brand-cream/55">No members in this tier yet.</p>
+                  <p className="text-[10px] text-brand-cream/40 mt-1">
+                    Members join via the storefront <code className="font-mono text-brand-cream/55">/membership</code> page or you can{" "}
+                    <Link href="/admin/customers" className="text-cyan-300/80 hover:text-cyan-200">add them from a customer profile →</Link>
+                  </p>
+                </div>
               ) : (
                 <ul className="space-y-1">
                   {members.slice(0, 20).map(m => (
