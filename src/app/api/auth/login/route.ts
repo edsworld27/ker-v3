@@ -49,8 +49,17 @@ export async function POST(req: NextRequest) {
 
   let user = verifyPassword(email, password);
   if (!user && listUsers().length === 0) {
-    // Bootstrap: first-ever login mints the super-admin.
-    user = createUser({ email, password, role: "super-admin" });
+    // Bootstrap: first-ever login mints the super-admin. createUser
+    // throws if the password fails strength rules; surface that as a
+    // friendly 400 instead of letting the route 500.
+    try {
+      user = createUser({ email, password, role: "super-admin" });
+    } catch (e) {
+      return NextResponse.json(
+        { ok: false, error: e instanceof Error ? e.message : "Invalid password" },
+        { status: 400 },
+      );
+    }
   }
   if (!user) return NextResponse.json({ ok: false, error: "invalid-credentials" }, { status: 401 });
 
