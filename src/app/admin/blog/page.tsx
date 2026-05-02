@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { listPosts, createPost, deletePost, setFeatured, onBlogChange, type BlogPost } from "@/lib/admin/blog";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { confirm } from "@/components/admin/ConfirmHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 export default function AdminBlogIndex() {
   return <PluginRequired plugin="blog"><AdminBlogIndexInner /></PluginRequired>;
@@ -34,6 +36,7 @@ function AdminBlogIndexInner() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-6xl">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Blog</p>

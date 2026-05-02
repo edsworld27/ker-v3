@@ -8,6 +8,8 @@ import {
 import Tip from "@/components/admin/Tip";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -39,6 +41,7 @@ export default function AdminPopupPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

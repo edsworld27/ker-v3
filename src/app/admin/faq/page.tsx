@@ -8,6 +8,8 @@ import {
   type FaqGroup,
 } from "@/lib/admin/faq";
 import { confirm } from "@/components/admin/ConfirmHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 export default function AdminFaqPage() {
   const [groups, setGroups] = useState<FaqGroup[]>([]);
@@ -21,6 +23,7 @@ export default function AdminFaqPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-4xl">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">FAQ</p>

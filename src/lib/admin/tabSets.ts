@@ -35,3 +35,23 @@ export function productDetailTabs(slug: string): AdminTab[] {
     { label: "Variants", href: `/admin/products/${slug}/variants` },
   ];
 }
+
+// Content workbench. Every authoring surface that produces something
+// the public site renders — pages, blog posts, FAQ, KB articles, wiki
+// entries, forum templates, reusable sections, popups, themes, media
+// assets. The Editor is the headline workbench; the listing pages stay
+// for quick-access and rows deep-link back into the editor for items
+// that have a block tree.
+export const CONTENT_TABS: AdminTab[] = [
+  { label: "Editor",   href: "/admin/editor" },
+  { label: "Pages",    href: "/admin/pages" },
+  { label: "Blog",     href: "/admin/blog" },
+  { label: "FAQ",      href: "/admin/faq",      exact: true },
+  { label: "Help",     href: "/admin/kb" },
+  { label: "Wiki",     href: "/admin/wiki" },
+  { label: "Forum",    href: "/admin/forum" },
+  { label: "Sections", href: "/admin/sections" },
+  { label: "Popups",   href: "/admin/popup" },
+  { label: "Themes",   href: "/admin/themes" },
+  { label: "Assets",   href: "/admin/assets" },
+];
