@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   listMedia, addMedia, deleteMedia, fileToDataUrl, formatBytes,
   onMediaChange, type MediaItem,
@@ -54,8 +55,8 @@ function AdminMediaPageInner() {
     }
   }
 
-  function handleDelete(item: MediaItem) {
-    if (!confirm(`Delete "${item.name}"? Anywhere this image is used will fall back to the default.`)) return;
+  async function handleDelete(item: MediaItem) {
+    if (!(await confirm({ title: `Delete "${item.name}"?`, message: "Anywhere this image is used will fall back to the default.", danger: true, confirmLabel: "Delete" }))) return;
     deleteMedia(item.id);
   }
 

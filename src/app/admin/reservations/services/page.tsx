@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface Service {
   id: string; name: string; description?: string;
@@ -81,7 +82,7 @@ function ServicesPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this service? Existing bookings keep their reference.")) return;
+    if (!(await confirm({ title: "Delete this service?", message: "Existing bookings keep their reference.", danger: true, confirmLabel: "Delete" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/reservations/services/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();

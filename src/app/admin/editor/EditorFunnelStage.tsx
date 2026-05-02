@@ -14,6 +14,7 @@ import {
   type Funnel, type FunnelStep, type FunnelStatus, type StepType,
   patchFunnel, deleteFunnel as removeFunnel, fetchFunnelStats, funnelConversionRate,
 } from "@/lib/admin/funnels";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface Props {
   funnel: Funnel;
@@ -105,8 +106,7 @@ export default function EditorFunnelStage({ funnel, onChange, onDeleted }: Props
   }
 
   async function handleDelete() {
-    const ok = window.confirm(`Delete "${draft.name}"? This cannot be undone.`);
-    if (!ok) return;
+    if (!(await confirm({ title: `Delete "${draft.name}"?`, message: "Funnel + its stats are removed. This cannot be undone.", danger: true, confirmLabel: "Delete funnel" }))) return;
     await removeFunnel(draft.id);
     onDeleted();
   }

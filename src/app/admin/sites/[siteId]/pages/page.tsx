@@ -10,6 +10,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { EditorPage } from "@/portal/server/types";
 import { listPages, createPage, deletePage } from "@/lib/admin/editorPages";
 import { PAGE_TEMPLATES, type PageTemplate } from "@/components/editor/pageTemplates";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 export default function SitePagesIndex() {
   const params = useParams<{ siteId: string }>();
@@ -55,7 +56,7 @@ export default function SitePagesIndex() {
   }
 
   async function handleDelete(pageId: string) {
-    if (!confirm("Delete this page? This cannot be undone.")) return;
+    if (!(await confirm({ title: "Delete this page?", message: "Page + its blocks are removed. This cannot be undone.", danger: true, confirmLabel: "Delete page" }))) return;
     await deletePage(siteId, pageId);
     void refresh();
   }

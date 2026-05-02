@@ -6,7 +6,8 @@
 
 import { useEffect, useState } from "react";
 import PluginRequired from "@/components/admin/PluginRequired";
-import { getActiveOrgId } from "@/lib/admin/orgs";
+import SetupRequired from "@/components/admin/SetupRequired";
+import { getActiveOrg, getActiveOrgId, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 
 interface Template { id: string; subject: string }
 interface LogEntry {
@@ -139,6 +140,32 @@ function TestSendPanel() {
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [providerConfigured, setProviderConfigured] = useState<boolean | null>(null);
+
+  // Pre-flight: read the email plugin install for the active org and
+  // check whether the operator has actually saved a provider + key. If
+  // not, we render a SetupRequired CTA instead of letting them mash the
+  // Send button and watch error toasts roll past.
+  useEffect(() => {
+    let cancelled = false;
+    function check() {
+      void loadOrgs(false).then(() => {
+        if (cancelled) return;
+        const org = getActiveOrg();
+        const inst = org?.plugins?.find(p => p.pluginId === "email");
+        const cfg = (inst?.config ?? {}) as { provider?: string; apiKey?: string; smtpHost?: string };
+        // Provider is OK if (a) any provider is selected AND (b) it has
+        // its credential filled (apiKey for resend/postmark, smtpHost
+        // for smtp).
+        const ok = !!cfg.provider && (
+          cfg.provider === "smtp" ? !!cfg.smtpHost : !!cfg.apiKey
+        );
+        setProviderConfigured(ok);
+      });
+    }
+    check();
+    return onOrgsChange(check);
+  }, []);
 
   async function send() {
     if (!to || busy) return;
@@ -153,6 +180,22 @@ function TestSendPanel() {
       const data = await res.json();
       setResult(data.ok ? `Sent — ${data.messageId ?? "no id"}` : `Failed: ${data.error}`);
     } finally { setBusy(false); }
+  }
+
+  if (providerConfigured === false) {
+    return (
+      <SetupRequired
+        title="Email transport not configured"
+        message="Pick a provider (Resend, Postmark, or SMTP) and paste its credential before sending email."
+        steps={[
+          "Open the Email plugin's settings",
+          "Choose your provider",
+          "Paste the API key (or SMTP host + creds)",
+        ]}
+        cta={{ label: "Configure email plugin", href: `/aqua/${getActiveOrgId()}/plugins/email` }}
+        secondaryCta={{ label: "Marketplace", href: `/aqua/${getActiveOrgId()}/marketplace` }}
+      />
+    );
   }
 
   return (

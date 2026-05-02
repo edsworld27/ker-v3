@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/abtests";
 import { listPages } from "@/lib/admin/customPages";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const GOAL_LABELS: Record<GoalType, string> = {
   page_visit: "Page visit",
@@ -234,7 +235,7 @@ export default function AdminSplitTestPage() {
                   {test.status === "paused" && <button onClick={() => setABTestStatus(test.id, "running")} className="text-xs px-3 py-1.5 bg-green-600/80 text-white rounded-lg font-semibold">Resume</button>}
                   {(test.status === "running" || test.status === "paused") && <button onClick={() => setABTestStatus(test.id, "completed")} className="text-xs px-3 py-1.5 border border-white/10 text-brand-cream/50 rounded-lg">End</button>}
                   <button onClick={() => setModal(test)} className="text-xs px-3 py-1.5 border border-white/10 text-brand-cream/50 hover:text-brand-cream rounded-lg">Edit</button>
-                  <button onClick={() => { if (confirm("Delete this test?")) deleteABTest(test.id); }} className="text-xs px-3 py-1.5 border border-red-500/20 text-red-400/60 hover:text-red-400 rounded-lg">Delete</button>
+                  <button onClick={async () => { if (await confirm({ title: "Delete this test?", message: "Test + its results are removed.", danger: true, confirmLabel: "Delete" })) deleteABTest(test.id); }} className="text-xs px-3 py-1.5 border border-red-500/20 text-red-400/60 hover:text-red-400 rounded-lg">Delete</button>
                 </div>
               </div>
 

@@ -10,6 +10,7 @@ import {
   deleteAsset, formatBytes, loadAssets, onAssetsChange, patchAsset,
   uploadAsset,
 } from "@/lib/admin/assets";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<PortalAsset[]>([]);
@@ -44,7 +45,12 @@ export default function AssetsPage() {
   }
 
   async function handleDelete(asset: PortalAsset) {
-    if (!confirm(`Delete ${asset.filename}? Any block referencing it by id will break.`)) return;
+    if (!(await confirm({
+      title: `Delete ${asset.filename}?`,
+      message: "Any block referencing it by id will break.",
+      danger: true,
+      confirmLabel: "Delete",
+    }))) return;
     await deleteAsset(asset.id);
     void refresh();
   }

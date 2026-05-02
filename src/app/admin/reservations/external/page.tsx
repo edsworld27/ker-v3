@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface Feed {
   id: string; url: string; label: string;
@@ -61,7 +62,7 @@ function ExternalFeedsPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Remove this feed? Bookings imported from it stay in the system.")) return;
+    if (!(await confirm({ title: "Remove this feed?", message: "Bookings imported from it stay in the system.", danger: true, confirmLabel: "Remove" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/reservations/external/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();

@@ -11,13 +11,52 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import SetupRequired from "@/components/admin/SetupRequired";
+import { loadSettings, hasSecret, onSettingsChange } from "@/lib/admin/portalSettings";
 
 interface TreeItem { type: "file" | "dir"; name: string; path: string; sha?: string; size?: number }
 interface TreeResponse { ok: boolean; ref?: string; path?: string; items?: TreeItem[]; error?: string }
 interface FileResponse { ok: boolean; path?: string; ref?: string; sha?: string; size?: number; content?: string; error?: string }
 
 export default function RepoBrowser() {
-  return <PluginRequired plugin="repo"><RepoBrowserInner /></PluginRequired>;
+  return <PluginRequired plugin="repo"><RepoBrowserGate /></PluginRequired>;
+}
+
+// Gate: the repo browser can't do anything until both repoUrl + PAT are
+// stored in /admin/portal-settings. Detect that up front so the operator
+// gets a clear setup CTA instead of "Failed to fetch tree".
+function RepoBrowserGate() {
+  const [ready, setReady] = useState<"loading" | "ok" | "missing">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    function check() {
+      void loadSettings().then(s => {
+        if (cancelled) return;
+        const configured = !!s.github.repoUrl?.trim() && hasSecret(s.github.pat);
+        setReady(configured ? "ok" : "missing");
+      });
+    }
+    check();
+    return onSettingsChange(check);
+  }, []);
+
+  if (ready === "loading") return <div className="p-8 text-[12px] text-brand-cream/45">Loading…</div>;
+  if (ready === "missing") {
+    return (
+      <SetupRequired
+        title="GitHub not connected"
+        message="The repository browser needs a GitHub repo URL plus a Personal Access Token before it can list or edit files."
+        steps={[
+          "Open Portal settings",
+          "Paste your repo URL (e.g. https://github.com/you/your-site)",
+          "Generate a fine-grained PAT with repo + contents access and paste it",
+        ]}
+        cta={{ label: "Open Portal settings", href: "/admin/portal-settings" }}
+      />
+    );
+  }
+  return <RepoBrowserInner />;
 }
 
 function RepoBrowserInner() {

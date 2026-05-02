@@ -5,12 +5,13 @@
 // "Configure" opens the per-org settings inline. The header has shortcuts
 // to create a new portal or open the seeded Example portal.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadOrgs, listOrgs, setActiveOrgId, deleteOrg, type OrgRecord } from "@/lib/admin/orgs";
 import { listSitesForOrg } from "@/lib/admin/sites";
 import SetupChecklist from "@/components/aqua/SetupChecklist";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 export default function AquaDashboard() {
   const router = useRouter();
@@ -31,14 +32,42 @@ export default function AquaDashboard() {
   }
 
   async function handleDelete(org: OrgRecord) {
-    if (org.isPrimary) { alert("The primary agency org can't be removed."); return; }
-    if (!confirm(`Delete portal "${org.name}"? This removes the org but keeps its sites + content.`)) return;
+    if (org.isPrimary) {
+      await confirm({
+        title: "The agency org can't be removed",
+        message: "It owns this Aqua dashboard. Create a separate org if you want a deletable test target.",
+        confirmLabel: "Got it",
+      });
+      return;
+    }
+    if (!(await confirm({
+      title: `Delete portal "${org.name}"?`,
+      message: "Removes the org but keeps its sites and content — they become orphaned and can be re-attached later.",
+      danger: true,
+      confirmLabel: "Delete portal",
+    }))) return;
     setBusy(org.id);
     try {
       const ok = await deleteOrg(org.id);
       if (ok) setOrgs(listOrgs());
     } finally { setBusy(null); }
   }
+
+  // Quick portfolio summary across all client portals (excluding the agency).
+  const summary = useMemo(() => {
+    const clients = orgs.filter(o => !o.isPrimary);
+    let totalSites = 0;
+    let active = 0;
+    let trialing = 0;
+    let inactive = 0;
+    for (const o of clients) {
+      totalSites += listSitesForOrg(o.id).length;
+      if (o.status === "active") active++;
+      else if (o.status === "trialing") trialing++;
+      else inactive++;
+    }
+    return { count: clients.length, totalSites, active, trialing, inactive };
+  }, [orgs]);
 
   if (!hydrated) {
     return (
@@ -58,6 +87,24 @@ export default function AquaDashboard() {
           sidebar, sites, products, pages, billing all switch to theirs. Use <em>+ New portal</em> in the header to onboard another client.
         </p>
       </header>
+
+      {/* Portfolio summary — visible whenever there's at least one real client. */}
+      {summary.count > 0 && (
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <SummaryCard label="Client portals" value={summary.count} accent="cyan" />
+          <SummaryCard label="Total sites"    value={summary.totalSites} />
+          <SummaryCard
+            label="Active"
+            value={summary.active}
+            accent={summary.active > 0 ? "emerald" : undefined}
+          />
+          <SummaryCard
+            label="Trialing"
+            value={summary.trialing}
+            accent={summary.trialing > 0 ? "amber" : undefined}
+          />
+        </section>
+      )}
 
       <SetupChecklist />
 
@@ -117,6 +164,12 @@ export default function AquaDashboard() {
                   : org.status === "trialing" ? "text-brand-amber"
                   : "text-red-400"
                 }>{org.status}</span>
+                {(org.plugins?.length ?? 0) > 0 && (
+                  <>
+                    <span className="opacity-30">·</span>
+                    <span>{org.plugins!.length} plugin{org.plugins!.length === 1 ? "" : "s"}</span>
+                  </>
+                )}
               </div>
 
               <div className="mt-auto flex flex-col gap-1.5 pt-2 border-t border-white/5">
@@ -142,7 +195,7 @@ export default function AquaDashboard() {
                   </Link>
                   {!org.isPrimary && (
                     <button
-                      onClick={() => handleDelete(org)}
+                      onClick={() => void handleDelete(org)}
                       disabled={busy === org.id}
                       className="flex-1 px-3 py-1.5 rounded-lg border border-red-500/15 text-[11px] text-red-400/70 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-30"
                     >
@@ -166,5 +219,25 @@ export default function AquaDashboard() {
         </Link>
       </div>
     </main>
+  );
+}
+
+function SummaryCard({
+  label, value, accent,
+}: {
+  label: string;
+  value: number;
+  accent?: "cyan" | "emerald" | "amber" | "red";
+}) {
+  const colour =
+    accent === "cyan"    ? "text-cyan-200"    :
+    accent === "emerald" ? "text-emerald-300" :
+    accent === "amber"   ? "text-amber-300"   :
+    accent === "red"     ? "text-red-300"     : "text-brand-cream";
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+      <p className="text-[10px] tracking-wider uppercase text-brand-cream/45 mb-1.5">{label}</p>
+      <p className={`font-display text-2xl tabular-nums ${colour}`}>{value}</p>
+    </div>
   );
 }

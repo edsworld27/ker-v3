@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listPosts, createPost, deletePost, setFeatured, onBlogChange, type BlogPost } from "@/lib/admin/blog";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 export default function AdminBlogIndex() {
   return <PluginRequired plugin="blog"><AdminBlogIndexInner /></PluginRequired>;
@@ -95,7 +96,7 @@ function AdminBlogIndexInner() {
                 )}
                 <Link href={`/blog/${p.slug}`} target="_blank" className="text-[11px] text-brand-cream/40 hover:text-brand-cream">View</Link>
                 <button
-                  onClick={() => { if (confirm(`Delete "${p.title}"?`)) deletePost(p.id); }}
+                  onClick={async () => { if (await confirm({ title: `Delete "${p.title}"?`, message: "This post will be removed from the blog.", danger: true, confirmLabel: "Delete" })) deletePost(p.id); }}
                   className="text-[11px] text-brand-cream/40 hover:text-brand-orange"
                 >
                   Delete

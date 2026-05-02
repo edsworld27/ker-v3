@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   getTicket, addMessage, setTicketStatus, setTicketPriority, deleteTicket, onTicketsChange,
   type Ticket, type TicketStatus, type TicketPriority,
@@ -40,8 +41,8 @@ export default function TicketDetail() {
     setReply("");
   }
 
-  function remove() {
-    if (!confirm(`Delete ticket ${ticket!.id}?`)) return;
+  async function remove() {
+    if (!(await confirm({ title: `Delete ticket ${ticket!.id}?`, message: "The ticket and its replies are removed permanently.", danger: true, confirmLabel: "Delete ticket" }))) return;
     deleteTicket(ticket!.id);
     router.push("/admin/support");
   }

@@ -27,6 +27,7 @@ import CommandPalette from "@/components/admin/CommandPalette";
 import SiteSwitcher from "@/components/admin/SiteSwitcher";
 import OrgSwitcher from "@/components/admin/OrgSwitcher";
 import NotificationBell from "@/components/admin/NotificationBell";
+import ConfirmHost from "@/components/admin/ConfirmHost";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -328,6 +329,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Command palette (Cmd+K) */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+      {/* Styled confirm() dialog host — replaces window.confirm across admin */}
+      <ConfirmHost />
 
       {/* Mobile floating ⌘K button (desktop users use the keyboard shortcut) */}
       <button

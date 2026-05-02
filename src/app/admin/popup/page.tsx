@@ -6,6 +6,7 @@ import {
   type PopupConfig, type PopupTrigger,
 } from "@/lib/admin/popup";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -64,7 +65,7 @@ export default function AdminPopupPage() {
             Reset seen flag
           </button>
           <button
-            onClick={() => { if (confirm("Reset all popup settings to defaults?")) resetPopupConfig(); }}
+            onClick={async () => { if (await confirm({ title: "Reset all popup settings to defaults?", confirmLabel: "Reset" })) resetPopupConfig(); }}
             className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream"
           >
             Reset all

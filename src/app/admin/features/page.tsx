@@ -7,6 +7,7 @@ import {
   type FeatureFlag, type FlagStatus, type FlagCategory,
 } from "@/lib/admin/featureFlags";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const STATUS_STYLE: Record<FlagStatus, string> = {
   on:      "bg-green-500/20 text-green-400",
@@ -152,7 +153,7 @@ export default function AdminFeaturesPage() {
               </button>
               {!flag.isBuiltIn && (
                 <button
-                  onClick={() => { if (confirm(`Delete "${flag.name}"?`)) deleteFlag(flag.id); }}
+                  onClick={async () => { if (await confirm({ title: `Delete "${flag.name}"?`, message: "Code that reads this flag will fall back to the default.", danger: true, confirmLabel: "Delete" })) deleteFlag(flag.id); }}
                   className="text-[11px] text-brand-cream/40 hover:text-brand-orange"
                 >
                   Delete

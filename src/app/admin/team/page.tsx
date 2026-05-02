@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   listTeam, listRoles, inviteTeamMember, updateTeamMember, removeTeamMember,
   saveRole, createRole, deleteRole, onTeamChange,
@@ -537,7 +538,14 @@ export default function AdminTeamPage() {
                   {impersonating === u.email ? "Loading…" : "Impersonate"}
                 </button>
                 <button
-                  onClick={() => { if (confirm(`Delete account for ${u.email}?`)) { deleteUser(u.email); setUsers(listAllUsers()); } }}
+                  onClick={async () => {
+                    if (await confirm({
+                      title: `Delete account for ${u.email}?`,
+                      message: "Their orders + history stay in the system but they can no longer sign in.",
+                      danger: true,
+                      confirmLabel: "Delete account",
+                    })) { deleteUser(u.email); setUsers(listAllUsers()); }
+                  }}
                   className="text-xs px-2.5 py-1.5 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40 transition-colors"
                 >
                   Delete
@@ -618,7 +626,7 @@ export default function AdminTeamPage() {
                   ) : (
                     <>
                       <button onClick={() => setEditMember(m.id)} className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/50 hover:text-brand-cream hover:border-white/30">Edit</button>
-                      <button onClick={() => { if (confirm(`Remove ${m.name}?`)) removeTeamMember(m.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40">Remove</button>
+                      <button onClick={async () => { if (await confirm({ title: `Remove ${m.name}?`, message: "They lose access to this admin panel.", danger: true, confirmLabel: "Remove" })) removeTeamMember(m.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40">Remove</button>
                     </>
                   )}
                 </div>

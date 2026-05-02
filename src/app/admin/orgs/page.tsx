@@ -6,6 +6,7 @@ import {
   onOrgsChange, type OrgRecord,
 } from "@/lib/admin/orgs";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
 
@@ -110,7 +111,7 @@ export default function AdminOrgsPage() {
                     </button>
                   )}
                   {!o.isPrimary && (
-                    <button onClick={async () => { if (confirm(`Delete org "${o.name}"? Sites under it stay but their orgId becomes orphaned.`)) await deleteOrg(o.id); }} className="text-[11px] px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 ml-auto">
+                    <button onClick={async () => { if (await confirm({ title: `Delete org "${o.name}"?`, message: "Sites under it stay but their orgId becomes orphaned.", danger: true, confirmLabel: "Delete org" })) await deleteOrg(o.id); }} className="text-[11px] px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 ml-auto">
                       Delete org
                     </button>
                   )}

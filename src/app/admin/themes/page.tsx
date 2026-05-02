@@ -12,6 +12,7 @@ import type { ThemeRecord, ThemeTokens } from "@/portal/server/types";
 import { getActiveSite, type Site } from "@/lib/admin/sites";
 import { createTheme, deleteTheme, loadThemes, onThemesChange, updateTheme } from "@/lib/admin/themes";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const TOKEN_KEYS: Array<{ key: keyof ThemeTokens; label: string; kind: "color" | "text" }> = [
   { key: "primary",     label: "Primary (CTA / accent)",          kind: "color" },
@@ -74,7 +75,12 @@ function ThemesPageInner() {
 
   async function handleDelete(id: string) {
     if (!site) return;
-    if (!confirm("Delete this theme? Pages using it fall back to the default.")) return;
+    if (!(await confirm({
+      title: "Delete this theme?",
+      message: "Pages using it fall back to the default theme.",
+      danger: true,
+      confirmLabel: "Delete",
+    }))) return;
     const ok = await deleteTheme(site.id, id);
     if (!ok) setError("Default theme can't be deleted. Set another as default first.");
     void refresh(site.id);

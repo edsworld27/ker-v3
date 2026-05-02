@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Product, ProductOption, ProductOptionDisplay, ProductOptionValue, ProductVariant } from "@/lib/products";
 import { getProduct } from "@/lib/products";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { getCustomProduct, upsertCustomProduct, type CustomProduct } from "@/lib/admin/customProducts";
 
 const DISPLAY_TYPES: Array<{ id: ProductOptionDisplay; label: string; help: string }> = [
@@ -102,8 +103,8 @@ export default function ProductVariantsPage() {
     commitOptions(options.map(o => o.id === id ? { ...o, ...patch } : o));
   }
 
-  function removeOption(id: string) {
-    if (!confirm("Remove this option group? All its values will be deleted.")) return;
+  async function removeOption(id: string) {
+    if (!(await confirm({ title: "Remove this option group?", message: "All its values will be deleted.", danger: true, confirmLabel: "Remove" }))) return;
     commitOptions(options.filter(o => o.id !== id));
     commitVariants(variants.filter(v => !(id in v.optionValues)));
   }
