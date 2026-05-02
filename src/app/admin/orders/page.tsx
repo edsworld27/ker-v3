@@ -195,7 +195,19 @@ function AdminOrdersPageInner() {
         </div>
         <div className="divide-y divide-white/5">
           {filtered.length === 0 && (
-            <p className="px-5 py-10 text-center text-sm text-brand-cream/45">No orders match.</p>
+            <div className="px-5 py-10 text-center">
+              {orders.length === 0 ? (
+                <>
+                  <p className="text-sm text-brand-cream/65">No orders yet.</p>
+                  <p className="text-xs text-brand-cream/40 mt-1.5">
+                    Orders show up here when customers check out. Make sure{" "}
+                    <Link href="/admin/products" className="text-brand-orange/80 hover:text-brand-orange">products</Link>{" "}exist and your storefront is reachable.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-brand-cream/65">No orders match the current filter.</p>
+              )}
+            </div>
           )}
           {filtered.map(o => (
             <Link
