@@ -88,6 +88,13 @@ function AdminPortalsInner() {
   const [variants, setVariants] = useState<EditorPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Per-role flag — true when that role has an active variant. Used by
+  // the tab strip to show a small dot indicator so the operator can see
+  // at a glance which portals are running custom variants vs the
+  // built-in defaults. Loaded in parallel for all roles on site change.
+  const [activeByRole, setActiveByRole] = useState<Record<PortalRole, boolean>>({
+    login: false, affiliates: false, orders: false, account: false,
+  });
 
   // Sites + initial active-site selection.
   useEffect(() => {
@@ -98,9 +105,23 @@ function AdminPortalsInner() {
   }, []);
 
   // Load variants whenever site or role changes; refresh on page mutations.
+  // Also reload the per-role active map so tab indicators stay accurate
+  // after Make active / Clear active / Delete.
   useEffect(() => {
     if (!siteId) { setVariants([]); setLoading(false); return; }
     let cancelled = false;
+    async function reloadRoleMap() {
+      const entries = await Promise.all(
+        ROLES.map(async r => {
+          const list = await listPortalVariants(siteId, r.id);
+          return [r.id, list.some(v => v.isActivePortal)] as const;
+        }),
+      );
+      if (cancelled) return;
+      const next = { login: false, affiliates: false, orders: false, account: false } as Record<PortalRole, boolean>;
+      for (const [id, hasActive] of entries) next[id] = hasActive;
+      setActiveByRole(next);
+    }
     async function reload() {
       setLoading(true);
       const list = await listPortalVariants(siteId, role);
@@ -110,8 +131,12 @@ function AdminPortalsInner() {
       }
     }
     void reload();
+    void reloadRoleMap();
     const off = onPagesChange(s => {
-      if (s === siteId) void reload();
+      if (s === siteId) {
+        void reload();
+        void reloadRoleMap();
+      }
     });
     return () => { cancelled = true; off(); };
   }, [siteId, role]);
@@ -260,17 +285,25 @@ function AdminPortalsInner() {
         <ul className="flex items-center gap-0.5 min-w-max">
           {ROLES.map(r => {
             const active = r.id === role;
+            const hasActiveVariant = activeByRole[r.id];
             return (
               <li key={r.id}>
                 <button
                   type="button"
                   onClick={() => changeRole(r.id)}
                   aria-current={active ? "page" : undefined}
-                  className={`relative inline-flex items-center px-3 py-2.5 text-[12px] tracking-wide whitespace-nowrap transition-colors ${
+                  className={`relative inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] tracking-wide whitespace-nowrap transition-colors ${
                     active ? "text-brand-cream" : "text-brand-cream/55 hover:text-brand-cream/85"
                   }`}
+                  title={hasActiveVariant ? "A custom variant is active for this portal" : undefined}
                 >
                   {r.label}
+                  {hasActiveVariant && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-cyan-400"
+                      aria-label="Custom variant is live"
+                    />
+                  )}
                   {active && <span className="absolute inset-x-2 -bottom-px h-px bg-cyan-400" aria-hidden />}
                 </button>
               </li>
