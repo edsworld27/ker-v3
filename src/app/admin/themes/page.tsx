@@ -13,6 +13,8 @@ import { getActiveSite, type Site } from "@/lib/admin/sites";
 import { createTheme, deleteTheme, loadThemes, onThemesChange, updateTheme } from "@/lib/admin/themes";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { confirm } from "@/components/admin/ConfirmHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 const TOKEN_KEYS: Array<{ key: keyof ThemeTokens; label: string; kind: "color" | "text" }> = [
   { key: "primary",     label: "Primary (CTA / accent)",          kind: "color" },
@@ -96,6 +98,7 @@ function ThemesPageInner() {
 
   return (
     <main className="max-w-5xl mx-auto p-6 space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <header className="flex items-baseline justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-1">Branding</p>
