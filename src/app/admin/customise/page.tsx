@@ -242,6 +242,27 @@ function AdminCustomisePageInner() {
       {/* ── LOGIN PAGE ─────────────────────────────────────────────────────── */}
       {tab === "login" && (
         <div className="space-y-5">
+          {/* Bridge to the new portal-variant editor. The fields below are
+              the simple form-based customisation (kept for back-compat);
+              for full block-tree control, the operator designs a "login"
+              portal variant in /admin/portals → Login. */}
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.04] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] tracking-[0.28em] uppercase text-cyan-300 mb-1">New</p>
+              <p className="text-[13px] text-brand-cream">Want full control over the login layout?</p>
+              <p className="text-[12px] text-brand-cream/55 leading-relaxed">
+                Design a login variant block-by-block in the visual editor — heroes, custom CTAs,
+                multiple variants you can A/B between. The fields below stay as the quick-config fallback.
+              </p>
+            </div>
+            <a
+              href="/admin/portals?role=login"
+              className="text-[11px] px-3 py-2 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 shrink-0 self-start sm:self-auto"
+            >
+              Open portal editor →
+            </a>
+          </div>
+
           <Card title="Layout" tip="Choose between a centered card, a split with hero image, or a minimal layout.">
             <div className="grid grid-cols-3 gap-2">
               {(["centered", "split", "minimal"] as LoginLayout[]).map(l => (
