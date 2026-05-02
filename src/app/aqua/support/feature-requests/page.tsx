@@ -8,6 +8,7 @@ import {
   createFeatureRequest, deleteFeatureRequest, listFeatureRequests, onSupportChange,
   patchFeatureRequest,
 } from "@/lib/admin/support";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 const STATUS_TONE: Record<FeatureRequest["status"], string> = {
   "open":         "bg-brand-amber/15 text-brand-amber",
@@ -162,7 +163,7 @@ export default function FeatureRequestsPage() {
                       {s}
                     </button>
                   ))}
-                  <button onClick={async () => { if (confirm("Delete?")) { await deleteFeatureRequest(item.id); void refresh(); } }} className="ml-auto text-[10px] text-brand-cream/40 hover:text-red-400">Delete</button>
+                  <button onClick={async () => { if (await confirm({ title: "Delete this feature request?", danger: true, confirmLabel: "Delete" })) { await deleteFeatureRequest(item.id); void refresh(); } }} className="ml-auto text-[10px] text-brand-cream/40 hover:text-red-400">Delete</button>
                 </div>
               </div>
             )}
