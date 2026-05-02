@@ -10,6 +10,7 @@ import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 interface Feed {
   id: string; url: string; label: string;
@@ -78,8 +79,8 @@ function ExternalFeedsPageInner() {
         body: JSON.stringify({ orgId }),
       });
       const data = await res.json();
-      if (data.ok) alert(`Imported ${data.imported} events.`);
-      else alert(`Sync failed: ${data.error}`);
+      if (data.ok) notify({ tone: "ok", message: `Imported ${data.imported} event${data.imported === 1 ? "" : "s"}.` });
+      else notify({ tone: "error", title: "Sync failed", message: data.error ?? "Unknown error" });
       await load();
     } finally { setBusyId(null); }
   }

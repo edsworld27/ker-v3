@@ -8,6 +8,7 @@ import {
 import { listPages } from "@/lib/admin/customPages";
 import Tip from "@/components/admin/Tip";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 const GOAL_LABELS: Record<GoalType, string> = {
   page_visit: "Page visit",
@@ -68,7 +69,7 @@ function TestModal({ test, pages, onClose }: {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (totalWeight !== 100) { alert("Variant weights must sum to 100%"); return; }
+    if (totalWeight !== 100) { notify({ tone: "warn", message: "Variant weights must sum to 100%." }); return; }
     if (isNew) {
       createABTest({ name, description: description || undefined, status: "draft", targetPath, variants, goalType, goalPath: goalPath || undefined });
     } else {

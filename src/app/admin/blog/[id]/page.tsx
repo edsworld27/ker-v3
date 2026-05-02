@@ -13,6 +13,7 @@ import {
 } from "@/lib/admin/media";
 import RichEditor from "@/components/admin/RichEditor";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 const MAX_BYTES = 1.5 * 1024 * 1024;
 const CATEGORIES = ["Ingredients", "Our Story", "Skin Education", "Sourcing", "Nkrabea", "Sustainability", "Journal"];
@@ -104,7 +105,7 @@ export default function BlogEditor() {
   function applySchedule() {
     const ts = scheduleDraft ? new Date(scheduleDraft).getTime() : NaN;
     if (!isFinite(ts) || ts <= Date.now()) {
-      alert("Pick a future date and time.");
+      notify({ tone: "warn", message: "Pick a future date and time." });
       return;
     }
     schedulePost(post!.id, ts);
@@ -381,7 +382,7 @@ function CoverImageEditor({ post, onChange }: { post: BlogPost; onChange: (src: 
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    if (file.size > MAX_BYTES) { alert(`Too large. Max ${formatBytes(MAX_BYTES)}.`); return; }
+    if (file.size > MAX_BYTES) { notify({ tone: "warn", title: "Image too large", message: `Max ${formatBytes(MAX_BYTES)}.` }); return; }
     setUploading(true);
     try {
       const dataUrl = await fileToDataUrl(file);

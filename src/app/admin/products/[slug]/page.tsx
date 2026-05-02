@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
 import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
@@ -60,7 +61,7 @@ export default function AdminProductEditPage() {
     const saleNum = salePrice ? parseFloat(salePrice) : undefined;
     if (isNaN(priceNum)) return;
     if (saleNum !== undefined && (isNaN(saleNum) || saleNum >= priceNum)) {
-      alert("Sale price must be a number lower than the regular price.");
+      notify({ tone: "warn", message: "Sale price must be a number lower than the regular price." });
       return;
     }
     saveOverride(slug, {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 import {
   getBranding, saveBranding, resetBranding,
   listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab, moveCustomTab,
@@ -69,7 +70,7 @@ function AdminCustomisePageInner() {
     try {
       const res = await fetch("/api/admin/export-code");
       if (!res.ok) {
-        alert("Export failed: " + res.statusText);
+        notify({ tone: "error", title: "Export failed", message: res.statusText });
         return;
       }
       const blob = await res.blob();
@@ -80,7 +81,7 @@ function AdminCustomisePageInner() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Export failed: " + (e instanceof Error ? e.message : String(e)));
+      notify({ tone: "error", title: "Export failed", message: e instanceof Error ? e.message : String(e) });
     } finally {
       setExporting(false);
     }

@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin/funnels";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 const STATUS_STYLE: Record<FunnelStatus, string> = {
   active: "bg-green-500/20 text-green-400",
@@ -59,8 +60,8 @@ function FunnelModal({ funnel, onClose }: { funnel: Partial<Funnel> | null; onCl
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (steps.length < 2) { alert("A funnel needs at least 2 steps"); return; }
-    if (steps.some((s) => !s.path)) { alert("All steps need a path"); return; }
+    if (steps.length < 2) { notify({ tone: "warn", message: "A funnel needs at least 2 steps." }); return; }
+    if (steps.some((s) => !s.path)) { notify({ tone: "warn", message: "Every step needs a path." }); return; }
     if (isNew) {
       await createFunnel({
         name,
