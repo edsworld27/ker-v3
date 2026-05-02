@@ -7,7 +7,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { confirm } from "@/components/admin/ConfirmHost";
 
 interface Service {
   id: string; name: string; description?: string;
@@ -81,13 +83,13 @@ function ServicesPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this service? Existing bookings keep their reference.")) return;
+    if (!(await confirm({ title: "Delete this service?", message: "Existing bookings keep their reference.", danger: true, confirmLabel: "Delete" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/reservations/services/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();
   }
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">

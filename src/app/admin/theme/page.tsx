@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { prompt } from "@/components/admin/PromptHost";
 import {
   getDraftTheme,
   saveDraft,
@@ -385,15 +387,15 @@ export default function AdminThemePage() {
     setTimeout(() => setPublished(false), 2500);
   }
 
-  function handleDiscard() {
-    if (!confirm("Discard all unsaved theme changes?")) return;
+  async function handleDiscard() {
+    if (!(await confirm({ title: "Discard all unsaved theme changes?", danger: true, confirmLabel: "Discard" }))) return;
     discardThemeDraft();
     setTheme(getDraftTheme());
     setHasDraft(false);
   }
 
-  function handleReset() {
-    if (!confirm("Reset theme to defaults? This will overwrite both draft and published.")) return;
+  async function handleReset() {
+    if (!(await confirm({ title: "Reset theme to defaults?", message: "Overwrites both draft and published themes.", danger: true, confirmLabel: "Reset" }))) return;
     resetThemeToDefault();
     setTheme(DEFAULT_THEME);
     setHasDraft(false);
@@ -985,8 +987,8 @@ export default function AdminThemePage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => {
-                        const name = prompt("Name for cloned variant", `${v.name} copy`);
+                      onClick={async () => {
+                        const name = await prompt({ title: "Name for cloned variant", defaultValue: `${v.name} copy` });
                         if (name) createVariant(name, v.id);
                       }}
                       className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream"
@@ -996,8 +998,8 @@ export default function AdminThemePage() {
                     {!v.isBuiltIn && (
                       <>
                         <button
-                          onClick={() => {
-                            const name = prompt("Rename variant", v.name);
+                          onClick={async () => {
+                            const name = await prompt({ title: "Rename variant", defaultValue: v.name });
                             if (name) updateVariant(v.id, { name });
                           }}
                           className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-cream"
@@ -1005,8 +1007,8 @@ export default function AdminThemePage() {
                           Rename
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Delete "${v.name}"?`)) deleteVariant(v.id);
+                          onClick={async () => {
+                            if (await confirm({ title: `Delete "${v.name}"?`, danger: true, confirmLabel: "Delete" })) deleteVariant(v.id);
                           }}
                           className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/55 hover:text-brand-orange"
                         >
@@ -1020,8 +1022,8 @@ export default function AdminThemePage() {
             </div>
             <div className="pt-3">
               <button
-                onClick={() => {
-                  const name = prompt("New variant name", "My theme");
+                onClick={async () => {
+                  const name = await prompt({ title: "New variant name", defaultValue: "My theme", placeholder: "Spring 2025" });
                   if (name) createVariant(name);
                 }}
                 className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"

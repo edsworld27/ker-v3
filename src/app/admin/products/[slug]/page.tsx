@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
 import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { productDetailTabs } from "@/lib/admin/tabSets";
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 600KB cap for localStorage uploads
 
@@ -59,7 +63,7 @@ export default function AdminProductEditPage() {
     const saleNum = salePrice ? parseFloat(salePrice) : undefined;
     if (isNaN(priceNum)) return;
     if (saleNum !== undefined && (isNaN(saleNum) || saleNum >= priceNum)) {
-      alert("Sale price must be a number lower than the regular price.");
+      notify({ tone: "warn", message: "Sale price must be a number lower than the regular price." });
       return;
     }
     saveOverride(slug, {
@@ -78,9 +82,9 @@ export default function AdminProductEditPage() {
     setTimeout(() => setSaved(false), 1800);
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (!slug) return;
-    if (!confirm("Discard your edits and revert to the original product?")) return;
+    if (!(await confirm({ title: "Discard your edits and revert to the original product?", danger: true, confirmLabel: "Discard" }))) return;
     clearOverride(slug);
     const p = getProduct(slug);
     if (!p) return;
@@ -151,6 +155,8 @@ export default function AdminProductEditPage() {
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-5xl">
       <Link href="/admin/products" className="text-xs text-brand-cream/55 hover:text-brand-cream">← All products</Link>
+
+      <AdminTabs tabs={productDetailTabs(product.slug)} ariaLabel="Product" />
 
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>

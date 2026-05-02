@@ -8,7 +8,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 interface Feed {
   id: string; url: string; label: string;
@@ -61,7 +64,7 @@ function ExternalFeedsPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Remove this feed? Bookings imported from it stay in the system.")) return;
+    if (!(await confirm({ title: "Remove this feed?", message: "Bookings imported from it stay in the system.", danger: true, confirmLabel: "Remove" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/reservations/external/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();
@@ -77,13 +80,13 @@ function ExternalFeedsPageInner() {
         body: JSON.stringify({ orgId }),
       });
       const data = await res.json();
-      if (data.ok) alert(`Imported ${data.imported} events.`);
-      else alert(`Sync failed: ${data.error}`);
+      if (data.ok) notify({ tone: "ok", message: `Imported ${data.imported} event${data.imported === 1 ? "" : "s"}.` });
+      else notify({ tone: "error", title: "Sync failed", message: data.error ?? "Unknown error" });
       await load();
     } finally { setBusyId(null); }
   }
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">

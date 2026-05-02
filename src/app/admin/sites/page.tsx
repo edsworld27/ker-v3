@@ -8,6 +8,8 @@ import {
   onSitesChange, normaliseDomain, type Site,
 } from "@/lib/admin/sites";
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { prompt } from "@/components/admin/PromptHost";
 import {
   loadSettings as loadPortalSettings,
   getSettings as getPortalSettings,
@@ -15,6 +17,8 @@ import {
   hasSecret,
 } from "@/lib/admin/portalSettings";
 import Tip from "@/components/admin/Tip";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { SETTINGS_TABS } from "@/lib/admin/tabSets";
 import { buildEditorUrl } from "@/lib/portalEditMode";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-orange/50";
@@ -374,6 +378,7 @@ export default function AdminSitesPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={SETTINGS_TABS} ariaLabel="Settings" />
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -627,9 +632,13 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
             (amber) star. */}
         {!site.isPrimary ? (
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              if (confirm(`Set "${site.name}" as the primary site?\n\nThe primary site is the agency's home base — what visitors see at the apex domain when no other site matches, and what's used for absolute URLs.`)) {
+              if (await confirm({
+                title: `Set "${site.name}" as the primary site?`,
+                message: "The primary site is the agency's home base — what visitors see at the apex domain when no other site matches, and what's used for absolute URLs.",
+                confirmLabel: "Make primary",
+              })) {
                 setPrimarySite(site.id);
               }
             }}
@@ -863,8 +872,8 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {!site.isPrimary ? (
               <button
-                onClick={() => {
-                  if (confirm(`Delete "${site.name}"? Domains will be unrouted.`)) {
+                onClick={async () => {
+                  if (await confirm({ title: `Delete "${site.name}"?`, message: "Domains will be unrouted. Pages + content stay but become unreachable until reattached to another site.", danger: true, confirmLabel: "Delete site" })) {
                     deleteSite(site.id);
                   }
                 }}
@@ -1501,8 +1510,8 @@ function TrackingBlock({ siteId }: { siteId: string }) {
     save({ ...ensure(), trackers: ensure().trackers.map(t => t.id === id ? { ...t, ...patch } : t) });
   }
 
-  function deleteTracker(id: string) {
-    if (!confirm("Remove this tracker?")) return;
+  async function deleteTracker(id: string) {
+    if (!(await confirm({ title: "Remove this tracker?", danger: true, confirmLabel: "Remove" }))) return;
     save({ ...ensure(), trackers: ensure().trackers.filter(t => t.id !== id) });
   }
 
@@ -1723,8 +1732,8 @@ function EmbedsBlock({ siteId }: { siteId: string }) {
     setDirty(true);
   }
 
-  function deleteEmbed(rowId: string) {
-    if (!confirm("Remove this embed?")) return;
+  async function deleteEmbed(rowId: string) {
+    if (!(await confirm({ title: "Remove this embed?", danger: true, confirmLabel: "Remove" }))) return;
     setEmbeds((embedsRef.current ?? []).filter(e => e.id !== rowId));
     setDirty(true);
   }
@@ -1946,17 +1955,18 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
   }
 
   async function handlePublish() {
-    const message = prompt("Optional publish note (visible in history):", "") ?? undefined;
+    const message = (await prompt({ title: "Publish note", message: "Optional — visible in publish history.", placeholder: "Spring sale copy", multiline: true })) ?? undefined;
+    if (message === null) return;
     const next = await call("publish", { message });
     if (next) onApplied(next);
   }
   async function handleDiscard() {
-    if (!confirm(`Discard ${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}?`)) return;
+    if (!(await confirm({ title: `Discard ${unpublishedCount} unpublished change${unpublishedCount === 1 ? "" : "s"}?`, danger: true, confirmLabel: "Discard" }))) return;
     const next = await call("discard");
     if (next) onApplied(next);
   }
   async function handleRevert(snapshotId: string, label: string) {
-    if (!confirm(`Revert published content to ${label}?\n\nThe current published state will be saved to history first so you can undo.`)) return;
+    if (!(await confirm({ title: `Revert published content to ${label}?`, message: "The current published state will be saved to history first so you can undo.", danger: true, confirmLabel: "Revert" }))) return;
     setBusy("revert"); setError(null);
     try {
       const res = await fetch(`/api/portal/content/${encodeURIComponent(siteId)}/revert`, {
@@ -2000,7 +2010,8 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
       setError("Publish the draft first — only published content gets promoted.");
       return;
     }
-    const message = prompt("Optional commit/PR note:", "") ?? undefined;
+    const message = (await prompt({ title: "Commit / PR note", message: "Optional — appears in the GitHub commit message.", placeholder: "Updated hero copy + new product photo", multiline: true })) ?? undefined;
+    if (message === null) return;
     setBusy("promote"); setError(null); setPromotedPr(null);
     try {
       // Server reads repo URL + PAT from the cloud-side settings store —

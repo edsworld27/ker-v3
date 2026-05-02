@@ -15,11 +15,13 @@ import { getTeamMemberByEmail, getPermissionsForEmail, type Resource } from "@/l
 import { getBranding, listCustomTabs, onAdminConfigChange, type AdminBranding, type CustomTab } from "@/lib/admin/adminConfig";
 import {
   getSidebarLayout, onSidebarLayoutChange, findPanelForPath, walkLinks,
+  applyPluginContributions,
   type SidebarLayout, type SidebarPanel, type SidebarItem, type SidebarGroup,
   type SidebarLink, type BadgeKey,
 } from "@/lib/admin/sidebarLayout";
 import {
   isPathAllowed, onInstalledPluginsChange, refreshInstalledPlugins,
+  getPluginSidebarContributions,
 } from "@/lib/admin/installedPlugins";
 import AdminThemeInjector from "@/components/AdminThemeInjector";
 import AdminModeSwitcher from "@/components/AdminModeSwitcher";
@@ -27,6 +29,9 @@ import CommandPalette from "@/components/admin/CommandPalette";
 import SiteSwitcher from "@/components/admin/SiteSwitcher";
 import OrgSwitcher from "@/components/admin/OrgSwitcher";
 import NotificationBell from "@/components/admin/NotificationBell";
+import ConfirmHost from "@/components/admin/ConfirmHost";
+import Toaster from "@/components/admin/Toaster";
+import PromptHost from "@/components/admin/PromptHost";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -46,7 +51,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   });
   const [branding, setBranding] = useState<AdminBranding>(() => getBranding());
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
-  const [layout, setLayout] = useState<SidebarLayout>(() => getSidebarLayout());
+  const [layout, setLayout] = useState<SidebarLayout>(() =>
+    applyPluginContributions(getSidebarLayout(), getPluginSidebarContributions()),
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // The currently drilled-in panel. By default the panel that owns the current
@@ -72,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setHydrated(true);
     setBranding(getBranding());
     setCustomTabs(listCustomTabs());
-    setLayout(getSidebarLayout());
+    setLayout(applyPluginContributions(getSidebarLayout(), getPluginSidebarContributions()));
     const refresh = () => {
       setSession(getSession());
       setCounters({
@@ -96,11 +103,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const off1 = onContentChange(refresh);
     const off2 = onTicketsChange(refresh);
     const off3 = onAffiliatesChange(refresh);
-    const off4 = onSidebarLayoutChange(() => setLayout(getSidebarLayout()));
+    const off4 = onSidebarLayoutChange(() =>
+      setLayout(applyPluginContributions(getSidebarLayout(), getPluginSidebarContributions())),
+    );
     void refreshInstalledPlugins();
     const off5 = onInstalledPluginsChange(() => {
-      // Bump the layout reference so panels re-filter through isPathAllowed.
-      setLayout(prev => ({ ...prev }));
+      // Plugin install/uninstall — re-apply contributions on top of the
+      // operator-customised layout so newly installed plugins surface and
+      // newly uninstalled ones disappear.
+      setLayout(applyPluginContributions(getSidebarLayout(), getPluginSidebarContributions()));
     });
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
@@ -328,6 +339,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Command palette (Cmd+K) */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+      {/* Styled confirm() dialog host — replaces window.confirm across admin */}
+      <ConfirmHost />
+
+      {/* Styled toast host — replaces window.alert() across admin */}
+      <Toaster />
+
+      {/* Styled prompt() dialog host — replaces window.prompt() */}
+      <PromptHost />
 
       {/* Mobile floating ⌘K button (desktop users use the keyboard shortcut) */}
       <button

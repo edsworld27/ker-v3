@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
+import { requireAdmin } from "@/lib/server/auth";
 import {
   appendActivity, listActivity, getActivityStats, clearActivity,
   type ActivityCategory,
@@ -80,6 +81,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
+  // Destructive — clears the entire audit log. Admin only.
+  try { await requireAdmin(); } catch (e) { if (e instanceof Response) return e; throw e; }
   await ensureHydrated();
   clearActivity();
   return NextResponse.json({ ok: true });

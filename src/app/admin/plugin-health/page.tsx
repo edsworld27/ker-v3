@@ -7,6 +7,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import PageSpinner from "@/components/admin/Spinner";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { MARKETPLACE_TABS } from "@/lib/admin/tabSets";
 
 interface HealthRow {
   pluginId: string;
@@ -39,6 +42,7 @@ export default function PluginHealthPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <AdminTabs tabs={MARKETPLACE_TABS} ariaLabel="Plugins" />
       <header className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Plugin health</p>
@@ -56,7 +60,7 @@ export default function PluginHealthPage() {
       </header>
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : rows.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">No plugins installed.</p>
       ) : (

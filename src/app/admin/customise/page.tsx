@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
+import { prompt } from "@/components/admin/PromptHost";
 import {
   getBranding, saveBranding, resetBranding,
   listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab, moveCustomTab,
@@ -21,6 +24,13 @@ import {
 } from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
 import PluginRequired from "@/components/admin/PluginRequired";
+import {
+  getEditorComplexity, setEditorComplexity, onEditorComplexityChange,
+  COMPLEXITY_OPTIONS,
+  type EditorComplexity,
+} from "@/lib/admin/editorMode";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { SETTINGS_TABS } from "@/lib/admin/tabSets";
 
 type Tab = "branding" | "sidebar" | "tabs" | "login" | "export";
 
@@ -34,7 +44,16 @@ function AdminCustomisePageInner() {
   const [tabs, setTabs] = useState<CustomTab[]>(listCustomTabs);
   const [login, setLogin] = useState<LoginCustomisation>(getLoginCustomisation);
   const [sidebar, setSidebar] = useState<SidebarLayout>(getSidebarLayout);
+  const [editorComplexity, setEditorComplexityState] = useState<EditorComplexity>(getEditorComplexity);
   const [exporting, setExporting] = useState(false);
+
+  // Sync if the operator flips complexity from inside the editor.
+  useEffect(() => onEditorComplexityChange(() => setEditorComplexityState(getEditorComplexity())), []);
+
+  function selectEditorComplexity(c: EditorComplexity) {
+    setEditorComplexity(c);
+    setEditorComplexityState(c);
+  }
 
   useEffect(() => {
     const refresh = () => {
@@ -68,7 +87,7 @@ function AdminCustomisePageInner() {
     try {
       const res = await fetch("/api/admin/export-code");
       if (!res.ok) {
-        alert("Export failed: " + res.statusText);
+        notify({ tone: "error", title: "Export failed", message: res.statusText });
         return;
       }
       const blob = await res.blob();
@@ -79,7 +98,7 @@ function AdminCustomisePageInner() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Export failed: " + (e instanceof Error ? e.message : String(e)));
+      notify({ tone: "error", title: "Export failed", message: e instanceof Error ? e.message : String(e) });
     } finally {
       setExporting(false);
     }
@@ -95,6 +114,7 @@ function AdminCustomisePageInner() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={SETTINGS_TABS} ariaLabel="Settings" />
       <div>
         <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Admin panel</p>
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Customise the panel</h1>
@@ -165,9 +185,36 @@ function AdminCustomisePageInner() {
             />
           </Card>
 
+          <Card title="Visual editor mode" tip="Choose how much editor surface to show by default. Each editor also has its own switcher in the toolbar so you can change on the fly.">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {COMPLEXITY_OPTIONS.map(opt => {
+                const active = editorComplexity === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => selectEditorComplexity(opt.id)}
+                    aria-pressed={active}
+                    className={`text-left rounded-xl border p-4 transition-colors ${
+                      active
+                        ? "border-brand-orange bg-brand-orange/10"
+                        : "border-white/10 bg-white/[0.02] hover:border-white/25"
+                    }`}
+                  >
+                    <p className={`text-[13px] font-semibold ${active ? "text-brand-cream" : "text-brand-cream/85"}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[11px] text-brand-cream/55 mt-1 leading-relaxed">{opt.description}</p>
+                    {active && <p className="text-[10px] tracking-wider uppercase text-brand-orange/85 mt-2">Default</p>}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
           <div>
             <button
-              onClick={() => { if (confirm("Reset all branding to defaults?")) { resetBranding(); setBranding(getBranding()); } }}
+              onClick={async () => { if (await confirm({ title: "Reset all branding to defaults?", confirmLabel: "Reset" })) { resetBranding(); setBranding(getBranding()); } }}
               className="text-xs text-brand-cream/45 hover:text-brand-orange"
             >
               Reset branding to defaults
@@ -194,10 +241,10 @@ function AdminCustomisePageInner() {
               Useful for Notion docs, Stripe dashboard, third-party tools, or any internal page.
             </p>
             <button
-              onClick={() => {
-                const label = prompt("Tab label", "My tab");
+              onClick={async () => {
+                const label = await prompt({ title: "Tab label", defaultValue: "My tab", placeholder: "Notion docs" });
                 if (!label) return;
-                const url = prompt("URL to embed", "https://");
+                const url = await prompt({ title: "URL to embed", placeholder: "https://", defaultValue: "https://" });
                 if (!url) return;
                 createCustomTab({
                   label,
@@ -236,6 +283,27 @@ function AdminCustomisePageInner() {
       {/* ── LOGIN PAGE ─────────────────────────────────────────────────────── */}
       {tab === "login" && (
         <div className="space-y-5">
+          {/* Bridge to the new portal-variant editor. The fields below are
+              the simple form-based customisation (kept for back-compat);
+              for full block-tree control, the operator designs a "login"
+              portal variant in /admin/portals → Login. */}
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.04] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] tracking-[0.28em] uppercase text-cyan-300 mb-1">New</p>
+              <p className="text-[13px] text-brand-cream">Want full control over the login layout?</p>
+              <p className="text-[12px] text-brand-cream/55 leading-relaxed">
+                Design a login variant block-by-block in the visual editor — heroes, custom CTAs,
+                multiple variants you can A/B between. The fields below stay as the quick-config fallback.
+              </p>
+            </div>
+            <a
+              href="/admin/portals?role=login"
+              className="text-[11px] px-3 py-2 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 shrink-0 self-start sm:self-auto"
+            >
+              Open portal editor →
+            </a>
+          </div>
+
           <Card title="Layout" tip="Choose between a centered card, a split with hero image, or a minimal layout.">
             <div className="grid grid-cols-3 gap-2">
               {(["centered", "split", "minimal"] as LoginLayout[]).map(l => (
@@ -300,7 +368,7 @@ function AdminCustomisePageInner() {
               Preview /account ↗
             </Link>
             <button
-              onClick={() => { if (confirm("Reset login customisation to defaults?")) { resetLoginCustomisation(); setLogin(getLoginCustomisation()); } }}
+              onClick={async () => { if (await confirm({ title: "Reset login customisation to defaults?", confirmLabel: "Reset" })) { resetLoginCustomisation(); setLogin(getLoginCustomisation()); } }}
               className="text-xs text-brand-cream/45 hover:text-brand-orange"
             >
               Reset to defaults
@@ -398,7 +466,7 @@ function CustomTabRow({ tab, isFirst, isLast }: { tab: CustomTab; isFirst: boole
             <button disabled={isLast} onClick={() => moveCustomTab(tab.id, 1)} className="px-1.5 py-1 text-brand-cream/40 hover:text-brand-cream disabled:opacity-25">↓</button>
             <button onClick={() => setEditing(true)} className="text-[11px] px-2 py-1 text-brand-cream/55 hover:text-brand-cream">Edit</button>
             <button
-              onClick={() => { if (confirm(`Delete "${tab.label}"?`)) deleteCustomTab(tab.id); }}
+              onClick={async () => { if (await confirm({ title: `Delete "${tab.label}"?`, danger: true, confirmLabel: "Delete tab" })) deleteCustomTab(tab.id); }}
               className="text-[11px] px-2 py-1 text-brand-cream/45 hover:text-brand-orange"
             >
               Delete
@@ -477,14 +545,14 @@ function SidebarEditor({
     [next[idx], next[j]] = [next[j], next[idx]];
     updatePanels(next);
   }
-  function deletePanel(id: string) {
-    if (!confirm("Delete this panel and all its items?")) return;
+  async function deletePanel(id: string) {
+    if (!(await confirm({ title: "Delete this panel and all its items?", message: "Sub-folders and links underneath are removed too.", danger: true, confirmLabel: "Delete panel" }))) return;
     updatePanels(layout.panels.filter(p => p.id !== id));
   }
-  function addPanel() {
-    const label = prompt("Panel name", "New panel");
+  async function addPanel() {
+    const label = await prompt({ title: "Panel name", defaultValue: "New panel", placeholder: "Marketing" });
     if (!label) return;
-    const icon = prompt("Icon (emoji or short text)", "✨") ?? "✨";
+    const icon = (await prompt({ title: "Icon", message: "Emoji or short text shown in the sidebar.", defaultValue: "✨" })) ?? "✨";
     updatePanels([...layout.panels, {
       id: newId("panel"),
       label,
@@ -555,10 +623,10 @@ function PanelEditor({
   onDelete: () => void;
   onItemsChange: (items: SidebarItem[]) => void;
 }) {
-  function addLink() {
-    const label = prompt("Link label", "New link");
+  async function addLink() {
+    const label = await prompt({ title: "Link label", defaultValue: "New link", placeholder: "Refunds dashboard" });
     if (!label) return;
-    const href = prompt("URL or admin path (e.g. /admin/orders or https://…)", "/admin/");
+    const href = await prompt({ title: "URL or admin path", message: "Use /admin/foo for internal pages or https://… for external.", defaultValue: "/admin/" });
     if (!href) return;
     onItemsChange([...panel.items, {
       type: "link",
@@ -572,9 +640,9 @@ function PanelEditor({
   // folder here always fits within the depth budget.
   const canAddFolder = canAddFolderInside(1);
 
-  function addGroup() {
+  async function addGroup() {
     if (!canAddFolder) return;
-    const label = prompt("Folder name", "New folder");
+    const label = await prompt({ title: "Folder name", defaultValue: "New folder", placeholder: "Reports" });
     if (!label) return;
     onItemsChange([...panel.items, {
       type: "group",
@@ -590,8 +658,8 @@ function PanelEditor({
       : it,
     ));
   }
-  function deleteItem(id: string) {
-    if (!confirm("Delete this item?")) return;
+  async function deleteItem(id: string) {
+    if (!(await confirm({ title: "Delete this item?", danger: true, confirmLabel: "Delete" }))) return;
     onItemsChange(panel.items.filter(it => it.id !== id));
   }
   function moveItem(id: string, dir: -1 | 1) {
@@ -712,10 +780,10 @@ function ItemEditor({
   // own children would still fit inside MAX_SIDEBAR_DEPTH.
   const canAddFolder = canAddFolderInside(depth);
 
-  function addLinkChild() {
-    const label = prompt("Link label", "New link");
+  async function addLinkChild() {
+    const label = await prompt({ title: "Link label", defaultValue: "New link" });
     if (!label) return;
-    const href = prompt("URL or admin path", "/admin/");
+    const href = await prompt({ title: "URL or admin path", defaultValue: "/admin/" });
     if (!href) return;
     onPatch({
       items: [
@@ -724,9 +792,9 @@ function ItemEditor({
       ],
     } as Partial<SidebarItem>);
   }
-  function addFolderChild() {
+  async function addFolderChild() {
     if (!canAddFolder) return;
-    const label = prompt("Folder name", "New folder");
+    const label = await prompt({ title: "Folder name", defaultValue: "New folder" });
     if (!label) return;
     onPatch({
       items: [
@@ -740,8 +808,8 @@ function ItemEditor({
       items: group.items.map(c => c.id === id ? { ...c, ...patch } as SidebarItem : c),
     } as Partial<SidebarItem>);
   }
-  function deleteChild(id: string) {
-    if (!confirm("Delete this item?")) return;
+  async function deleteChild(id: string) {
+    if (!(await confirm({ title: "Delete this item?", danger: true, confirmLabel: "Delete" }))) return;
     onPatch({ items: group.items.filter(c => c.id !== id) } as Partial<SidebarItem>);
   }
   function moveChild(id: string, dir: -1 | 1) {

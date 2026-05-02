@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface WebhookConfig {
@@ -60,7 +62,7 @@ function WebhooksPageInner() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this webhook? Future events won't be delivered.")) return;
+    if (!(await confirm({ title: "Delete this webhook?", message: "Future events won't be delivered. Past delivery logs are kept for audit.", danger: true, confirmLabel: "Delete" }))) return;
     const orgId = getActiveOrgId();
     await fetch(`/api/portal/webhooks/${id}?orgId=${orgId}`, { method: "DELETE" });
     await load();
@@ -159,7 +161,7 @@ function WebhooksPageInner() {
       )}
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : hooks.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">No webhooks yet.</p>
       ) : (

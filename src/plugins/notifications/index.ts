@@ -19,7 +19,7 @@ const plugin: AquaPlugin = {
   description: "Subscribes to the event bus and converts events into notifications. Per-user feed in the admin (bell icon + /admin/notifications). Optional email digest (immediate / hourly / daily). Browser push via the Web Push API for desktop + mobile notifications even when the admin tab is closed.",
 
   navItems: [
-    { id: "notifications",          label: "Notifications", href: "/admin/notifications", order: 0 },
+    { id: "notifications",          label: "Notifications", href: "/admin/notifications", order: 0, panelId: "settings" },
     { id: "notifications-settings", label: "Preferences",   href: "/admin/notifications/preferences", order: 1 },
   ],
 

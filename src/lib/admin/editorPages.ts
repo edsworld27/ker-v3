@@ -4,7 +4,7 @@
 // /api/portal/pages/[siteId][/...]. Wraps fetch + a per-site cache so the
 // canvas can iterate fast without re-roundtripping on every keystroke.
 
-import type { Block, EditorPage } from "@/portal/server/types";
+import type { Block, EditorPage, PortalRole } from "@/portal/server/types";
 
 interface ListPayload { ok: boolean; pages: EditorPage[]; }
 interface PagePayload { ok: boolean; page: EditorPage; }
@@ -37,6 +37,7 @@ export interface CreatePageInput {
   title: string;
   description?: string;
   blocks?: Block[];
+  portalRole?: PortalRole;
 }
 
 export async function createPage(siteId: string, input: CreatePageInput): Promise<EditorPage | null> {
@@ -61,6 +62,7 @@ export interface UpdatePageInput {
   customFoot?: string;
   seo?: EditorPage["seo"];
   layoutOverrides?: EditorPage["layoutOverrides"];
+  portalRole?: PortalRole;
 }
 
 export async function updatePage(siteId: string, pageId: string, patch: UpdatePageInput): Promise<EditorPage | null> {
@@ -105,4 +107,35 @@ export function onPagesChange(cb: (siteId: string) => void): () => void {
   };
   window.addEventListener(CHANGE_EVENT, handler as EventListener);
   return () => window.removeEventListener(CHANGE_EVENT, handler as EventListener);
+}
+
+// ─── Portal variants ──────────────────────────────────────────────────────
+
+export async function listPortalVariants(siteId: string, role: PortalRole): Promise<EditorPage[]> {
+  const res = await fetch(
+    `/api/portal/pages/${encodeURIComponent(siteId)}/portal-variants?role=${encodeURIComponent(role)}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) return [];
+  const data = await res.json() as { ok: boolean; variants?: EditorPage[] };
+  return data.variants ?? [];
+}
+
+export async function setActivePortalVariant(
+  siteId: string,
+  role: PortalRole,
+  pageId: string | null,
+): Promise<EditorPage[]> {
+  const res = await fetch(
+    `/api/portal/pages/${encodeURIComponent(siteId)}/portal-variants`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ role, pageId }),
+    },
+  );
+  bust(siteId);
+  if (!res.ok) return [];
+  const data = await res.json() as { ok: boolean; variants?: EditorPage[] };
+  return data.variants ?? [];
 }

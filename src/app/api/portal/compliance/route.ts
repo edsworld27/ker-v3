@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
+import { requireAdmin } from "@/lib/server/auth";
 import { getCompliance, getComplianceReport } from "@/portal/server/compliance";
 import { saveSettings } from "@/portal/server/settings";
 import type { ComplianceMode } from "@/portal/server/types";
@@ -24,6 +25,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Mutates legal/compliance posture for the org — admin only.
+  try { await requireAdmin(); } catch (e) { if (e instanceof Response) return e; throw e; }
   await ensureHydrated();
   let body: {
     mode?: string;

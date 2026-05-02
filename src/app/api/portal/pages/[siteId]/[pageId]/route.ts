@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
 import { getPage, updatePage, deletePage } from "@/portal/server/pages";
-import type { Block } from "@/portal/server/types";
+import type { Block, PortalRole } from "@/portal/server/types";
 
 // GET    /api/portal/pages/[siteId]/[pageId]  — load a single page
 // PATCH  /api/portal/pages/[siteId]/[pageId]  — partial update (title/slug/description/blocks)
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ siteId: st
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ siteId: string; pageId: string }> }) {
   await ensureHydrated();
   const { siteId, pageId } = await ctx.params;
-  let body: { title?: string; slug?: string; description?: string; blocks?: Block[] };
+  let body: { title?: string; slug?: string; description?: string; blocks?: Block[]; portalRole?: PortalRole };
   try { body = await req.json(); }
   catch { return NextResponse.json({ ok: false, error: "bad-json" }, { status: 400 }); }
   const page = updatePage(siteId, pageId, body);

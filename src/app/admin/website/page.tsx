@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PAGE_SCHEMAS, GLOBAL_SETTINGS_SCHEMA, getSchema } from "@/lib/admin/contentSchema";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   listAll, onContentChange, hasDraft, pendingDraftCount,
   publishAll, discardAllDrafts, isPreviewMode, setPreviewMode,
@@ -53,14 +54,14 @@ function AdminWebsitePageInner() {
   const totalEdits = Object.keys(store).length;
   const mediaCount = media.length;
 
-  function publishEverything() {
+  async function publishEverything() {
     if (totalDrafts === 0) return;
-    if (!confirm(`Publish all ${totalDrafts} draft change${totalDrafts === 1 ? "" : "s"} across the site?`)) return;
+    if (!(await confirm({ title: `Publish all ${totalDrafts} draft change${totalDrafts === 1 ? "" : "s"} across the site?`, message: "Visitors will see them immediately.", confirmLabel: "Publish all" }))) return;
     publishAll();
   }
-  function discardEverything() {
+  async function discardEverything() {
     if (totalDrafts === 0) return;
-    if (!confirm(`Discard all ${totalDrafts} unpublished draft change${totalDrafts === 1 ? "" : "s"}?`)) return;
+    if (!(await confirm({ title: `Discard all ${totalDrafts} unpublished draft change${totalDrafts === 1 ? "" : "s"}?`, danger: true, confirmLabel: "Discard all" }))) return;
     discardAllDrafts();
   }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
 import {
   listTeam, listRoles, inviteTeamMember, updateTeamMember, removeTeamMember,
   saveRole, createRole, deleteRole, onTeamChange,
@@ -55,21 +56,41 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
   const [name, setName] = useState("");
   const [roleId, setRoleId] = useState(roles[0]?.id ?? "viewer");
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Esc closes (except while submit is in flight).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !busy) { e.preventDefault(); onClose(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !name) return;
-    inviteTeamMember({ email, name, roleId, note: note || undefined });
-    onClose();
+    if (!email || !name || busy) return;
+    setBusy(true);
+    try {
+      inviteTeamMember({ email, name, roleId, note: note || undefined });
+      onClose();
+    } finally { setBusy(false); }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={busy ? undefined : onClose}
+    >
       <form
         onSubmit={submit}
+        onClick={e => e.stopPropagation()}
         className="w-full max-w-md bg-brand-black-soft border border-white/10 rounded-2xl p-6 space-y-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-title"
       >
-        <h2 className="font-display text-xl text-brand-cream">Invite team member</h2>
+        <h2 id="invite-title" className="font-display text-xl text-brand-cream">Invite team member</h2>
         <Field label="Name">
           <input
             required
@@ -106,8 +127,10 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
           />
         </Field>
         <div className="flex gap-2 justify-end pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-brand-cream/60 hover:text-brand-cream">Cancel</button>
-          <button type="submit" className="px-5 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold">Invite</button>
+          <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-brand-cream/60 hover:text-brand-cream disabled:opacity-40">Cancel</button>
+          <button type="submit" disabled={busy || !email || !name} className="px-5 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold disabled:opacity-40">
+            {busy ? "Inviting…" : "Invite"}
+          </button>
         </div>
       </form>
     </div>
@@ -124,14 +147,32 @@ function RoleEditor({ role, onSave, onDelete, onCancel }: {
 
   const groups = Array.from(new Set(ALL_RESOURCES.map((r) => r.group)));
 
+  // Esc closes the editor.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); onCancel(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm p-4 flex items-start justify-center">
-      <div className="w-full max-w-3xl bg-brand-black-soft border border-white/10 rounded-2xl my-6 overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm p-4 flex items-start justify-center"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-3xl bg-brand-black-soft border border-white/10 rounded-2xl my-6 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="role-editor-title"
+      >
         <div className="p-6 border-b border-white/5 flex items-center justify-between gap-4">
-          <h2 className="font-display text-xl text-brand-cream">
+          <h2 id="role-editor-title" className="font-display text-xl text-brand-cream">
             {role.isSystem ? `Role: ${role.name}` : "Edit role"}
           </h2>
-          <button onClick={onCancel} className="text-brand-cream/40 hover:text-brand-cream text-xl leading-none">✕</button>
+          <button onClick={onCancel} aria-label="Close" className="text-brand-cream/40 hover:text-brand-cream text-xl leading-none">✕</button>
         </div>
 
         <div className="p-6 space-y-5">
@@ -263,6 +304,16 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   const [tempPw, setTempPw] = useState("");
   const [result, setResult] = useState<{ email: string; pass: string } | null>(null);
   const [error, setError]   = useState("");
+  const [busy, setBusy]     = useState(false);
+
+  // Esc closes the dialog.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !busy) { e.preventDefault(); onClose(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
 
   function generate() {
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
@@ -272,18 +323,31 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (busy) return;
     if (!tempPw || tempPw.length < 8) { setError("Temp password must be at least 8 characters."); return; }
-    const r = adminCreateUser({ email, name, role, tempPassword: tempPw });
-    if (!r.ok) { setError(r.error); return; }
-    setResult({ email, pass: tempPw });
+    setBusy(true);
+    try {
+      const r = adminCreateUser({ email, name, role, tempPassword: tempPw });
+      if (!r.ok) { setError(r.error); return; }
+      setResult({ email, pass: tempPw });
+    } finally { setBusy(false); }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-brand-black-soft border border-white/10 rounded-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={busy ? undefined : onClose}
+    >
+      <div
+        className="w-full max-w-md bg-brand-black-soft border border-white/10 rounded-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-user-title"
+      >
         <div className="p-5 border-b border-white/5 flex items-center justify-between">
-          <h2 className="font-display text-xl text-brand-cream">Create user account</h2>
-          <button onClick={onClose} className="text-brand-cream/40 hover:text-brand-cream text-xl">✕</button>
+          <h2 id="create-user-title" className="font-display text-xl text-brand-cream">Create user account</h2>
+          <button onClick={onClose} aria-label="Close" className="text-brand-cream/40 hover:text-brand-cream text-xl">✕</button>
         </div>
 
         {result ? (
@@ -328,8 +392,10 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             </F>
             {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
             <div className="flex gap-2 justify-end pt-1">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-brand-cream/60 hover:text-brand-cream">Cancel</button>
-              <button type="submit" className="px-5 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold">Create account</button>
+              <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-brand-cream/60 hover:text-brand-cream disabled:opacity-40">Cancel</button>
+              <button type="submit" disabled={busy || !email || !name || !tempPw} className="px-5 py-2 text-sm bg-brand-orange text-white rounded-xl font-semibold disabled:opacity-40">
+                {busy ? "Creating…" : "Create account"}
+              </button>
             </div>
           </form>
         )}
@@ -537,7 +603,14 @@ export default function AdminTeamPage() {
                   {impersonating === u.email ? "Loading…" : "Impersonate"}
                 </button>
                 <button
-                  onClick={() => { if (confirm(`Delete account for ${u.email}?`)) { deleteUser(u.email); setUsers(listAllUsers()); } }}
+                  onClick={async () => {
+                    if (await confirm({
+                      title: `Delete account for ${u.email}?`,
+                      message: "Their orders + history stay in the system but they can no longer sign in.",
+                      danger: true,
+                      confirmLabel: "Delete account",
+                    })) { deleteUser(u.email); setUsers(listAllUsers()); }
+                  }}
                   className="text-xs px-2.5 py-1.5 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40 transition-colors"
                 >
                   Delete
@@ -618,7 +691,7 @@ export default function AdminTeamPage() {
                   ) : (
                     <>
                       <button onClick={() => setEditMember(m.id)} className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-brand-cream/50 hover:text-brand-cream hover:border-white/30">Edit</button>
-                      <button onClick={() => { if (confirm(`Remove ${m.name}?`)) removeTeamMember(m.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40">Remove</button>
+                      <button onClick={async () => { if (await confirm({ title: `Remove ${m.name}?`, message: "They lose access to this admin panel.", danger: true, confirmLabel: "Remove" })) removeTeamMember(m.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40">Remove</button>
                     </>
                   )}
                 </div>

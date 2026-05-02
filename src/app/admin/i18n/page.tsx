@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from "react";
 import PluginRequired from "@/components/admin/PluginRequired";
+import SetupRequired from "@/components/admin/SetupRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface ApiResp {
@@ -61,7 +63,25 @@ function AdminI18nPageInner() {
     } finally { setSaving(false); }
   }
 
-  if (!data) return <main className="p-8 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (!data) return <PageSpinner />;
+
+  // Pre-flight: the translation table is meaningless until at least one
+  // locale is configured on the i18n plugin install. Direct the operator
+  // there before they try to edit a non-existent locale.
+  if (data.locales.length === 0) {
+    return (
+      <SetupRequired
+        title="No locales configured"
+        message="Add at least one locale (e.g. fr-FR, es-ES) to the i18n plugin before editing translations."
+        steps={[
+          "Open the i18n plugin's settings",
+          "Add the locale codes you want to support",
+          "Set a default locale",
+        ]}
+        cta={{ label: "Configure i18n", href: `/aqua/${getActiveOrgId()}/plugins/i18n` }}
+      />
+    );
+  }
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">

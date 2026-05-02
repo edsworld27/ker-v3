@@ -9,11 +9,36 @@
 
 import { getActiveOrgId, getActiveOrg, loadOrgs } from "./orgs";
 
-interface NavItem { id: string; label: string; href: string; requiresFeature?: string | null }
+interface NavItem {
+  id: string;
+  label: string;
+  href: string;
+  requiresFeature?: string | null;
+  panelId?: string | null;
+  groupId?: string | null;
+  order?: number | null;
+  badge?: string | number | null;
+}
 interface ApiPlugin { id: string; navItems: NavItem[] }
+
+// What a plugin nav item contributes to the sidebar tree once its
+// owning plugin is installed + the path is allowed. Captured at
+// fetchRegistry time so the layout merge is sync.
+export interface PluginSidebarContribution {
+  pluginId: string;
+  panelId: string;
+  groupId?: string;
+  navId: string;
+  label: string;
+  href: string;
+  requiresFeature: string | null;
+  order: number;
+  badge?: string | number;
+}
 
 interface State {
   paths: Map<string, { pluginId: string; requiresFeature: string | null }>;
+  contributions: PluginSidebarContribution[];
   installed: Set<string>;
   features: Map<string, Record<string, boolean>>;
   enabled: Map<string, boolean>;
@@ -23,6 +48,7 @@ interface State {
 
 let state: State = {
   paths: new Map(),
+  contributions: [],
   installed: new Set(),
   features: new Map(),
   enabled: new Map(),
@@ -41,13 +67,30 @@ async function fetchRegistry(): Promise<void> {
       const res = await fetch("/api/portal/plugins");
       const data = await res.json() as { plugins: ApiPlugin[] };
       const next = new Map<string, { pluginId: string; requiresFeature: string | null }>();
+      const contributions: PluginSidebarContribution[] = [];
       for (const p of data.plugins) {
         for (const n of p.navItems) {
           if (!n.href.startsWith("/admin")) continue;
           next.set(n.href, { pluginId: p.id, requiresFeature: n.requiresFeature ?? null });
+          // Plugins that declare panelId opt into being merged into the
+          // sidebar tree. Items without panelId stay filtered through
+          // DEFAULT_LAYOUT only.
+          if (n.panelId) {
+            contributions.push({
+              pluginId: p.id,
+              panelId: n.panelId,
+              groupId: n.groupId ?? undefined,
+              navId: n.id,
+              label: n.label,
+              href: n.href,
+              requiresFeature: n.requiresFeature ?? null,
+              order: typeof n.order === "number" ? n.order : 0,
+              badge: typeof n.badge === "string" || typeof n.badge === "number" ? n.badge : undefined,
+            });
+          }
         }
       }
-      state = { ...state, paths: next };
+      state = { ...state, paths: next, contributions };
     } catch { /* leave empty; fallback to "show everything" */ }
   })();
   await registryFetchPromise;
@@ -107,6 +150,24 @@ export function getInstalledPluginsSnapshot() {
     enabled: new Map(state.enabled),
     features: new Map(state.features),
   };
+}
+
+// Sidebar contributions declared by plugin manifests via navItems[].panelId.
+// Returned filtered through the same install/feature gates as isPathAllowed
+// so the caller can drop them straight into the rendered tree without
+// repeating the check.
+export function getPluginSidebarContributions(): PluginSidebarContribution[] {
+  // Primary org sees everything (the agency operator).
+  if (state.primary) return state.contributions.slice();
+  return state.contributions.filter(c => {
+    if (!state.installed.has(c.pluginId)) return false;
+    if (state.enabled.get(c.pluginId) !== true) return false;
+    if (c.requiresFeature) {
+      const feats = state.features.get(c.pluginId) ?? {};
+      if (feats[c.requiresFeature] !== true) return false;
+    }
+    return true;
+  });
 }
 
 // Re-fetch installs when the active org changes.

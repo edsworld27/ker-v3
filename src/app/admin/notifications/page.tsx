@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Notification {
@@ -30,41 +31,59 @@ function NotificationsPageInner() {
   const [list, setList] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const orgId = getActiveOrgId();
-    const res = await fetch(`/api/portal/notifications?orgId=${orgId}`);
-    const data = await res.json();
-    setList(data.notifications ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/notifications?orgId=${orgId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setList(data.notifications ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { void load(); }, []);
 
   async function markAllRead() {
     const orgId = getActiveOrgId();
-    await fetch("/api/portal/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orgId }),
-    });
-    await load();
+    try {
+      const res = await fetch("/api/portal/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to mark all read");
+    }
   }
 
   async function markRead(id: string) {
     const orgId = getActiveOrgId();
-    await fetch(`/api/portal/notifications/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orgId }),
-    });
-    await load();
+    try {
+      const res = await fetch(`/api/portal/notifications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to mark notification read");
+    }
   }
 
   const categories = [...new Set(list.map(n => n.category))];
   const visible = filter === "all" ? list : list.filter(n => n.category === filter);
   const unread = list.filter(n => !n.read).length;
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-8 space-y-4">
@@ -93,6 +112,14 @@ function NotificationsPageInner() {
             label={`${c} (${list.filter(n => n.category === c).length})`} />
         ))}
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-200 flex items-center gap-2">
+          <span>!</span>
+          <span className="flex-1">{error}</span>
+          <button onClick={() => void load()} className="text-[11px] underline hover:text-red-100">Retry</button>
+        </div>
+      )}
 
       {visible.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">All caught up — nothing new.</p>

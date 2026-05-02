@@ -47,7 +47,19 @@ function AdminCustomersPageInner() {
         </div>
         <div className="divide-y divide-white/5">
           {filtered.length === 0 && (
-            <p className="px-5 py-10 text-center text-sm text-brand-cream/45">No customers yet.</p>
+            <div className="px-5 py-10 text-center">
+              {query.trim() ? (
+                <>
+                  <p className="text-sm text-brand-cream/65">No customers match &ldquo;{query}&rdquo;.</p>
+                  <button onClick={() => setQuery("")} className="text-[11px] text-cyan-300/80 hover:text-cyan-200 mt-1">Clear search</button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-brand-cream/65">No customers yet.</p>
+                  <p className="text-xs text-brand-cream/40 mt-1.5">Customers appear here automatically when they place an order or sign up.</p>
+                </>
+              )}
+            </div>
           )}
           {filtered.map(c => (
             <Link

@@ -24,11 +24,21 @@ import {
   type SecurityMode,
 } from "@/lib/auth";
 
+// Open-redirect guard: only allow internal next= targets so a crafted
+// link can't bounce a freshly-signed-in admin to an attacker site.
+// Accepts /admin, /aqua, /account, etc.; rejects protocol-relative
+// ("//evil.com") and absolute URLs.
+function safeNext(raw: string | null | undefined): string {
+  if (!raw) return "/admin";
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/admin";
+}
+
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const back = params?.get("back") ?? null;
-  const next = params?.get("next") ?? "/admin";
+  const next = safeNext(params?.get("next"));
 
   const [hydrated, setHydrated] = useState(false);
   const [mode, setMode] = useState<SecurityMode>("strict");

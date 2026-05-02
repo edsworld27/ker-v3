@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 import { getSchema, GLOBAL_SETTINGS_SCHEMA, getDefault, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
 import {
   getDraftValue, getPublishedValue, hasDraft, setValue, clearValue,
@@ -44,18 +46,18 @@ export default function PageEditor() {
   const draftCount = allKeys.filter(k => hasDraft(k)).length;
   const editsCount = allKeys.filter(k => getDraftValue(k) !== undefined || getPublishedValue(k) !== undefined).length;
 
-  function resetAll() {
-    if (!confirm(`Reset all ${editsCount} edit${editsCount === 1 ? "" : "s"} on this page back to defaults?`)) return;
+  async function resetAll() {
+    if (!(await confirm({ title: `Reset all ${editsCount} edit${editsCount === 1 ? "" : "s"} on this page back to defaults?`, danger: true, confirmLabel: "Reset" }))) return;
     for (const k of allKeys) clearValue(k);
   }
 
-  function publishAll() {
-    if (!confirm(`Publish ${draftCount} draft change${draftCount === 1 ? "" : "s"} on this page? Visitors will see them immediately.`)) return;
+  async function publishAll() {
+    if (!(await confirm({ title: `Publish ${draftCount} draft change${draftCount === 1 ? "" : "s"} on this page?`, message: "Visitors will see them immediately.", confirmLabel: "Publish" }))) return;
     for (const k of allKeys) if (hasDraft(k)) publishKey(k);
   }
 
-  function discardAll() {
-    if (!confirm(`Discard ${draftCount} unpublished draft change${draftCount === 1 ? "" : "s"}?`)) return;
+  async function discardAll() {
+    if (!(await confirm({ title: `Discard ${draftCount} unpublished draft change${draftCount === 1 ? "" : "s"}?`, danger: true, confirmLabel: "Discard" }))) return;
     for (const k of allKeys) if (hasDraft(k)) discardDraft(k);
   }
 
@@ -341,7 +343,7 @@ function ImageFieldEditor({
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
     if (file.size > MAX_BYTES) {
-      alert(`Image too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_BYTES)}.`);
+      notify({ tone: "warn", title: "Image too large", message: `${formatBytes(file.size)} — max is ${formatBytes(MAX_BYTES)}.` });
       return;
     }
     setUploading(true);

@@ -17,7 +17,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Product, ProductOption, ProductOptionDisplay, ProductOptionValue, ProductVariant } from "@/lib/products";
 import { getProduct } from "@/lib/products";
+import { confirm } from "@/components/admin/ConfirmHost";
 import { getCustomProduct, upsertCustomProduct, type CustomProduct } from "@/lib/admin/customProducts";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { productDetailTabs } from "@/lib/admin/tabSets";
 
 const DISPLAY_TYPES: Array<{ id: ProductOptionDisplay; label: string; help: string }> = [
   { id: "swatch",       label: "Colour swatch", help: "Round colour chips. Set hex on each value." },
@@ -102,8 +105,8 @@ export default function ProductVariantsPage() {
     commitOptions(options.map(o => o.id === id ? { ...o, ...patch } : o));
   }
 
-  function removeOption(id: string) {
-    if (!confirm("Remove this option group? All its values will be deleted.")) return;
+  async function removeOption(id: string) {
+    if (!(await confirm({ title: "Remove this option group?", message: "All its values will be deleted.", danger: true, confirmLabel: "Remove" }))) return;
     commitOptions(options.filter(o => o.id !== id));
     commitVariants(variants.filter(v => !(id in v.optionValues)));
   }
@@ -163,6 +166,8 @@ export default function ProductVariantsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <AdminTabs tabs={productDetailTabs(product.slug)} ariaLabel="Product" />
+
       <header className="flex items-baseline justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-1">Variants</p>

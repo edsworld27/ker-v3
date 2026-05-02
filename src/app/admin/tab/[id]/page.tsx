@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import PageSpinner from "@/components/admin/Spinner";
 import { useParams } from "next/navigation";
 import { getCustomTab, onAdminConfigChange, type CustomTab } from "@/lib/admin/adminConfig";
 
@@ -17,7 +18,7 @@ export default function CustomTabPage() {
   }, [id]);
 
   if (tab === undefined) {
-    return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
+    return <PageSpinner wrap={false} />;
   }
 
   if (!tab) {

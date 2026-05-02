@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { notify } from "@/components/admin/Toaster";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Booking {
@@ -80,7 +81,7 @@ function CalendarPageInner() {
   function copyFeedUrl() {
     if (!feedUrl) return;
     void navigator.clipboard.writeText(feedUrl);
-    alert("Calendar feed URL copied. Paste into Google / Apple / Notion / Outlook to subscribe.");
+    notify({ tone: "ok", title: "Feed URL copied", message: "Paste into Google / Apple / Notion / Outlook to subscribe." });
   }
 
   function fmtDay(date: Date): string {

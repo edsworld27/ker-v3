@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listPages, createPage, deletePage, togglePageHidden, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { prompt } from "@/components/admin/PromptHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 export default function AdminPagesIndex() {
   return <PluginRequired plugin="website"><AdminPagesIndexInner /></PluginRequired>;
@@ -19,14 +22,15 @@ function AdminPagesIndexInner() {
     return onPagesChange(refresh);
   }, []);
 
-  function newPage() {
-    const title = prompt("Page title", "New page") ?? "New page";
+  async function newPage() {
+    const title = (await prompt({ title: "Page title", defaultValue: "New page", placeholder: "About us" })) ?? "New page";
     const p = createPage(title);
     router.push(`/admin/pages/${p.id}`);
   }
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-5xl">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[11px] tracking-[0.28em] uppercase text-brand-amber mb-2">Custom pages</p>

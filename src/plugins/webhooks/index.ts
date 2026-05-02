@@ -18,7 +18,7 @@ const plugin: AquaPlugin = {
   description: "Subscribe external systems to Aqua events. Configure URL + event filter + HMAC secret in the admin; we POST signed JSON on every match. Failed deliveries auto-retry with exponential backoff (3 attempts max). Per-org delivery log shows status, response code, payload preview.",
 
   navItems: [
-    { id: "webhooks",     label: "Webhooks", href: "/admin/webhooks", order: 0 },
+    { id: "webhooks",     label: "Webhooks", href: "/admin/webhooks", order: 0, panelId: "settings" },
     { id: "webhook-log",  label: "Delivery log", href: "/admin/webhooks/log", order: 1 },
   ],
 

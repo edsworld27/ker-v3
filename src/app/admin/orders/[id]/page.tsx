@@ -117,7 +117,17 @@ export default function AdminOrderDetailPage() {
         <div className="space-y-4 sm:space-y-6">
           {/* Customer */}
           <section className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6">
-            <h2 className="text-sm tracking-wide text-brand-cream/80 mb-3">Customer</h2>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <h2 className="text-sm tracking-wide text-brand-cream/80">Customer</h2>
+              {order.customerEmail && (
+                <Link
+                  href={`/admin/customers/${encodeURIComponent(order.customerEmail)}`}
+                  className="text-[11px] text-cyan-300/80 hover:text-cyan-200 shrink-0"
+                >
+                  View profile →
+                </Link>
+              )}
+            </div>
             <p className="text-sm text-brand-cream">{order.customerName}</p>
             <p className="text-xs text-brand-cream/55 break-all">{order.customerEmail}</p>
             {order.shippingAddress && (

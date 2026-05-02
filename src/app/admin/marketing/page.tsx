@@ -7,6 +7,8 @@ import {
   listAffiliates, createAffiliate, updateAffiliate, deleteAffiliate, onAffiliatesChange, recordAffiliatePayout, type Affiliate,
 } from "@/lib/admin/marketing";
 import { listOrders, type Order } from "@/lib/admin/orders";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 type Tab = "sources" | "discounts" | "affiliates";
 
@@ -128,7 +130,7 @@ function SourceCard({ src, count, revenue }: { src: OrderSource; count: number; 
           ) : (
             <button onClick={() => updateSource(src.id, { archived: false })} className="text-[10px] text-brand-amber px-2 py-1 rounded border border-brand-amber/25">Restore</button>
           )}
-          <button onClick={() => { if (confirm(`Delete source "${src.label}"?`)) deleteSource(src.id); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
+          <button onClick={async () => { if (await confirm({ title: `Delete source "${src.label}"?`, message: "Existing orders attributed to it keep the reference but the source is gone from the picker.", danger: true, confirmLabel: "Delete" })) deleteSource(src.id); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
         </div>
       </div>
       <div className="flex gap-4 pt-2 border-t border-white/5 mt-2">
@@ -145,7 +147,7 @@ function SourceForm({ initial, onClose }: { initial?: OrderSource; onClose: () =
   const [desc, setDesc] = useState(initial?.description ?? "");
 
   function save() {
-    if (!label.trim()) { alert("Label required"); return; }
+    if (!label.trim()) { notify({ tone: "warn", message: "Label required." }); return; }
     if (initial) {
       updateSource(initial.id, { label: label.trim(), trackingSlug: slug.trim() || undefined, description: desc.trim() || undefined });
     } else {
@@ -253,7 +255,7 @@ function DiscountRow({ d, stats }: { d: DiscountCode; stats: { count: number; re
           ) : (
             <button onClick={() => updateDiscount(d.code, { archived: false })} className="text-[10px] text-brand-amber px-2 py-1 rounded border border-brand-amber/25">Restore</button>
           )}
-          <button onClick={() => { if (confirm(`Delete code "${d.code}"?`)) deleteDiscount(d.code); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
+          <button onClick={async () => { if (await confirm({ title: `Delete code "${d.code}"?`, message: "Existing orders that used the code keep their discount, but no new uses can apply it.", danger: true, confirmLabel: "Delete" })) deleteDiscount(d.code); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
         </div>
       </div>
     </div>
@@ -270,7 +272,7 @@ function DiscountForm({ initial, onClose }: { initial?: DiscountCode; onClose: (
   const [note, setNote] = useState(initial?.note ?? "");
 
   function save() {
-    if (!code.trim()) { alert("Code required"); return; }
+    if (!code.trim()) { notify({ tone: "warn", message: "Code required." }); return; }
     const body = {
       code: code.trim().toUpperCase(),
       type,
@@ -284,7 +286,7 @@ function DiscountForm({ initial, onClose }: { initial?: DiscountCode; onClose: (
       if (initial) updateDiscount(initial.code, body);
       else createDiscount(body);
       onClose();
-    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { notify({ tone: "error", title: "Failed", message: e instanceof Error ? e.message : "Unknown error" }); }
   }
 
   return (
@@ -365,7 +367,7 @@ function AffiliateCard({ a, stats }: { a: Affiliate; stats: { count: number; rev
           <button onClick={() => setEditing(true)} className="text-[10px] text-brand-cream/55 hover:text-brand-cream px-2 py-1 rounded border border-white/10">Edit</button>
           {owed > 0 && (
             <button
-              onClick={() => { if (confirm(`Mark £${owed.toFixed(2)} as paid to ${a.name}?`)) recordAffiliatePayout(a.id, owed); }}
+              onClick={async () => { if (await confirm({ title: `Mark £${owed.toFixed(2)} as paid to ${a.name}?`, message: "Records the payout in the ledger. Reversible from the activity log if you need to.", confirmLabel: "Mark paid" })) recordAffiliatePayout(a.id, owed); }}
               className="text-[10px] text-brand-amber px-2 py-1 rounded border border-brand-amber/30"
             >
               Mark paid £{owed.toFixed(2)}
@@ -376,7 +378,7 @@ function AffiliateCard({ a, stats }: { a: Affiliate; stats: { count: number; rev
           ) : (
             <button onClick={() => updateAffiliate(a.id, { archived: false })} className="text-[10px] text-brand-amber px-2 py-1 rounded border border-brand-amber/25">Restore</button>
           )}
-          <button onClick={() => { if (confirm(`Delete affiliate "${a.name}"?`)) deleteAffiliate(a.id); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
+          <button onClick={async () => { if (await confirm({ title: `Delete affiliate "${a.name}"?`, message: "Their click + commission history is removed.", danger: true, confirmLabel: "Delete" })) deleteAffiliate(a.id); }} className="text-[10px] text-brand-cream/40 hover:text-brand-orange px-2 py-1 rounded border border-white/10">×</button>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-[11px]">
@@ -414,7 +416,7 @@ function AffiliateForm({ initial, onClose }: { initial?: Affiliate; onClose: () 
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   function save() {
-    if (!name.trim() || !email.trim()) { alert("Name and email required"); return; }
+    if (!name.trim() || !email.trim()) { notify({ tone: "warn", message: "Name and email required." }); return; }
     const body = {
       name: name.trim(),
       email: email.trim(),

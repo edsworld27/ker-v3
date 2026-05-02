@@ -5,12 +5,20 @@ import { useEffect, useMemo, useState } from "react";
 import { computeStats, type DashboardStats } from "@/lib/admin/stats";
 import { listOrders, type Order } from "@/lib/admin/orders";
 import { listAllSources, type OrderSource } from "@/lib/admin/marketing";
+import { getProducts } from "@/lib/products";
+import { getActiveOrg, loadOrgs } from "@/lib/admin/orgs";
+import type { OrgRecord } from "@/portal/server/types";
+
+const FIRST_RUN_DISMISS_KEY = "lk_first_run_dismissed_v1";
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recent, setRecent] = useState<Order[]>([]);
   const [sources, setSources] = useState<OrderSource[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [org, setOrg] = useState<OrgRecord | undefined>(undefined);
+  const [productCount, setProductCount] = useState(0);
+  const [firstRunDismissed, setFirstRunDismissed] = useState(true);
 
   useEffect(() => {
     setStats(computeStats());
@@ -18,7 +26,18 @@ export default function AdminOverviewPage() {
     setAllOrders(all);
     setRecent(all.slice(0, 6));
     setSources(listAllSources());
+    setProductCount(getProducts({ includeHidden: true }).length);
+    void loadOrgs(false).then(() => setOrg(getActiveOrg()));
+    if (typeof window !== "undefined") {
+      try { setFirstRunDismissed(localStorage.getItem(FIRST_RUN_DISMISS_KEY) === "1"); }
+      catch { setFirstRunDismissed(false); }
+    }
   }, []);
+
+  function dismissFirstRun() {
+    try { localStorage.setItem(FIRST_RUN_DISMISS_KEY, "1"); } catch {}
+    setFirstRunDismissed(true);
+  }
 
   // Source breakdown over the last 30 days
   const sourceBreakdown = useMemo(() => {
@@ -36,10 +55,18 @@ export default function AdminOverviewPage() {
     return [...m.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [stats, allOrders, sources]);
 
-  if (!stats) return <div className="p-8 text-brand-cream/40 text-sm">Loading…</div>;
+  if (!stats) return <DashboardSkeleton />;
 
   const max = Math.max(1, ...stats.revenueByDay.map(d => d.revenue));
   const topSourceRev = Math.max(1, ...sourceBreakdown.map(s => s.revenue));
+
+  // First-run = no orders, no products, < 2 plugins. The "blank canvas"
+  // shape that benefits most from a guided onboarding card.
+  const isFirstRun =
+    !firstRunDismissed &&
+    allOrders.length === 0 &&
+    productCount === 0 &&
+    (org?.plugins?.length ?? 0) < 2;
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-7xl">
@@ -48,6 +75,49 @@ export default function AdminOverviewPage() {
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Overview</h1>
         <p className="text-brand-cream/45 text-sm mt-1">Last 30 days · GBP</p>
       </div>
+
+      {isFirstRun && (
+        <section className="rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent p-5 sm:p-6 relative">
+          <button
+            onClick={dismissFirstRun}
+            aria-label="Dismiss"
+            className="absolute top-3 right-3 text-brand-cream/40 hover:text-brand-cream text-lg leading-none"
+          >
+            ×
+          </button>
+          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Welcome to {org?.name ?? "your portal"}</p>
+          <h2 className="font-display text-xl sm:text-2xl text-brand-cream mb-2">Let&apos;s get you set up.</h2>
+          <p className="text-[13px] text-brand-cream/65 mb-4 max-w-2xl">
+            This portal is ready to go but hasn&apos;t been configured yet. Pick a starting point — each step takes a minute.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <OnboardingStep
+              num={1}
+              title="Install plugins"
+              hint="E-commerce, blog, email, etc."
+              href="/admin/marketplace"
+            />
+            <OnboardingStep
+              num={2}
+              title="Add a product"
+              hint="So your shop has something to sell."
+              href="/admin/products/new"
+            />
+            <OnboardingStep
+              num={3}
+              title="Edit your home page"
+              hint="Click any text to change it."
+              href="/admin/editor"
+            />
+            <OnboardingStep
+              num={4}
+              title="Connect GitHub"
+              hint="Publish edits as a real PR."
+              href="/admin/portal-settings"
+            />
+          </div>
+        </section>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -91,7 +161,16 @@ export default function AdminOverviewPage() {
             <Link href="/admin/orders" className="text-xs text-brand-cream/55 hover:text-brand-cream">View all →</Link>
           </div>
           <div className="space-y-1">
-            {recent.length === 0 && <p className="text-sm text-brand-cream/45">No orders yet.</p>}
+            {recent.length === 0 && (
+              <div className="py-8 text-center">
+                <p className="text-sm text-brand-cream/55">No orders yet.</p>
+                <p className="text-xs text-brand-cream/40 mt-1.5">
+                  When a customer checks out, the order shows up here. Set up{" "}
+                  <Link href="/admin/products" className="text-brand-orange/80 hover:text-brand-orange">products</Link>{" "}or share your{" "}
+                  <Link href="/" target="_blank" className="text-brand-orange/80 hover:text-brand-orange">storefront →</Link>
+                </p>
+              </div>
+            )}
             {recent.map(o => (
               <Link
                 key={o.id}
@@ -160,12 +239,67 @@ export default function AdminOverviewPage() {
   );
 }
 
+function OnboardingStep({ num, title, hint, href }: { num: number; title: string; hint: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-cyan-400/30 transition-colors p-3 flex flex-col gap-1"
+    >
+      <span className="flex items-center gap-2">
+        <span className="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-200 text-[10px] tabular-nums flex items-center justify-center shrink-0">{num}</span>
+        <span className="text-[12px] font-medium text-brand-cream">{title}</span>
+      </span>
+      <span className="text-[10px] text-brand-cream/55 leading-relaxed">{hint}</span>
+    </Link>
+  );
+}
+
 function Kpi({ label, value, accent, small }: { label: string; value: string; accent?: "amber" | "orange"; small?: boolean }) {
   const colour = accent === "amber" ? "text-brand-amber" : accent === "orange" ? "text-brand-orange" : "text-brand-cream";
   return (
     <div className="rounded-xl border border-white/8 bg-brand-black-card p-4">
       <p className="text-[10px] tracking-[0.22em] uppercase text-brand-cream/45 mb-1.5">{label}</p>
       <p className={`font-display ${small ? "text-base" : "text-xl sm:text-2xl"} ${colour} truncate`}>{value}</p>
+    </div>
+  );
+}
+
+// Skeleton matching the dashboard layout — shows the operator that the
+// page is loading, not broken. Animates a soft shimmer across the cards.
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-7xl">
+      <div>
+        <div className="h-3 w-20 rounded bg-white/5 mb-3 animate-pulse" />
+        <div className="h-9 w-44 rounded bg-white/5 animate-pulse" />
+        <div className="h-3 w-32 rounded bg-white/5 mt-2 animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-white/8 bg-brand-black-card p-4 animate-pulse">
+            <div className="h-2.5 w-16 rounded bg-white/5 mb-2" />
+            <div className="h-7 w-20 rounded bg-white/5" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse">
+        <div className="h-3 w-28 rounded bg-white/5 mb-4" />
+        <div className="h-32 rounded bg-white/[0.03]" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse space-y-2">
+          <div className="h-3 w-32 rounded bg-white/5 mb-4" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-10 rounded bg-white/[0.03]" />
+          ))}
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-brand-black-card p-5 sm:p-6 animate-pulse space-y-2">
+          <div className="h-3 w-24 rounded bg-white/5 mb-4" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-9 rounded bg-white/[0.03]" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

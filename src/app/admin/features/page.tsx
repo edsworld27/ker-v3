@@ -7,6 +7,10 @@ import {
   type FeatureFlag, type FlagStatus, type FlagCategory,
 } from "@/lib/admin/featureFlags";
 import Tip from "@/components/admin/Tip";
+import { confirm } from "@/components/admin/ConfirmHost";
+import { prompt } from "@/components/admin/PromptHost";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { MARKETPLACE_TABS } from "@/lib/admin/tabSets";
 
 const STATUS_STYLE: Record<FlagStatus, string> = {
   on:      "bg-green-500/20 text-green-400",
@@ -34,6 +38,7 @@ export default function AdminFeaturesPage() {
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-5xl space-y-6">
+      <AdminTabs tabs={MARKETPLACE_TABS} ariaLabel="Plugins" />
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -47,11 +52,15 @@ export default function AdminFeaturesPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            const name = prompt("Flag name", "New feature");
+          onClick={async () => {
+            const name = await prompt({ title: "Flag name", defaultValue: "New feature", placeholder: "checkout-experiment-v2" });
             if (!name) return;
-            const desc = prompt("Description", "") ?? "";
-            const cat = (prompt("Category (storefront/marketing/upsell/admin/experimental/future)", "future") ?? "future") as FlagCategory;
+            const desc = (await prompt({ title: "Description (optional)", placeholder: "What does this flag control?" })) ?? "";
+            const cat = ((await prompt({
+              title: "Category",
+              message: "One of: storefront, marketing, upsell, admin, experimental, future",
+              defaultValue: "future",
+            })) ?? "future") as FlagCategory;
             createFlag(name, desc, cat);
           }}
           className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
@@ -152,7 +161,7 @@ export default function AdminFeaturesPage() {
               </button>
               {!flag.isBuiltIn && (
                 <button
-                  onClick={() => { if (confirm(`Delete "${flag.name}"?`)) deleteFlag(flag.id); }}
+                  onClick={async () => { if (await confirm({ title: `Delete "${flag.name}"?`, message: "Code that reads this flag will fall back to the default.", danger: true, confirmLabel: "Delete" })) deleteFlag(flag.id); }}
                   className="text-[11px] text-brand-cream/40 hover:text-brand-orange"
                 >
                   Delete

@@ -5,7 +5,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { CONTENT_TABS } from "@/lib/admin/tabSets";
 
 interface Page {
   id: string; slug: string; title: string;
@@ -48,10 +51,11 @@ function WikiPageInner() {
     } finally { setSaving(false); }
   }
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <AdminTabs tabs={CONTENT_TABS} ariaLabel="Content" />
       <header className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Wiki</p>
@@ -99,7 +103,19 @@ function WikiPageInner() {
       )}
 
       {pages.length === 0 ? (
-        <p className="text-[12px] text-brand-cream/45">No pages yet — create your first.</p>
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+          <p className="text-[13px] text-brand-cream/85">No wiki pages yet.</p>
+          <p className="text-[12px] text-brand-cream/55 mt-2 max-w-sm mx-auto">
+            The wiki is your team&apos;s shared knowledge base. Use it for runbooks, processes, anything that&apos;s easier to author together than in code.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditor({ title: "New page", body: "" })}
+            className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/20 text-[12px]"
+          >
+            + Create your first page
+          </button>
+        </div>
       ) : (
         <ul className="space-y-1">
           {pages.map(p => (
