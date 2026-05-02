@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginMarketplace from "@/components/admin/PluginMarketplace";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId, getActiveOrg, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 import { refreshInstalledPlugins } from "@/lib/admin/installedPlugins";
 import type { OrgRecord } from "@/portal/server/types";
@@ -31,7 +32,7 @@ export default function AdminMarketplacePage() {
   if (!orgId) {
     return (
       <main className="max-w-3xl mx-auto px-6 py-10">
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       </main>
     );
   }

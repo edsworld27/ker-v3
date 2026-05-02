@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import PageSpinner from "@/components/admin/Spinner";
 
 interface HealthRow {
   pluginId: string;
@@ -56,7 +57,7 @@ export default function PluginHealthPage() {
       </header>
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : rows.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">No plugins installed.</p>
       ) : (

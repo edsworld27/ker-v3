@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Notification {
@@ -82,7 +83,7 @@ function NotificationsPageInner() {
   const visible = filter === "all" ? list : list.filter(n => n.category === filter);
   const unread = list.filter(n => !n.read).length;
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-8 space-y-4">
