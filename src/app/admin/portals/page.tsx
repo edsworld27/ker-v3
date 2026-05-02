@@ -20,6 +20,7 @@ import { listSites, getActiveSite, type Site } from "@/lib/admin/sites";
 import {
   listPortalVariants, setActivePortalVariant, createPage, deletePage, onPagesChange,
 } from "@/lib/admin/editorPages";
+import { starterForRole } from "@/lib/admin/portalStarters";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { prompt } from "@/components/admin/PromptHost";
 import { notify } from "@/components/admin/Toaster";
@@ -129,6 +130,11 @@ function AdminPortalsInner() {
         slug,
         title: name.trim(),
         portalRole: role,
+        // Pre-populate the editor with a sensible role-specific starter
+        // tree (heading + copy + auth form for login/affiliates, etc.)
+        // so the operator gets a working layout to tweak instead of a
+        // blank canvas.
+        blocks: starterForRole(role),
       });
       if (!page) {
         notify({ tone: "error", title: "Couldn't create variant", message: "The server didn't return a page. Try again." });
