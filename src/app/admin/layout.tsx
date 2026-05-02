@@ -29,6 +29,7 @@ import OrgSwitcher from "@/components/admin/OrgSwitcher";
 import NotificationBell from "@/components/admin/NotificationBell";
 import ConfirmHost from "@/components/admin/ConfirmHost";
 import Toaster from "@/components/admin/Toaster";
+import PromptHost from "@/components/admin/PromptHost";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -336,6 +337,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Styled toast host — replaces window.alert() across admin */}
       <Toaster />
+
+      {/* Styled prompt() dialog host — replaces window.prompt() */}
+      <PromptHost />
 
       {/* Mobile floating ⌘K button (desktop users use the keyboard shortcut) */}
       <button

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listPages, createPage, deletePage, togglePageHidden, onPagesChange, type CustomPage } from "@/lib/admin/customPages";
 import PluginRequired from "@/components/admin/PluginRequired";
+import { prompt } from "@/components/admin/PromptHost";
 
 export default function AdminPagesIndex() {
   return <PluginRequired plugin="website"><AdminPagesIndexInner /></PluginRequired>;
@@ -19,8 +20,8 @@ function AdminPagesIndexInner() {
     return onPagesChange(refresh);
   }, []);
 
-  function newPage() {
-    const title = prompt("Page title", "New page") ?? "New page";
+  async function newPage() {
+    const title = (await prompt({ title: "Page title", defaultValue: "New page", placeholder: "About us" })) ?? "New page";
     const p = createPage(title);
     router.push(`/admin/pages/${p.id}`);
   }

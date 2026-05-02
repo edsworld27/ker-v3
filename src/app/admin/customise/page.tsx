@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import { prompt } from "@/components/admin/PromptHost";
 import {
   getBranding, saveBranding, resetBranding,
   listCustomTabs, createCustomTab, updateCustomTab, deleteCustomTab, moveCustomTab,
@@ -196,10 +197,10 @@ function AdminCustomisePageInner() {
               Useful for Notion docs, Stripe dashboard, third-party tools, or any internal page.
             </p>
             <button
-              onClick={() => {
-                const label = prompt("Tab label", "My tab");
+              onClick={async () => {
+                const label = await prompt({ title: "Tab label", defaultValue: "My tab", placeholder: "Notion docs" });
                 if (!label) return;
-                const url = prompt("URL to embed", "https://");
+                const url = await prompt({ title: "URL to embed", placeholder: "https://", defaultValue: "https://" });
                 if (!url) return;
                 createCustomTab({
                   label,
@@ -483,10 +484,10 @@ function SidebarEditor({
     if (!(await confirm({ title: "Delete this panel and all its items?", message: "Sub-folders and links underneath are removed too.", danger: true, confirmLabel: "Delete panel" }))) return;
     updatePanels(layout.panels.filter(p => p.id !== id));
   }
-  function addPanel() {
-    const label = prompt("Panel name", "New panel");
+  async function addPanel() {
+    const label = await prompt({ title: "Panel name", defaultValue: "New panel", placeholder: "Marketing" });
     if (!label) return;
-    const icon = prompt("Icon (emoji or short text)", "✨") ?? "✨";
+    const icon = (await prompt({ title: "Icon", message: "Emoji or short text shown in the sidebar.", defaultValue: "✨" })) ?? "✨";
     updatePanels([...layout.panels, {
       id: newId("panel"),
       label,
@@ -557,10 +558,10 @@ function PanelEditor({
   onDelete: () => void;
   onItemsChange: (items: SidebarItem[]) => void;
 }) {
-  function addLink() {
-    const label = prompt("Link label", "New link");
+  async function addLink() {
+    const label = await prompt({ title: "Link label", defaultValue: "New link", placeholder: "Refunds dashboard" });
     if (!label) return;
-    const href = prompt("URL or admin path (e.g. /admin/orders or https://…)", "/admin/");
+    const href = await prompt({ title: "URL or admin path", message: "Use /admin/foo for internal pages or https://… for external.", defaultValue: "/admin/" });
     if (!href) return;
     onItemsChange([...panel.items, {
       type: "link",
@@ -574,9 +575,9 @@ function PanelEditor({
   // folder here always fits within the depth budget.
   const canAddFolder = canAddFolderInside(1);
 
-  function addGroup() {
+  async function addGroup() {
     if (!canAddFolder) return;
-    const label = prompt("Folder name", "New folder");
+    const label = await prompt({ title: "Folder name", defaultValue: "New folder", placeholder: "Reports" });
     if (!label) return;
     onItemsChange([...panel.items, {
       type: "group",
@@ -714,10 +715,10 @@ function ItemEditor({
   // own children would still fit inside MAX_SIDEBAR_DEPTH.
   const canAddFolder = canAddFolderInside(depth);
 
-  function addLinkChild() {
-    const label = prompt("Link label", "New link");
+  async function addLinkChild() {
+    const label = await prompt({ title: "Link label", defaultValue: "New link" });
     if (!label) return;
-    const href = prompt("URL or admin path", "/admin/");
+    const href = await prompt({ title: "URL or admin path", defaultValue: "/admin/" });
     if (!href) return;
     onPatch({
       items: [
@@ -726,9 +727,9 @@ function ItemEditor({
       ],
     } as Partial<SidebarItem>);
   }
-  function addFolderChild() {
+  async function addFolderChild() {
     if (!canAddFolder) return;
-    const label = prompt("Folder name", "New folder");
+    const label = await prompt({ title: "Folder name", defaultValue: "New folder" });
     if (!label) return;
     onPatch({
       items: [

@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin/featureFlags";
 import Tip from "@/components/admin/Tip";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { prompt } from "@/components/admin/PromptHost";
 
 const STATUS_STYLE: Record<FlagStatus, string> = {
   on:      "bg-green-500/20 text-green-400",
@@ -48,11 +49,15 @@ export default function AdminFeaturesPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            const name = prompt("Flag name", "New feature");
+          onClick={async () => {
+            const name = await prompt({ title: "Flag name", defaultValue: "New feature", placeholder: "checkout-experiment-v2" });
             if (!name) return;
-            const desc = prompt("Description", "") ?? "";
-            const cat = (prompt("Category (storefront/marketing/upsell/admin/experimental/future)", "future") ?? "future") as FlagCategory;
+            const desc = (await prompt({ title: "Description (optional)", placeholder: "What does this flag control?" })) ?? "";
+            const cat = ((await prompt({
+              title: "Category",
+              message: "One of: storefront, marketing, upsell, admin, experimental, future",
+              defaultValue: "future",
+            })) ?? "future") as FlagCategory;
             createFlag(name, desc, cat);
           }}
           className="text-xs px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold"
