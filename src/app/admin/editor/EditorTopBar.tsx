@@ -45,6 +45,11 @@ interface Props {
   // the site picker + a context badge so the chrome stays calm.
   targetKind?: "page" | "funnel";
   funnelLabel?: string;
+  // Editor complexity controls how much surface we render. Simple
+  // hides the Block/Code mode buttons (Live only); Full/Pro show
+  // the full mode switcher.
+  complexity?: import("@/lib/admin/editorMode").EditorComplexity;
+  onComplexityChange?: (c: import("@/lib/admin/editorMode").EditorComplexity) => void;
 }
 
 export default function EditorTopBar({
@@ -56,7 +61,9 @@ export default function EditorTopBar({
   onUndo, onRedo, canUndo = false, canRedo = false,
   onSave, onPublish,
   targetKind = "page", funnelLabel,
+  complexity = "full", onComplexityChange,
 }: Props) {
+  const isSimple = complexity === "simple";
   const isPage = targetKind === "page";
   return (
     <header className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-brand-black-soft">
@@ -94,12 +101,14 @@ export default function EditorTopBar({
 
           <span className="w-px h-5 bg-white/10" />
 
-          {/* Mode switcher */}
-          <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
-            <ModeBtn current={mode} value="live"  onClick={onModeChange} icon="◧" label="Live" title="Live editor (iframe + click-to-edit)" />
-            <ModeBtn current={mode} value="block" onClick={onModeChange} icon="▦" label="Block" title="Block-based drag-drop builder" />
-            <ModeBtn current={mode} value="code"  onClick={onModeChange} icon="</>" label="Code" title="JSON tree / code view" />
-          </div>
+          {/* Mode switcher — Simple gets Live only, Full/Pro see all three */}
+          {!isSimple && (
+            <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
+              <ModeBtn current={mode} value="live"  onClick={onModeChange} icon="◧" label="Live" title="Live editor (iframe + click-to-edit)" />
+              <ModeBtn current={mode} value="block" onClick={onModeChange} icon="▦" label="Block" title="Block-based drag-drop builder" />
+              <ModeBtn current={mode} value="code"  onClick={onModeChange} icon="</>" label="Code" title="JSON tree / code view" />
+            </div>
+          )}
 
           {/* Edit / View */}
           {mode === "live" && (
@@ -123,8 +132,33 @@ export default function EditorTopBar({
 
       <div className="flex-1" />
 
-      {/* Undo / redo */}
-      {onUndo && (
+      {/* Complexity selector — segmented control. Simple / Full / Pro. */}
+      {onComplexityChange && (
+        <>
+          <div className="flex items-center gap-0.5 border border-white/10 rounded-lg p-0.5 bg-white/[0.02]">
+            {(["simple", "full", "pro"] as const).map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onComplexityChange(c)}
+                title={`${c[0].toUpperCase() + c.slice(1)} mode`}
+                aria-pressed={complexity === c}
+                className={`px-2 py-0.5 text-[10px] tracking-wide uppercase rounded ${
+                  complexity === c
+                    ? "bg-cyan-500/20 text-cyan-200"
+                    : "text-brand-cream/55 hover:text-brand-cream/85"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <span className="w-px h-5 bg-white/10" />
+        </>
+      )}
+
+      {/* Undo / redo — hidden in Simple mode to keep the toolbar quiet */}
+      {onUndo && !isSimple && (
         <>
           <IconBtn onClick={onUndo} title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo}>↶</IconBtn>
           <IconBtn onClick={() => onRedo?.()} title="Redo (⌘⇧Z)" aria-label="Redo" disabled={!canRedo}>↷</IconBtn>

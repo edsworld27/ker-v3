@@ -24,6 +24,11 @@ import {
 } from "@/lib/admin/sidebarLayout";
 import Tip from "@/components/admin/Tip";
 import PluginRequired from "@/components/admin/PluginRequired";
+import {
+  getEditorComplexity, setEditorComplexity, onEditorComplexityChange,
+  COMPLEXITY_OPTIONS,
+  type EditorComplexity,
+} from "@/lib/admin/editorMode";
 import AdminTabs from "@/components/admin/AdminTabs";
 import { SETTINGS_TABS } from "@/lib/admin/tabSets";
 
@@ -39,7 +44,16 @@ function AdminCustomisePageInner() {
   const [tabs, setTabs] = useState<CustomTab[]>(listCustomTabs);
   const [login, setLogin] = useState<LoginCustomisation>(getLoginCustomisation);
   const [sidebar, setSidebar] = useState<SidebarLayout>(getSidebarLayout);
+  const [editorComplexity, setEditorComplexityState] = useState<EditorComplexity>(getEditorComplexity);
   const [exporting, setExporting] = useState(false);
+
+  // Sync if the operator flips complexity from inside the editor.
+  useEffect(() => onEditorComplexityChange(() => setEditorComplexityState(getEditorComplexity())), []);
+
+  function selectEditorComplexity(c: EditorComplexity) {
+    setEditorComplexity(c);
+    setEditorComplexityState(c);
+  }
 
   useEffect(() => {
     const refresh = () => {
@@ -169,6 +183,33 @@ function AdminCustomisePageInner() {
               placeholder="/* e.g. */&#10;[data-admin-panel] aside { box-shadow: inset -1px 0 0 rgba(255,107,53,0.3); }"
               className={INPUT + " font-mono text-xs"}
             />
+          </Card>
+
+          <Card title="Visual editor mode" tip="Choose how much editor surface to show by default. Each editor also has its own switcher in the toolbar so you can change on the fly.">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {COMPLEXITY_OPTIONS.map(opt => {
+                const active = editorComplexity === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => selectEditorComplexity(opt.id)}
+                    aria-pressed={active}
+                    className={`text-left rounded-xl border p-4 transition-colors ${
+                      active
+                        ? "border-brand-orange bg-brand-orange/10"
+                        : "border-white/10 bg-white/[0.02] hover:border-white/25"
+                    }`}
+                  >
+                    <p className={`text-[13px] font-semibold ${active ? "text-brand-cream" : "text-brand-cream/85"}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[11px] text-brand-cream/55 mt-1 leading-relaxed">{opt.description}</p>
+                    {active && <p className="text-[10px] tracking-wider uppercase text-brand-orange/85 mt-2">Default</p>}
+                  </button>
+                );
+              })}
+            </div>
           </Card>
 
           <div>
