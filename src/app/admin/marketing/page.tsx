@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin/marketing";
 import { listOrders, type Order } from "@/lib/admin/orders";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 
 type Tab = "sources" | "discounts" | "affiliates";
 
@@ -146,7 +147,7 @@ function SourceForm({ initial, onClose }: { initial?: OrderSource; onClose: () =
   const [desc, setDesc] = useState(initial?.description ?? "");
 
   function save() {
-    if (!label.trim()) { alert("Label required"); return; }
+    if (!label.trim()) { notify({ tone: "warn", message: "Label required." }); return; }
     if (initial) {
       updateSource(initial.id, { label: label.trim(), trackingSlug: slug.trim() || undefined, description: desc.trim() || undefined });
     } else {
@@ -271,7 +272,7 @@ function DiscountForm({ initial, onClose }: { initial?: DiscountCode; onClose: (
   const [note, setNote] = useState(initial?.note ?? "");
 
   function save() {
-    if (!code.trim()) { alert("Code required"); return; }
+    if (!code.trim()) { notify({ tone: "warn", message: "Code required." }); return; }
     const body = {
       code: code.trim().toUpperCase(),
       type,
@@ -285,7 +286,7 @@ function DiscountForm({ initial, onClose }: { initial?: DiscountCode; onClose: (
       if (initial) updateDiscount(initial.code, body);
       else createDiscount(body);
       onClose();
-    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { notify({ tone: "error", title: "Failed", message: e instanceof Error ? e.message : "Unknown error" }); }
   }
 
   return (
@@ -415,7 +416,7 @@ function AffiliateForm({ initial, onClose }: { initial?: Affiliate; onClose: () 
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   function save() {
-    if (!name.trim() || !email.trim()) { alert("Name and email required"); return; }
+    if (!name.trim() || !email.trim()) { notify({ tone: "warn", message: "Name and email required." }); return; }
     const body = {
       name: name.trim(),
       email: email.trim(),

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { notify } from "@/components/admin/Toaster";
 import { getSchema, GLOBAL_SETTINGS_SCHEMA, getDefault, type ContentField, type PageSchema } from "@/lib/admin/contentSchema";
 import {
   getDraftValue, getPublishedValue, hasDraft, setValue, clearValue,
@@ -342,7 +343,7 @@ function ImageFieldEditor({
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
     if (file.size > MAX_BYTES) {
-      alert(`Image too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_BYTES)}.`);
+      notify({ tone: "warn", title: "Image too large", message: `${formatBytes(file.size)} — max is ${formatBytes(MAX_BYTES)}.` });
       return;
     }
     setUploading(true);

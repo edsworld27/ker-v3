@@ -13,6 +13,7 @@ import {
 import { listFlags, setUserOverride } from "@/lib/admin/featureFlags";
 import type { FeatureFlag } from "@/lib/admin/featureFlags";
 import { startImpersonation } from "@/lib/auth";
+import { notify } from "@/components/admin/Toaster";
 import { useRouter } from "next/navigation";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -87,7 +88,11 @@ export default function CustomerDetailPage() {
   function handlePreviewAs() {
     const r = startImpersonation(email);
     if (!r.ok) {
-      alert(`Cannot preview as ${email}: ${r.error}\n\nThis usually means they've placed orders but never created an account.`);
+      notify({
+        tone: "warn",
+        title: `Can't preview as ${email}`,
+        message: `${r.error}\n\nThis usually means they've placed orders but never created an account.`,
+      });
       return;
     }
     router.push("/");

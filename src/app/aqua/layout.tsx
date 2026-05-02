@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ConfirmHost from "@/components/admin/ConfirmHost";
+import Toaster from "@/components/admin/Toaster";
 
 export default function AquaLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
@@ -51,6 +52,7 @@ export default function AquaLayout({ children }: { children: React.ReactNode }) 
       </header>
       {children}
       <ConfirmHost />
+      <Toaster />
     </div>
   );
 }
