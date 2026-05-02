@@ -18,7 +18,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "kb",              label: "Knowledge base", href: "/admin/kb",            order: 0 },
+    { id: "kb",              label: "Knowledge base", href: "/admin/kb",            order: 0, panelId: "website" },
     { id: "kb-categories",   label: "Categories",     href: "/admin/kb/categories", order: 1 },
   ],
 

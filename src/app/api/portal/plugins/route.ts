@@ -37,6 +37,10 @@ export async function GET() {
       label: n.label,
       href: n.href,
       requiresFeature: n.requiresFeature ?? null,
+      panelId: n.panelId ?? null,
+      groupId: n.groupId ?? null,
+      order: n.order ?? null,
+      badge: typeof n.badge === "string" || typeof n.badge === "number" ? n.badge : null,
     })),
   }));
   return NextResponse.json({ ok: true, plugins });

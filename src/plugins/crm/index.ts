@@ -19,7 +19,7 @@ const plugin: AquaPlugin = {
   requires: ["website"],
 
   navItems: [
-    { id: "crm",           label: "CRM",       href: "/admin/crm",       order: 0 },
+    { id: "crm",           label: "CRM",       href: "/admin/crm",       order: 0, panelId: "store" },
     { id: "crm-contacts",  label: "Contacts",  href: "/admin/crm/contacts", order: 1 },
     { id: "crm-deals",     label: "Deals",     href: "/admin/crm/deals",  order: 2 },
     { id: "crm-tasks",     label: "Tasks",     href: "/admin/crm/tasks",  order: 3 },

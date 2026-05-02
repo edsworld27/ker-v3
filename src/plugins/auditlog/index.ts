@@ -17,7 +17,7 @@ const plugin: AquaPlugin = {
   description: "Records every admin-side mutation: logins, role changes, plugin installs, settings updates, content publishes, customer data exports. Each entry has actor, IP, timestamp, target resource, before/after diff. Filterable by actor / resource / date range. Mandatory for SOC 2 + HIPAA modes.",
 
   navItems: [
-    { id: "auditlog", label: "Audit log", href: "/admin/auditlog", order: 0 },
+    { id: "auditlog", label: "Audit log", href: "/admin/auditlog", order: 0, panelId: "settings" },
   ],
 
   pages: [],

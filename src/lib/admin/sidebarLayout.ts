@@ -296,3 +296,94 @@ export function canAddFolderInside(containerDepth: number): boolean {
 export function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
 }
+
+// ─── Plugin contribution merging ─────────────────────────────────────────────
+//
+// Plugins can declare sidebar placement on their navItems via panelId +
+// optional groupId. applyPluginContributions takes the operator-customised
+// layout and adds plugin items the layout doesn't already cover, so newly
+// installed plugins surface in the right panel without the operator having
+// to drag them in via /admin/customise. Hardcoded entries in DEFAULT_LAYOUT
+// always win — contributions whose href matches an existing link are
+// silently dropped (no duplicate rows).
+
+export interface PluginContributionInput {
+  panelId: string;
+  groupId?: string;
+  navId: string;
+  label: string;
+  href: string;
+  order?: number;
+  badge?: string | number;
+}
+
+export function applyPluginContributions(
+  layout: SidebarLayout,
+  contributions: PluginContributionInput[],
+): SidebarLayout {
+  if (contributions.length === 0) return layout;
+
+  // Existing href set across the whole layout — used for dedup.
+  const existingHrefs = new Set<string>();
+  for (const panel of layout.panels) {
+    for (const link of walkLinks(panel.items)) existingHrefs.add(link.href);
+  }
+
+  // Clone panels (shallow then per-item) so we don't mutate the input.
+  const panels: SidebarPanel[] = layout.panels.map(p => ({
+    ...p,
+    items: cloneItems(p.items),
+  }));
+
+  // Pre-sort contributions by their declared order so when we append them
+  // into a panel/group the stable sort there is meaningful.
+  const sorted = contributions.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  for (const c of sorted) {
+    if (existingHrefs.has(c.href)) continue;
+    const panel = panels.find(p => p.id === c.panelId);
+    if (!panel) continue; // unknown panelId — drop silently
+
+    const link: SidebarItem = {
+      type: "link",
+      id: c.navId,
+      label: c.label,
+      href: c.href,
+    };
+
+    if (c.groupId) {
+      // Find an existing folder, or auto-create one. Auto-created groups
+      // open by default so newly installed plugins are visible without
+      // the operator hunting for the chevron.
+      let group = panel.items.find(it => it.type === "group" && it.id === c.groupId) as
+        | (SidebarGroup & { type: "group" })
+        | undefined;
+      if (!group) {
+        group = { type: "group", id: c.groupId, label: humanizeGroupId(c.groupId), items: [], defaultOpen: true };
+        panel.items.push(group);
+      }
+      group.items.push(link);
+    } else {
+      panel.items.push(link);
+    }
+    existingHrefs.add(c.href);
+  }
+
+  return { panels };
+}
+
+function cloneItems(items: SidebarItem[]): SidebarItem[] {
+  return items.map(it => {
+    if (it.type === "group") {
+      return { ...it, items: cloneItems(it.items) };
+    }
+    return { ...it };
+  });
+}
+
+function humanizeGroupId(id: string): string {
+  return id
+    .split(/[-_]/g)
+    .map(s => s.length === 0 ? s : s[0].toUpperCase() + s.slice(1))
+    .join(" ");
+}

@@ -16,7 +16,7 @@ const plugin: AquaPlugin = {
   description: "Automated backups of all org data (state JSON + uploaded media). Daily/weekly/monthly schedules. Stored in S3-compatible object storage with configurable retention. One-click restore in the admin. Required reading for SOC 2.",
 
   navItems: [
-    { id: "backups",        label: "Backups",  href: "/admin/backups",       order: 0 },
+    { id: "backups",        label: "Backups",  href: "/admin/backups",       order: 0, panelId: "settings" },
     { id: "backups-restore", label: "Restore", href: "/admin/backups/restore", order: 1 },
   ],
 

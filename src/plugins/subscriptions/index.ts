@@ -30,7 +30,7 @@ const plugin: AquaPlugin = {
   ],
 
   navItems: [
-    { id: "subscriptions", label: "Subscriptions", href: "/admin/subscriptions", order: 0 },
+    { id: "subscriptions", label: "Subscriptions", href: "/admin/subscriptions", order: 0, panelId: "store" },
     { id: "plans",         label: "Plans",         href: "/admin/subscriptions/plans", order: 1 },
   ],
 
