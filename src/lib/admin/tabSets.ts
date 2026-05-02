@@ -26,3 +26,12 @@ export const SETTINGS_TABS: AdminTab[] = [
   { label: "Portal",        href: "/admin/portal-settings", exact: true },
   { label: "Compliance",    href: "/admin/compliance" },
 ];
+
+// Per-product detail tabs. The slug is bound at render time so each
+// product gets its own correctly-scoped tab strip.
+export function productDetailTabs(slug: string): AdminTab[] {
+  return [
+    { label: "Details",  href: `/admin/products/${slug}`,          exact: true },
+    { label: "Variants", href: `/admin/products/${slug}/variants` },
+  ];
+}

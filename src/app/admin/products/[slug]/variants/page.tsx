@@ -19,6 +19,8 @@ import type { Product, ProductOption, ProductOptionDisplay, ProductOptionValue, 
 import { getProduct } from "@/lib/products";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { getCustomProduct, upsertCustomProduct, type CustomProduct } from "@/lib/admin/customProducts";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { productDetailTabs } from "@/lib/admin/tabSets";
 
 const DISPLAY_TYPES: Array<{ id: ProductOptionDisplay; label: string; help: string }> = [
   { id: "swatch",       label: "Colour swatch", help: "Round colour chips. Set hex on each value." },
@@ -164,6 +166,8 @@ export default function ProductVariantsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <AdminTabs tabs={productDetailTabs(product.slug)} ariaLabel="Product" />
+
       <header className="flex items-baseline justify-between gap-4">
         <div>
           <p className="text-[10px] tracking-[0.28em] uppercase text-brand-orange mb-1">Variants</p>
