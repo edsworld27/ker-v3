@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin/sites";
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { prompt } from "@/components/admin/PromptHost";
 import {
   loadSettings as loadPortalSettings,
   getSettings as getPortalSettings,
@@ -1951,7 +1952,8 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
   }
 
   async function handlePublish() {
-    const message = prompt("Optional publish note (visible in history):", "") ?? undefined;
+    const message = (await prompt({ title: "Publish note", message: "Optional — visible in publish history.", placeholder: "Spring sale copy", multiline: true })) ?? undefined;
+    if (message === null) return;
     const next = await call("publish", { message });
     if (next) onApplied(next);
   }
@@ -2005,7 +2007,8 @@ function WorkflowBar({ siteId, state, dirty, saving, onApplied }: {
       setError("Publish the draft first — only published content gets promoted.");
       return;
     }
-    const message = prompt("Optional commit/PR note:", "") ?? undefined;
+    const message = (await prompt({ title: "Commit / PR note", message: "Optional — appears in the GitHub commit message.", placeholder: "Updated hero copy + new product photo", multiline: true })) ?? undefined;
+    if (message === null) return;
     setBusy("promote"); setError(null); setPromotedPr(null);
     try {
       // Server reads repo URL + PAT from the cloud-side settings store —
