@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface MemberRecord {
@@ -64,7 +65,7 @@ function MembershipsPageInner() {
       </header>
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : (
         <div className="space-y-4">
           {grouped.map(({ tier, members }) => (

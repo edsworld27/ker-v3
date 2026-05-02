@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
@@ -160,7 +161,7 @@ function WebhooksPageInner() {
       )}
 
       {loading ? (
-        <p className="text-[12px] text-brand-cream/45">Loading…</p>
+        <PageSpinner wrap={false} />
       ) : hooks.length === 0 ? (
         <p className="text-[12px] text-brand-cream/45">No webhooks yet.</p>
       ) : (

@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import PluginRequired from "@/components/admin/PluginRequired";
 import SetupRequired from "@/components/admin/SetupRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrg, getActiveOrgId, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 
 interface Template { id: string; subject: string }
@@ -106,7 +107,7 @@ function LogPanel() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <p className="text-[12px] text-brand-cream/45">Loading…</p>;
+  if (loading) return <PageSpinner wrap={false} />;
   if (log.length === 0) return <p className="text-[12px] text-brand-cream/45">No email sent yet from this org.</p>;
 
   return (

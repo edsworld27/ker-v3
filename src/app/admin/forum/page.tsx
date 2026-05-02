@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
+import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Category { id: string; name: string; slug: string; membersOnly: boolean }
@@ -41,7 +42,7 @@ function ForumPageInner() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <main className="p-6 text-[12px] text-brand-cream/45">Loading…</main>;
+  if (loading) return <PageSpinner />;
 
   function categoryName(id: string): string {
     return categories.find(c => c.id === id)?.name ?? "Uncategorised";
