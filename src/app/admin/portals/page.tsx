@@ -365,6 +365,15 @@ function AdminPortalsInner() {
                   </Link>
                 )}
                 <Link
+                  href={`/admin/portals/preview/${v.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] px-3 py-1.5 rounded-md border border-white/10 text-brand-cream/70 hover:text-brand-cream hover:border-white/30"
+                  title="Render this variant exactly as a customer would see it, without activating it"
+                >
+                  Preview ↗
+                </Link>
+                <Link
                   href={`/admin/editor?page=${v.id}`}
                   className="text-[11px] px-3 py-1.5 rounded-md border border-brand-orange/40 bg-brand-orange/10 text-brand-orange/90 hover:bg-brand-orange/20"
                 >
