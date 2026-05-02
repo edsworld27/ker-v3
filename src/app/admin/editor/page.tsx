@@ -49,6 +49,10 @@ interface PageEntry {
   slug: string;
   title: string;
   source: "editor" | "site";
+  // When set, this page is a portal variant and the topbar shows a
+  // role badge so the operator knows they're editing customer-facing
+  // chrome rather than a regular site page.
+  portalRole?: import("@/portal/server/types").PortalRole;
 }
 
 export default function VisualEditorPage() {
@@ -104,6 +108,7 @@ function VisualEditorPageInner() {
     const editorPages = await listEditorPages(siteId, true);
     const pageEntries: PageEntry[] = editorPages.map(p => ({
       id: p.id, slug: p.slug, title: p.title || p.slug, source: "editor",
+      portalRole: p.portalRole,
     }));
     if (!pageEntries.some(p => p.slug === "/")) {
       pageEntries.unshift({ id: "_home", slug: "/", title: "Home", source: "site" });
@@ -312,6 +317,16 @@ function VisualEditorPageInner() {
         canRedo={history.canRedo}
         complexity={complexity}
         onComplexityChange={changeComplexity}
+        onOpenPageSettings={
+          isPageTarget && currentPage && currentPage.source === "editor"
+            ? () => setPageSettingsId(currentPage.id)
+            : undefined
+        }
+        portalRoleLabel={
+          currentPage?.portalRole
+            ? `${currentPage.portalRole} portal`
+            : undefined
+        }
       />
 
       {isPageTarget && mode === "live" && !isSimple && (

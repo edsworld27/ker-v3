@@ -47,9 +47,17 @@ interface Props {
   funnelLabel?: string;
   // Editor complexity controls how much surface we render. Simple
   // hides the Block/Code mode buttons (Live only); Full/Pro show
-  // the full mode switcher.
+  // the full mode switcher; Pro adds the Page-settings gear.
   complexity?: import("@/lib/admin/editorMode").EditorComplexity;
   onComplexityChange?: (c: import("@/lib/admin/editorMode").EditorComplexity) => void;
+  // Pro-mode shortcut: opens the per-page advanced settings drawer
+  // (custom head/foot, theme override, layout overrides). Ignored
+  // when complexity !== "pro".
+  onOpenPageSettings?: () => void;
+  // Optional context label shown next to the page picker. Used to
+  // indicate when a page is a portal variant so the operator never
+  // forgets they're editing a customer-facing flow.
+  portalRoleLabel?: string;
 }
 
 export default function EditorTopBar({
@@ -62,8 +70,10 @@ export default function EditorTopBar({
   onSave, onPublish,
   targetKind = "page", funnelLabel,
   complexity = "full", onComplexityChange,
+  onOpenPageSettings, portalRoleLabel,
 }: Props) {
   const isSimple = complexity === "simple";
+  const isPro = complexity === "pro";
   const isPage = targetKind === "page";
   return (
     <header className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-brand-black-soft">
@@ -98,6 +108,18 @@ export default function EditorTopBar({
             wide
             allowEmpty={pageId === null}
           />
+
+          {/* Portal-role context badge. Only shown when the current page
+              is a portal variant — keeps the operator oriented when
+              hopping between site pages and customer-portal variants. */}
+          {portalRoleLabel && (
+            <span
+              className="px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase bg-cyan-500/10 text-cyan-300 border border-cyan-400/20 truncate max-w-[150px]"
+              title={`This page is the ${portalRoleLabel} portal variant`}
+            >
+              ⤷ {portalRoleLabel}
+            </span>
+          )}
 
           <span className="w-px h-5 bg-white/10" />
 
@@ -180,6 +202,13 @@ export default function EditorTopBar({
         className={`w-2 h-2 rounded-full ${iframeReady ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`}
         title={iframeReady ? "Editor connected" : "Connecting…"}
       />
+
+      {/* Pro-only: Page-settings drawer for advanced fields (custom
+          head/foot, theme override, layout overrides). Reachable from
+          the Outliner in Full mode; promoted to a topbar gear in Pro. */}
+      {isPro && onOpenPageSettings && (
+        <IconBtn onClick={onOpenPageSettings} title="Page settings — head/foot, theme, layout overrides" aria-label="Page settings">⚙</IconBtn>
+      )}
 
       {/* Save */}
       {onSave && (
