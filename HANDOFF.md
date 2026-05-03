@@ -242,31 +242,43 @@ is friction-free; production deploys must not set them.
 
 ---
 
-## What shipped in this continue-work session
+## What shipped (across 3 PRs from this branch line)
 
-Nine priorities cleared in `claude/continue-work-1FFJ6`:
+The branch `claude/continue-work-1FFJ6` shipped via PRs #85, #86, and #87 (in flight). Three pillars:
+
+### Pillar 1 — Production-grade closeout (PR #85)
+
+Nine documented priorities cleared:
 
 1. **Real CRUD on memberships / donations / affiliates** — `/admin/memberships/{tiers,members}`, `/admin/donations/donors`, `/admin/affiliates/{payouts,stats}` are now real working pages backed by the existing runtimes. Adds `recordPayout` to the affiliates server so commission settlement is a real persisted action.
-2. **Audit log capture** — `recordAdminAction(actor, …)` helper in `src/portal/server/activity.ts`; mutating endpoints in memberships + affiliates now instrument; `/admin/auditlog` renders the activity feed with category / actor / search filters, diff viewer, and CSV export.
+2. **Audit log capture** — `recordAdminAction(actor, …)` helper in `src/portal/server/activity.ts`; mutating endpoints in memberships + affiliates instrument; `/admin/auditlog` renders the activity feed with category / actor / search filters, diff viewer, CSV export.
 3. **Force-password-change on first login** — `mustChangePassword` flag on `ServerUser`, surfaced through `/api/auth/me` + `/api/auth/login`, admin shell redirects to `/account/change-password?forced=1` when set, `/api/auth/change-password` clears the flag on success.
 4. **Brand kit refresh on org switch** — `lk_orgs_v1` localStorage mirror (so `readBrandPluginBranding` synchronously sees the right tenant on first render) + admin layout subscription to `lk-orgs-change` (so the chrome flips without a navigation).
 5. **Plugin manifest validator** — `src/plugins/_validate.ts` runs at registry boot; malformed manifests are filtered out with descriptive console errors instead of crashing the layout. Re-exported from `_registry.ts` for the marketplace + plugin authoring UI.
 6. **Pro-mode editor surfaces** — Page Settings modal grows a Pro-only `<details>` for theme override / hideNav-hideFooter / page-scoped custom CSS. Renderer scopes the CSS via `[data-portal-page="…"]` so rules can't leak globally.
 7. **Subscriptions Stripe billing-portal handoff** — `createBillingPortalSession` in `src/lib/stripe/server.ts`; `POST /api/stripe/billing-portal` is dual-mode (customer self-serve via session, admin "send portal link" via email lookup); `/admin/subscriptions` grows an "Open portal" card.
-8. **Backups runtime** — `src/portal/server/backups.ts` with file adapter (default; writes to `.data/backups/`), retention sweep, full restore flow. `POST /api/portal/backups` doubles as the cron-trigger endpoint (UA-sniffed `kind`). `/admin/backups` lists snapshots with download / restore / delete; `/admin/backups/restore` demands a typed-id confirmation. S3 adapter declared and stubbed with a typed error so the gap is visible.
-9. **Custom domain auto-attach via Vercel API** — `src/lib/vercel/server.ts` (no SDK dep) wraps `/v10/projects/{id}/domains`. `POST /api/portal/domains` attaches; verification records pass through verbatim. `/admin/sites` grows an "Add + attach to Vercel" button next to the existing local-add button — toast surfaces verified / DNS-pending / Vercel-not-configured states.
+8. **Backups runtime** — `src/portal/server/backups.ts` with file adapter (default; writes to `.data/backups/`) AND a real S3 adapter via AWS Signature V4 (no SDK dep, in `src/lib/s3/server.ts` — works against AWS S3, R2, Spaces, MinIO, B2). Retention sweep, full restore flow. `POST /api/portal/backups` doubles as the cron-trigger endpoint. `/admin/backups` lists snapshots with download / restore / delete; `/admin/backups/restore` demands a typed-id confirmation.
+9. **Custom domain auto-attach via Vercel API** — `src/lib/vercel/server.ts` (no SDK dep) wraps `/v10/projects/{id}/domains`. `POST /api/portal/domains` attaches; verification records pass through verbatim. `/admin/sites` grows an "Add + attach to Vercel" button — toast surfaces verified / DNS-pending / Vercel-not-configured states.
 
-## Felicia-mode pass (operator-friendliness)
+### Pillar 2 — Felicia-mode core (PR #86)
 
-Subsequent commits on the same branch made the admin tractable for a non-technical operator:
+Operator-friendliness pass for non-technical operators (Felicia, the first tenant):
 
-- **Setup checklist on `/admin`** (`src/components/admin/SetupChecklist.tsx` + `/api/portal/setup-status`) — live progress bar showing which of 8 high-leverage things are configured (brand, site, product, published page, Stripe, email, GitHub, backups). Per-row "Set up →" CTA links. Auto-hides when allDone, dismiss persists per-org.
-- **Floating `?` help drawer** (`src/components/admin/HelpButton.tsx` + `src/lib/admin/helpDocs.ts`) — bottom-right amber `?` on every admin page. Opens a slide-out drawer with the per-route help doc. **22 routes documented**: dashboard, products, orders, customers + customer-detail, blog, email + email/log, sites, editor, memberships, affiliates, donations, backups, auditlog, team, marketplace, customise, portal-settings, plugin-health, /aqua. Falls back gracefully for routes without docs. `?` keyboard shortcut to toggle.
-- **Tooltip pass** on the admin pages shipped this session — the `Field` helpers in `/admin/memberships/tiers` and `/admin/affiliates/payouts` grow optional `tip` props rendering `<Tip>` next to the label with deeper explanation than the brief one-line hints. (`/admin/customise` already had full tooltip coverage on every Field.)
-- **Friendly error helper** (`src/lib/admin/friendlyError.ts`) — catalog of ~15 known API error codes mapped to operator-readable strings with optional fix hints. Applied to: `/admin/affiliates/payouts`, `/admin/memberships/tiers` save, `/admin/memberships/members` tier-change, `/admin/backups` backup-now, `/account/change-password`. Unknown codes pass through with a "mention this to your admin" hint so the gap is visible rather than swallowed.
-- **`/admin/help` index** — searchable directory of all 22 documented admin surfaces. Type a topic ("Stripe", "refund", "domain") → ranked matches with route + intro + section labels.
-- **Command-palette help integration** — Cmd+K now indexes every help doc. Typing "help stripe" or "backup" pulls up the matching pages alongside customer/order/product results. Quick-links also gets an "Open help index" entry.
-- **Ask Aqua AI assistant** (`/api/portal/help/ask` + `<AskAqua>` panel inside the help drawer) — when an Anthropic key is configured under Portal settings → Integrations, operators can type a natural-language question and get a markdown answer grounded in the in-tree help docs + a hint about which admin page they're on. Calls Claude Opus 4.7 via raw fetch (matching the existing pattern in `audit.ts`) with adaptive thinking + medium effort. The help-docs system prompt is wrapped in `cache_control: ephemeral` so subsequent requests pay ~0.1× input cost. Falls back gracefully with a "Connect Anthropic" CTA when no key is set.
+- **Setup checklist on `/admin`** (`src/components/admin/SetupChecklist.tsx` + `/api/portal/setup-status`) — live progress bar showing which of 8 high-leverage things are configured (brand, site, product, published page, Stripe, email, GitHub, backups). Server-side checks for what it can see; client component overlays site + product counts since those stores live in localStorage. Per-row "Set up →" CTA links. Auto-hides when all done, dismiss persists per-org.
+- **Floating `?` help drawer** (`src/components/admin/HelpButton.tsx` + `src/lib/admin/helpDocs.ts`) — bottom-right amber `?` on every admin page (positioned `bottom-20 right-5` to clear mobile bottom-nav and desktop Toaster). Opens a slide-out drawer with the per-route help doc. `?` keyboard shortcut to toggle.
+- **`/admin/help` index** — searchable directory of all documented admin surfaces (search across title / route / intro / section content).
+- **Command-palette help integration** — Cmd+K indexes every help doc. Typing "stripe" or "backup" pulls up the matching pages alongside customer/order/product results.
+- **Ask Aqua AI assistant** (`/api/portal/help/ask` + `<AskAqua>` panel inside the help drawer) — Claude Opus 4.7 via raw fetch (no `@anthropic-ai/sdk` dep). Tuned for help Q&A: thinking disabled, effort low, max_tokens 2048. Help-docs system prompt wrapped in `cache_control: ephemeral` so subsequent requests pay ~0.1× input cost. Falls back gracefully with a "Connect Anthropic" CTA when no key is set. Per-IP rate-limited at 30/min.
+- **Tooltip pass** on the admin pages shipped this session (memberships/tiers, affiliates/payouts) — `Field` helpers grow optional `tip` props rendering `<Tip>` next to the label.
+- **Friendly error helper** (`src/lib/admin/friendlyError.ts`) — catalog of ~15 known API error codes mapped to operator-readable strings with optional fix hints. `friendlyError(code, fallbackTitle)` and `friendlyFromResponse(res, body)` helpers. Unknown codes pass through with a "mention this to your admin" hint.
+
+### Pillar 3 — Felicia-mode polish extension (PR #87)
+
+Wider coverage of the same patterns:
+
+- **Help docs: 22 → 54 routes** (53% of all admin pages). Added: inventory, shipping, seo, analytics, marketing, orgs, popup, automation, themes, webhooks, funnels, notifications, subscriptions, reviews, i18n, crm, repo, support, automation/runs, faq, forum, wiki, kb, orders/[id], products/[slug], products/new, blog/[id], pages, portals, activity, dashboards, compliance, billing.
+- **friendlyError: 5 → 12 surfaces**. Added: backups/restore, email (template save + send result), auditlog, subscriptions, crm/contacts, crm/tasks.
+- **Tooltips on legacy pages: 3 → 5**. Added: products/[slug] (regular price, sale price, SKU, badge), sites (display name, tagline, description), email (template subject, HTML body, plain-text body).
 
 ## Truly remaining (verification-only — no code left to write)
 
@@ -286,21 +298,40 @@ Subsequent commits on the same branch made the admin tractable for a non-technic
 
 ---
 
-## Quick verify
+## Quick verify (for the next session)
 
 ```sh
-# Continue-work session shipped its work on PR #85.
-git log origin/claude/continue-work-1FFJ6 --oneline | head -10
+# Confirm both Felicia-mode PRs landed on main.
+git log origin/main --oneline | grep -E "Merge pull request #(85|86|87)" | head -3
+# Should show #85 (production-grade closeout), #86 (Felicia-mode core),
+# #87 (polish extension) — most recent first.
 
 npx tsc --noEmit
 # Clean apart from sandbox-only `next/*` and `react/jsx-runtime` noise.
 
-ls src/portal/server/{activity,memberships,donations,affiliates}.ts
-ls src/app/admin/{memberships,donations,affiliates,auditlog,account/change-password}/page.tsx 2>/dev/null
-ls src/plugins/_validate.ts
+# Server modules (real CRUD, runtimes, helpers).
+ls src/portal/server/{activity,memberships,donations,affiliates,backups}.ts
 
-cat HELLO_ED.md
-# Receipt that this session ran.
+# New admin pages.
+ls src/app/admin/{memberships,donations,affiliates,auditlog,backups,help}/page.tsx
+ls src/app/account/change-password/page.tsx
+
+# Felicia-mode infrastructure.
+ls src/components/admin/{SetupChecklist,HelpButton}.tsx
+ls src/lib/admin/{helpDocs,friendlyError}.ts
+
+# Third-party clients (no SDK deps — pure fetch).
+ls src/lib/{stripe,vercel,s3}/server.ts
+
+# Plugin validator.
+ls src/plugins/_validate.ts
 ```
 
-If those check out, lift off.
+## Where to start a new session
+
+1. **Read this file + `CLAUDE.md`** — they're the orientation.
+2. **Pick a task from the "Truly remaining" section above** — every documented in-tree code task is shipped; what's left is plugging in real credentials and verifying each integration end-to-end.
+3. **Or extend Felicia-mode coverage further** — see "What still has shallow coverage" in PR #87. Lower marginal value per touch but always more polish to do.
+4. **Or take Felicia herself through the admin** — the highest-leverage next session is finding friction points she actually hits, not adding more pre-emptive code.
+
+Branches: `claude/continue-work-1FFJ6` is the current development branch. Both prior session PRs (#85, #86) merged into main; #87 is in flight at time of writing.
