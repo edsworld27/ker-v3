@@ -12,6 +12,7 @@ import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import Tip from "@/components/admin/Tip";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Tier {
@@ -303,7 +304,11 @@ function TierCard({ tier, index, total, onChange, onDelete, onMove }: TierCardPr
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Content slug" hint="Used in gate checks (e.g. content tier ≥ paid).">
+        <Field
+          label="Content slug"
+          hint="Used in gate checks (e.g. content tier ≥ paid)."
+          tip="Short identifier you reference when gating content. e.g. set this to 'paid' and any page marked 'requires:paid' becomes visible only to members on this tier or higher."
+        >
           <input
             value={tier.contentSlug}
             onChange={e => onChange({ contentSlug: e.target.value })}
@@ -317,7 +322,11 @@ function TierCard({ tier, index, total, onChange, onDelete, onMove }: TierCardPr
           />
         </Field>
 
-        <Field label="Stripe price id" hint="Required for paid tiers (Subscriptions plugin).">
+        <Field
+          label="Stripe price id"
+          hint="Required for paid tiers (Subscriptions plugin)."
+          tip="Find this in your Stripe dashboard under Products → pick a product → copy the 'price_…' id. Free tiers leave this blank — Stripe never gets called."
+        >
           <input
             value={tier.stripePriceId ?? ""}
             onChange={e => onChange({ stripePriceId: e.target.value || undefined })}
@@ -326,7 +335,11 @@ function TierCard({ tier, index, total, onChange, onDelete, onMove }: TierCardPr
           />
         </Field>
 
-        <Field label="Price" hint="In smallest unit (pence/cents). Leave blank for free.">
+        <Field
+          label="Price"
+          hint="In smallest unit (pence/cents). Leave blank for free."
+          tip="In pence/cents — £9.99 = 999, $5 = 500. The storefront converts back to a friendly £/$/€ when displaying. Leave both fields blank for a free tier."
+        >
           <div className="flex gap-2">
             <input
               type="number"
@@ -350,7 +363,11 @@ function TierCard({ tier, index, total, onChange, onDelete, onMove }: TierCardPr
           </div>
         </Field>
 
-        <Field label="Billing interval" hint={isPaid ? "How often Stripe charges members." : "Only used for paid tiers."}>
+        <Field
+          label="Billing interval"
+          hint={isPaid ? "How often Stripe charges members." : "Only used for paid tiers."}
+          tip="Monthly = card charged every month. Yearly = once a year (often discounted). Has to match the interval set on the Stripe price id above."
+        >
           <select
             value={tier.recurringInterval ?? ""}
             onChange={e => {
@@ -382,10 +399,13 @@ function TierCard({ tier, index, total, onChange, onDelete, onMove }: TierCardPr
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, tip, children }: { label: string; hint?: string; tip?: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-brand-cream/55">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] text-brand-cream/55 inline-flex items-center gap-1.5">
+        {label}
+        {tip && <Tip text={tip} />}
+      </span>
       {children}
       {hint && <span className="block text-[11px] text-brand-cream/40">{hint}</span>}
     </label>
