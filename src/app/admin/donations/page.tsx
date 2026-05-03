@@ -52,12 +52,20 @@ function DonationsPageInner() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Donations</p>
           <h1 className="font-display text-3xl text-brand-cream">Donor activity</h1>
         </div>
-        <Link href="/admin/donations/goals" className="text-[11px] text-cyan-300/80 hover:text-cyan-200">Manage goals →</Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/admin/donations/donors"
+            className="text-[11px] uppercase tracking-[0.2em] text-brand-cream/85 hover:text-brand-cream rounded-lg border border-white/15 hover:border-white/30 px-3 py-1.5 transition-colors"
+          >
+            Donors
+          </Link>
+          <Link href="/admin/donations/goals" className="text-[11px] text-cyan-300/80 hover:text-cyan-200">Manage goals →</Link>
+        </div>
       </header>
 
       <section className="grid grid-cols-3 gap-3">
