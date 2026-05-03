@@ -244,7 +244,7 @@ is friction-free; production deploys must not set them.
 
 ## What shipped in this continue-work session
 
-Eight priorities from the previous handoff cleared in `claude/continue-work-1FFJ6`:
+Nine priorities cleared in `claude/continue-work-1FFJ6`:
 
 1. **Real CRUD on memberships / donations / affiliates** — `/admin/memberships/{tiers,members}`, `/admin/donations/donors`, `/admin/affiliates/{payouts,stats}` are now real working pages backed by the existing runtimes. Adds `recordPayout` to the affiliates server so commission settlement is a real persisted action.
 2. **Audit log capture** — `recordAdminAction(actor, …)` helper in `src/portal/server/activity.ts`; mutating endpoints in memberships + affiliates now instrument; `/admin/auditlog` renders the activity feed with category / actor / search filters, diff viewer, and CSV export.
@@ -252,14 +252,15 @@ Eight priorities from the previous handoff cleared in `claude/continue-work-1FFJ
 4. **Brand kit refresh on org switch** — `lk_orgs_v1` localStorage mirror (so `readBrandPluginBranding` synchronously sees the right tenant on first render) + admin layout subscription to `lk-orgs-change` (so the chrome flips without a navigation).
 5. **Plugin manifest validator** — `src/plugins/_validate.ts` runs at registry boot; malformed manifests are filtered out with descriptive console errors instead of crashing the layout. Re-exported from `_registry.ts` for the marketplace + plugin authoring UI.
 6. **Pro-mode editor surfaces** — Page Settings modal grows a Pro-only `<details>` for theme override / hideNav-hideFooter / page-scoped custom CSS. Renderer scopes the CSS via `[data-portal-page="…"]` so rules can't leak globally.
+7. **Subscriptions Stripe billing-portal handoff** — `createBillingPortalSession` in `src/lib/stripe/server.ts`; `POST /api/stripe/billing-portal` is dual-mode (customer self-serve via session, admin "send portal link" via email lookup); `/admin/subscriptions` grows an "Open portal" card.
+8. **Backups runtime** — `src/portal/server/backups.ts` with file adapter (default; writes to `.data/backups/`), retention sweep, full restore flow. `POST /api/portal/backups` doubles as the cron-trigger endpoint (UA-sniffed `kind`). `/admin/backups` lists snapshots with download / restore / delete; `/admin/backups/restore` demands a typed-id confirmation. S3 adapter declared and stubbed with a typed error so the gap is visible.
+9. **Custom domain auto-attach via Vercel API** — `src/lib/vercel/server.ts` (no SDK dep) wraps `/v10/projects/{id}/domains`. `POST /api/portal/domains` attaches; verification records pass through verbatim. `/admin/sites` grows an "Add + attach to Vercel" button next to the existing local-add button — toast surfaces verified / DNS-pending / Vercel-not-configured states.
 
-## Next priorities (the items that need real credentials to verify)
+## Truly remaining (verification-only — no code left to write)
 
-1. **Backups runtime** — S3-compatible client + cron + restore flow. Plugin manifest + scaffold pages ready; just needs the operator to paste S3 access-key / secret / bucket / region.
-2. **Custom domain auto-attach** — Vercel API integration so adding a domain in `/admin/sites` actually wires it up. Needs `VERCEL_TOKEN` + project id.
-3. **Subscriptions Stripe billing-portal handoff** — `stripe.billingPortal.sessions.create` redirect so customers can self-serve plan changes. Stripe live keys required to verify.
-4. **Email plugin actually sending** — operator pastes Resend / Postmark key, hits "Test send", confirms inbox delivery. Plumbing is there.
-5. **Stripe end-to-end** — full test purchase against Felicia's storefront. Validation rather than fresh code.
+1. **Email plugin actually sending** — operator pastes Resend / Postmark key, hits "Test send", confirms inbox delivery. Plumbing is in place.
+2. **Stripe end-to-end** — full test purchase against Felicia's storefront with real Stripe keys. Validation, not fresh code.
+3. **S3 adapter for Backups** — `createBackup` throws a typed error today when `adapter:"s3"` is selected. Wire AWS Signature V4 PUT/GET/DELETE (or pull in the S3 SDK) inside the function body — everything else (UI, cron, retention, restore) is ready.
 
 ## Future ideas (parking lot)
 

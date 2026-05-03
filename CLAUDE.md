@@ -269,30 +269,26 @@ src/app/api/portal/             ← plugin + tenant API
   to make any block-tree-based content editable in `/admin/editor`
   (extending the portal-variant pattern). Bigger refactor; deferred.
 
-## Next priorities (in order)
+## Next priorities (verification-only — no code left to write)
 
-These are the items that need external service credentials (S3,
-Vercel API, Stripe live keys, Resend/Postmark) and so couldn't be
-finished in pure code in this session. They're sized as concrete
-follow-ups rather than research tasks.
+The full code path for every previously-documented priority is now in
+the tree. What remains is plugging in credentials and validating
+against real services.
 
-1. **Backups runtime** — S3-compatible client, cron trigger, restore
-   flow (compliance prerequisite). Plugin manifest + scaffold pages
-   ready; needs an S3 client + bucket creds wired through plugin
-   config (operator pastes access-key / secret / bucket / region).
-2. **Custom domain auto-attach** — Vercel API integration so adding a
-   domain in `/admin/sites` actually wires it up rather than just
-   showing DNS instructions. Needs `VERCEL_TOKEN` + project id.
-3. **Subscriptions Stripe billing-portal handoff** — operator paste of
-   Stripe key already works for one-off charges; surfacing the hosted
-   billing portal (`stripe.billingPortal.sessions.create`) so
-   customers can self-serve plan changes is the missing piece.
-4. **Email plugin end-to-end verify** — operator pastes Resend / Postmark
-   key, hits "Test send", confirms inbox delivery. Plumbing is there;
-   verify against a real inbox.
-5. **Stripe end-to-end** — full test purchase on Felicia's site.
-   Confirm Order persists + email confirmation arrives + Analytics
-   events are recorded. Validation rather than fresh code.
+1. **Email plugin actually sending** — operator pastes a Resend /
+   Postmark key under the Email plugin config, hits "Test send",
+   confirms inbox delivery. All plumbing (transports, templates, log)
+   is in place.
+2. **Stripe end-to-end** — full test purchase against Felicia's
+   storefront with real Stripe keys. Order persists + email
+   confirmation arrives + Analytics event is recorded. Validation,
+   not fresh code.
+3. **S3 adapter for Backups** — `createBackup` in
+   `src/portal/server/backups.ts` throws a typed error today when an
+   operator pins `adapter:"s3"`. Wire AWS Signature V4
+   PUT/GET/DELETE (or pull in the S3 SDK) inside that function body
+   — the runtime, retention sweep, restore, UI, and cron API around
+   it are all ready.
 
 The following infra-grade items shipped in this session:
 - Real CRUD on memberships/tiers, memberships/members,
@@ -306,6 +302,18 @@ The following infra-grade items shipped in this session:
 - Plugin manifest validator (`_validate.ts`) wired into the registry
 - Pro-mode editor surfaces (theme override, layout overrides,
   page-level custom CSS in Page Settings modal)
+- Subscriptions Stripe billing-portal handoff
+  (`createBillingPortalSession`, `POST /api/stripe/billing-portal`,
+  `/admin/subscriptions` "Open portal" card — dual-mode customer +
+  admin)
+- Backups runtime (`src/portal/server/backups.ts` + `serializeStateJson`
+  / `restoreStateFromJson` storage hooks + `/api/portal/backups`
+  list / create / download / delete / restore + `/admin/backups`
+  + `/admin/backups/restore` with typed-id confirmation)
+- Custom domain auto-attach via Vercel API
+  (`src/lib/vercel/server.ts` + `/api/portal/domains` +
+  `/admin/sites` "Add + attach to Vercel" button surfacing
+  verification records)
 
 ## Future ideas (parking)
 
