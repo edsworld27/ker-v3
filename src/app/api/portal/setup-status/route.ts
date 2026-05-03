@@ -1,19 +1,18 @@
 // GET /api/portal/setup-status?orgId=…
 //
-// Live "have you set up X yet?" checks for the dashboard checklist.
-// Each item carries a label, a hint, where to go to fix it, and a
-// boolean done flag. The /admin home page renders the result; once
-// every item is done the widget hides automatically.
+// Server-side "have you set up X yet?" checks for the dashboard
+// checklist. The /admin SetupChecklist component reads this AND adds
+// its own client-side checks (sites, products) before rendering — those
+// stores live in localStorage and aren't visible from the server.
 //
-// Adding a new check: push a row into the array below. Pure functions
-// only — no mutations.
+// Adding a new server-side check: push a row into the array below.
+// Pure reads only — no mutations.
 
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
 import { getOrg } from "@/portal/server/orgs";
 import { getSettings } from "@/portal/server/settings";
 import { listPages } from "@/portal/server/pages";
-import { getProducts } from "@/lib/products";
 import { requireAdmin } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -54,15 +53,14 @@ export async function GET(req: NextRequest) {
   const emailConfig = email?.config as Record<string, string | undefined> | undefined;
   const emailConfigured = !!emailConfig?.resendApiKey || !!emailConfig?.postmarkServerToken;
 
-  // Products — multi-site shape; getProducts respects the active store.
-  const productCount = getProducts({ includeHidden: true }).length;
-
-  // Published pages — sum across every site this org owns.
-  const sites = (org as unknown as { sites?: Array<{ id: string }> })?.sites ?? [];
-  let publishedCount = 0;
-  for (const s of sites) {
-    publishedCount += listPages(s.id).filter(p => p.status === "published").length;
-  }
+  // Published pages — sum across every site we can find server-side.
+  // Sites are stored client-side; the SetupChecklist component overlays
+  // a per-site published count from listSites() before rendering, so
+  // this server-side count is best-effort (typically 0 unless the
+  // server-side pages bucket happens to have entries from a previous
+  // session). The client merge is the source of truth for "publish a
+  // page" — see SetupChecklist.tsx.
+  const publishedCount = 0;
 
   // GitHub — repo url + PAT (or app installation) saved.
   const githubConfigured = !!settings.github.repoUrl && (!!settings.github.pat || !!settings.github.installationId);
@@ -77,6 +75,9 @@ export async function GET(req: NextRequest) {
   // role". Best-effort; if we don't know, assume done so the row
   // doesn't lie.
 
+  // Server-side items only — sites + products are added by the client
+  // component since their stores live in localStorage. The client preserves
+  // this ordering and inserts site + product items in the right place.
   const items: ChecklistItem[] = [
     {
       id: "brand",
@@ -85,22 +86,6 @@ export async function GET(req: NextRequest) {
       href: "/admin/customise",
       done: brandConfigured,
       doneHint: brandConfig?.panelName,
-    },
-    {
-      id: "site",
-      label: "Add a site",
-      hint: "At least one storefront so visitors have somewhere to land.",
-      href: "/admin/sites",
-      done: sites.length > 0,
-      doneHint: sites.length > 0 ? `${sites.length} ${sites.length === 1 ? "site" : "sites"}` : undefined,
-    },
-    {
-      id: "product",
-      label: "Add a product",
-      hint: "Without products there's nothing to sell.",
-      href: "/admin/products/new",
-      done: productCount > 0,
-      doneHint: productCount > 0 ? `${productCount} in catalog` : undefined,
     },
     {
       id: "page",

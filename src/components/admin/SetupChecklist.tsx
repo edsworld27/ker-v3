@@ -14,9 +14,11 @@
 //     coexist — first-run is the "blank canvas" empty state; the
 //     checklist is the standing reference once any data exists.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { listSites } from "@/lib/admin/sites";
+import { getProducts } from "@/lib/products";
 
 interface Item {
   id: string;
@@ -75,11 +77,56 @@ export default function SetupChecklist() {
     setDismissed(true);
   }
 
-  // Hide while loading (avoid flash) and when fully done OR dismissed.
-  if (!loaded || !status) return null;
-  if (status.allDone || dismissed) return null;
+  // Merge in client-side checks for surfaces whose state lives in
+  // localStorage (sites, products) — the server can't see those. Inserted
+  // in the natural reading order: brand → site → product → page → ….
+  const merged = useMemo<Status | null>(() => {
+    if (!status) return null;
+    const siteCount = listSites().length;
+    const productCount = getProducts({ includeHidden: true }).length;
+    const clientItems: Item[] = [
+      {
+        id: "site",
+        label: "Add a site",
+        hint: "At least one storefront so visitors have somewhere to land.",
+        href: "/admin/sites",
+        done: siteCount > 0,
+        doneHint: siteCount > 0 ? `${siteCount} ${siteCount === 1 ? "site" : "sites"}` : undefined,
+      },
+      {
+        id: "product",
+        label: "Add a product",
+        hint: "Without products there's nothing to sell.",
+        href: "/admin/products/new",
+        done: productCount > 0,
+        doneHint: productCount > 0 ? `${productCount} in catalog` : undefined,
+      },
+    ];
+    // Insert site + product right after the brand row.
+    const out: Item[] = [];
+    let inserted = false;
+    for (const item of status.items) {
+      out.push(item);
+      if (!inserted && item.id === "brand") {
+        out.push(...clientItems);
+        inserted = true;
+      }
+    }
+    if (!inserted) out.push(...clientItems);
+    const doneCount = out.filter(i => i.done).length;
+    return {
+      items: out,
+      doneCount,
+      totalCount: out.length,
+      allDone: doneCount === out.length,
+    };
+  }, [status]);
 
-  const pct = status.totalCount === 0 ? 0 : Math.round((status.doneCount / status.totalCount) * 100);
+  // Hide while loading (avoid flash) and when fully done OR dismissed.
+  if (!loaded || !merged) return null;
+  if (merged.allDone || dismissed) return null;
+
+  const pct = merged.totalCount === 0 ? 0 : Math.round((merged.doneCount / merged.totalCount) * 100);
 
   return (
     <section className="rounded-2xl border border-brand-amber/25 bg-gradient-to-br from-brand-amber/8 via-orange-500/5 to-transparent p-5 sm:p-6 relative">
@@ -96,7 +143,7 @@ export default function SetupChecklist() {
         <div>
           <p className="text-[10px] tracking-[0.32em] uppercase text-brand-amber mb-1">Setup checklist</p>
           <h2 className="font-display text-xl sm:text-2xl text-brand-cream">
-            {status.doneCount} of {status.totalCount} done
+            {merged.doneCount} of {merged.totalCount} done
           </h2>
           <p className="text-[12px] text-brand-cream/55 mt-1">
             Tick these off and you&rsquo;ll have a portal that can take orders, send email, and ship updates.
@@ -116,7 +163,7 @@ export default function SetupChecklist() {
       </div>
 
       <ul className="space-y-1">
-        {status.items.map(item => (
+        {merged.items.map(item => (
           <li
             key={item.id}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg ${

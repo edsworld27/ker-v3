@@ -48,7 +48,12 @@ export default function HelpButton() {
         onClick={() => setOpen(true)}
         title="Help — what does this page do? (?)"
         aria-label="Open help"
-        className="fixed bottom-5 right-5 z-30 w-10 h-10 rounded-full bg-brand-amber/85 hover:bg-brand-amber text-brand-black font-bold text-lg shadow-lg shadow-brand-amber/20 hover:shadow-brand-amber/40 transition-all hover:scale-105"
+        // Positioned above the mobile bottom-nav (which sits at bottom-0) and
+        // out of the Toaster's bottom-right zone (which lives at bottom-4
+        // right-4 + z-70). On desktop, bottom-20 still clears toasts; on
+        // mobile, bottom-20 also clears the bottom nav (~h-14) and sits
+        // above the mobile ⌘K button at bottom-16.
+        className="fixed bottom-20 right-5 z-30 w-10 h-10 rounded-full bg-brand-amber/85 hover:bg-brand-amber text-brand-black font-bold text-lg shadow-lg shadow-brand-amber/20 hover:shadow-brand-amber/40 transition-all hover:scale-105"
       >
         ?
       </button>

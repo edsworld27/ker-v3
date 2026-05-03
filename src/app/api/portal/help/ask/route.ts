@@ -124,11 +124,12 @@ export async function POST(req: NextRequest) {
 
   const requestBody = {
     model: MODEL,
-    max_tokens: 1024,
-    // Adaptive thinking — Claude decides when/how much to think for each
-    // question. Effort medium balances cost against quality for help Q&A.
-    thinking: { type: "adaptive" as const },
-    output_config: { effort: "medium" as const },
+    // Help Q&A grounded in a small doc set is light intelligence work —
+    // disable thinking and keep effort low for fast, cheap responses.
+    // 2048 leaves comfortable room for a markdown answer with bullets.
+    max_tokens: 2048,
+    thinking: { type: "disabled" as const },
+    output_config: { effort: "low" as const },
     system: [
       {
         type: "text",
