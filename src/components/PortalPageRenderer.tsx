@@ -48,6 +48,7 @@ interface PageResponse {
     updatedAt: number;
     customHead?: string;
     customFoot?: string;
+    customCss?: string;
     themeId?: string;
     layoutOverrides?: {
       hideNav?: boolean;
@@ -168,9 +169,18 @@ export default function PortalPageRenderer({ slug, siteId: explicitSiteId, previ
   const scopeId = `portal-page-${data.page.id}`;
   const themeCss = themeVars ? `[data-portal-page="${scopeId}"] { ${themeVars} }` : "";
 
+  // Pro-mode page-level CSS — scoped to the same data-portal-page
+  // attribute so the rules can't leak past this page. Authors who
+  // want to escape the scope can use `:root` selectors at their own
+  // risk, but the default surface is sandboxed.
+  const pageCss = data.page.customCss
+    ? `[data-portal-page="${scopeId}"] { ${data.page.customCss} }`
+    : "";
+
   return (
     <>
       {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
+      {pageCss && <style dangerouslySetInnerHTML={{ __html: pageCss }} />}
       {seo?.jsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: seo.jsonLd }} />
       )}

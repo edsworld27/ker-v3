@@ -70,6 +70,7 @@ export interface UpdatePageInput {
   themeId?: string;
   customHead?: string;
   customFoot?: string;
+  customCss?: string;
   seo?: EditorPage["seo"];
   layoutOverrides?: EditorPage["layoutOverrides"];
   portalRole?: PortalRole;
