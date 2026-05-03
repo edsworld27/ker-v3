@@ -18,6 +18,9 @@ repo, update the relevant docs in `01 development/`:
   do, mark in-progress, then mark done when you finish.
 - `ideas.md` — capture any new ideas surfaced during the work that
   aren't part of the active task.
+- `eds requirments.md` — Ed's own project requirements. **Read it,
+  don't edit it** unless he explicitly asks. This is his canonical
+  spec for what the platform needs to do.
 
 Only after the relevant docs reflect what you're about to do should you
 continue with the task itself.
