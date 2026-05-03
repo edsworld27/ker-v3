@@ -9,6 +9,7 @@ import PageSpinner from "@/components/admin/Spinner";
 import PluginRequired from "@/components/admin/PluginRequired";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyError } from "@/lib/admin/friendlyError";
 
 interface Task {
   id: string;
@@ -58,7 +59,11 @@ function Inner() {
         body: JSON.stringify({ orgId, title: draftTitle.trim(), dueAt }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) { notify({ tone: "error", message: data.error ?? "Add failed" }); return; }
+      if (!res.ok || !data.ok) {
+        const f = friendlyError(data.error, "Couldn't add task");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
+        return;
+      }
       notify({ tone: "ok", message: "Task added." });
       setDraftTitle(""); setDraftDue("");
       await load();

@@ -633,6 +633,149 @@ export const HELP_DOCS: Record<string, HelpDoc> = {
       },
     ],
   },
+
+  "/admin/crm": {
+    title: "CRM",
+    intro: "Customer-relationship management — contacts, deals, tasks. Auto-imports anyone who signs up, places an order, or submits a form.",
+    sections: [
+      {
+        heading: "Contacts vs. customers",
+        body: "Customers are people who bought something; contacts are anyone the system has captured (form submission, newsletter signup). All customers are contacts; not all contacts are customers.",
+      },
+      {
+        heading: "Deals",
+        body: "Pipeline view of in-progress sales (B2B / wholesale / consultations). Stages and probabilities track conversion rates. Use this when commerce is more relationship-driven than one-click checkout.",
+      },
+      {
+        heading: "Tasks",
+        body: "To-dos tied to a contact or deal — 'follow up with X', 'send proposal'. Notifications fire when due dates approach.",
+      },
+    ],
+  },
+
+  "/admin/repo": {
+    title: "Repo browser",
+    intro: "Browse + edit your GitHub repo from inside the admin. Every save opens a PR rather than committing directly, so you always get review.",
+    sections: [
+      {
+        heading: "Setup",
+        body: "Needs the GitHub plugin configured with a Personal Access Token (under /admin/portal-settings). Without it, this page can't read or write.",
+      },
+      {
+        heading: "What you can edit",
+        body: "Anything in the connected repo — pages, blocks, server code. Best used for small typo fixes; bigger changes belong in your local editor.",
+      },
+    ],
+  },
+
+  "/admin/support": {
+    title: "Support",
+    intro: "Inbound support tickets from customers. Reply, assign, mark resolved.",
+    sections: [
+      {
+        heading: "Where tickets come from",
+        body: "Customer-submitted forms tagged as support, emails to your configured support address (when SMTP/Postmark inbound is wired), and the storefront's contact form.",
+      },
+      {
+        heading: "Replying",
+        body: "Inline thread view per ticket. Replies go via the configured email plugin and are logged on the ticket. Customer sees a normal email reply from your support address.",
+      },
+    ],
+  },
+
+  "/admin/automation/runs": {
+    title: "Automation runs",
+    intro: "Per-execution log for every automation rule + drip campaign step. Useful for debugging when something didn't fire as expected.",
+    sections: [
+      {
+        heading: "What's logged",
+        body: "Every rule trigger (with the matched event), every drip-step send (success/failure), every action attempted. Filter by automation, status, date range.",
+      },
+      {
+        heading: "Re-running",
+        body: "Failed runs can be re-attempted from the row menu. Useful for transient provider failures (Stripe blip, email rate limit).",
+      },
+    ],
+  },
+
+  "/admin/faq": {
+    title: "FAQ",
+    intro: "Storefront FAQ section — questions, answers, categories. Renders on /faq and on the help/support pages.",
+    sections: [
+      {
+        heading: "Adding a question",
+        body: "Hit + New, type the question + answer, optionally tag with a category. Long answers support markdown.",
+      },
+      {
+        heading: "Ordering",
+        body: "Drag rows to reorder. The storefront renders in the same order so put the most-asked first.",
+      },
+    ],
+  },
+
+  "/admin/forum": {
+    title: "Forum",
+    intro: "Community discussion forum on the storefront. Categories, threads, posts, moderation.",
+    sections: [
+      {
+        heading: "Categories",
+        body: "Top-level groupings (e.g. 'General', 'Help', 'Showcase'). Configure under /admin/forum/categories. Can be public, members-only, or moderator-only.",
+      },
+      {
+        heading: "Moderation",
+        body: "Reported posts surface under /admin/forum/moderation. Hide / delete / ban from the row menu. Auto-flagging via spam-keyword list configurable in plugin settings.",
+      },
+    ],
+  },
+
+  "/admin/wiki": {
+    title: "Wiki",
+    intro: "Operator-maintained knowledge base for your team or users. Markdown pages with links between them; full-text searchable.",
+    sections: [
+      {
+        heading: "Adding a page",
+        body: "Hit + New, give it a title + path (e.g. /wiki/onboarding), write markdown. [[Wiki link]] syntax auto-links to other wiki pages.",
+      },
+      {
+        heading: "History",
+        body: "Every edit is versioned under /admin/wiki/history. Click an entry to view the diff or revert.",
+      },
+    ],
+  },
+
+  "/admin/kb": {
+    title: "Knowledge base",
+    intro: "Customer-facing help articles served at /help. Categorized articles with markdown content; search bar on the storefront /help page.",
+    sections: [
+      {
+        heading: "Articles vs FAQ",
+        body: "FAQ is short Q&A pairs (one paragraph each). KB articles are longer how-tos with steps, screenshots, headings. Use the right tool for the question complexity.",
+      },
+      {
+        heading: "Categories",
+        body: "Group articles under /admin/kb/categories so the /help page renders them in sections (e.g. 'Getting started', 'Billing', 'Troubleshooting').",
+      },
+    ],
+  },
+
+  "/admin/orders/[id]": {
+    title: "Order detail",
+    intro: "Everything about one order — line items, customer, addresses, payment status, fulfilment, tracking.",
+    sections: [
+      {
+        heading: "Status flow",
+        body: "Pending → Paid (Stripe webhook fires) → Fulfilled (you mark when packed) → Shipped (you mark with tracking number). Each transition triggers the matching customer email.",
+      },
+      {
+        heading: "Tracking",
+        body: "Pick a carrier, paste a tracking number, hit Mark shipped. The customer's shipping confirmation email goes out automatically with the tracking link.",
+      },
+      {
+        heading: "Refunds",
+        body: "Refund inside Stripe directly — that's the source of truth. Webhook updates the order status here within seconds.",
+      },
+    ],
+  },
 };
 
 // Look up a doc for the current pathname. Falls back through
