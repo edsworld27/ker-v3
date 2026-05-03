@@ -13,6 +13,7 @@ import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyFromResponse } from "@/lib/admin/friendlyError";
 
 interface Entry {
   id: string;
@@ -133,7 +134,8 @@ function AuditLogInner() {
       notify({ tone: "ok", message: "Audit log cleared" });
       await load();
     } else {
-      notify({ tone: "error", title: "Couldn't clear", message: `HTTP ${res.status}` });
+      const f = friendlyFromResponse(res, null, "Couldn't clear");
+      notify({ tone: "error", title: f.title, message: f.message });
     }
   }
 

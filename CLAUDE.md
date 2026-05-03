@@ -313,19 +313,35 @@ The following infra-grade items shipped in this session:
   (`src/lib/vercel/server.ts` + `/api/portal/domains` +
   `/admin/sites` "Add + attach to Vercel" button surfacing
   verification records)
-- Felicia-mode operator-friendliness pass:
+- Felicia-mode operator-friendliness pass (PRs #86 + #87):
   - Live setup checklist on `/admin` reading
     `/api/portal/setup-status` — 8 leverage points (brand, site,
     product, published page, Stripe, email, GitHub, backups) with
-    progress bar + per-row CTAs
+    progress bar + per-row CTAs. Server-side reports what it can see;
+    client component overlays site + product counts (those stores
+    live in localStorage)
   - Floating `?` help button + slide-out drawer (per-route docs in
-    `src/lib/admin/helpDocs.ts`, 15 surfaces covered, fallback for
-    the rest, `?` keyboard shortcut)
-  - Tooltip pass on tiers + payouts forms (Field helpers grow
-    optional `tip` props rendering `<Tip>` next to the label)
+    `src/lib/admin/helpDocs.ts`, **54 surfaces covered** = ~53% of
+    all admin pages, fallback for the rest, `?` keyboard shortcut)
+  - `/admin/help` searchable index of every documented surface
+  - Cmd+K command-palette indexes every help doc — type "stripe"
+    or "backup" → matching docs ranked alongside customer/order/
+    product results
+  - **Ask Aqua** AI assistant inside the help drawer
+    (`/api/portal/help/ask`) — Claude Opus 4.7 grounded in the help
+    docs + current route, prompt-cached, gracefully degrades when
+    Anthropic key is missing
+  - Tooltip pass on 5 high-traffic admin pages (memberships/tiers,
+    affiliates/payouts, customise, products/[slug], sites, email
+    template editor) — Field helpers grow optional `tip` props
+    rendering `<Tip>` next to the label
   - `friendlyError(code, fallback)` helper translating API error
     codes to operator-readable strings with optional fix hints,
-    applied to the payouts modal and `/account/change-password`
+    applied to **12 surfaces**: affiliates/payouts, memberships/
+    {tiers,members}, backups, backups/restore, change-password,
+    email (template save + send result), auditlog, subscriptions,
+    crm/contacts, crm/tasks. Unknown codes pass through with a
+    "mention this to your admin" hint so the gap is visible.
 
 ## Future ideas (parking)
 

@@ -9,6 +9,7 @@ import { getProduct, type Product } from "@/lib/products";
 import { clearOverride, getOverride, saveOverride } from "@/lib/admin/productOverrides";
 import { listInventory, adjustStock, upsertInventory, updateInventoryFields, type InventoryItem } from "@/lib/admin/inventory";
 import AdminTabs from "@/components/admin/AdminTabs";
+import Tip from "@/components/admin/Tip";
 import { productDetailTabs } from "@/lib/admin/tabSets";
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 600KB cap for localStorage uploads
@@ -186,7 +187,10 @@ export default function AdminProductEditPage() {
           {/* Pricing */}
           <Section title="Pricing">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Regular price (£)">
+              <Field
+                label="Regular price (£)"
+                tip="In pounds (e.g. 12.50 for £12.50). The price customers see by default. Set a sale price below to discount it."
+              >
                 <input
                   type="number"
                   inputMode="decimal"
@@ -196,7 +200,10 @@ export default function AdminProductEditPage() {
                   className="input"
                 />
               </Field>
-              <Field label="Sale price (£) — optional">
+              <Field
+                label="Sale price (£) — optional"
+                tip="When set, the storefront crosses out the regular price and shows this as the active price. Leave blank for no sale."
+              >
                 <input
                   type="number"
                   inputMode="decimal"
@@ -271,7 +278,10 @@ export default function AdminProductEditPage() {
 
           {/* Stock */}
           <Section title="Stock &amp; Inventory" hint="Link to an inventory SKU to track availability.">
-            <Field label="Inventory SKU">
+            <Field
+              label="Inventory SKU"
+              tip="Stock-keeping unit — your internal product code. Appears on packing slips and connects this product to inventory counts. Must be unique across the catalog."
+            >
               <div className="flex gap-2">
                 <select
                   value={stockSku}
@@ -387,7 +397,10 @@ export default function AdminProductEditPage() {
 
           {/* Badge / archived */}
           <Section title="Display">
-            <Field label="Badge text — optional">
+            <Field
+              label="Badge text — optional"
+              tip="Small label shown on the product card, e.g. 'New', 'Bestseller', 'Limited'. Leave blank for no badge. Color of the badge picked next to it."
+            >
               <input
                 value={badge}
                 onChange={e => setBadge(e.target.value)}
@@ -498,10 +511,13 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[10px] tracking-[0.22em] uppercase text-brand-cream/45 mb-1.5">{label}</span>
+      <span className="block text-[10px] tracking-[0.22em] uppercase text-brand-cream/45 mb-1.5 inline-flex items-center gap-1.5">
+        {label}
+        {tip && <Tip text={tip} />}
+      </span>
       {children}
     </label>
   );

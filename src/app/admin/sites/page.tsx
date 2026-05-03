@@ -733,10 +733,10 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           {/* Identity grid — name, tagline, status. Logo + favicon get
               richer widgets below; theme is its own tile picker too. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Display name">
+            <Field label="Display name" tip="The site name as it appears in the admin and storefront chrome. Different from the slug — change without breaking URLs.">
               <input value={site.name} onChange={e => updateSite(site.id, { name: e.target.value })} className={INPUT} />
             </Field>
-            <Field label="Tagline (optional)">
+            <Field label="Tagline (optional)" tip="Short subtitle shown next to the site name in storefront chrome and the admin sidebar.">
               <input value={site.tagline ?? ""} onChange={e => updateSite(site.id, { tagline: e.target.value })} className={INPUT} placeholder="One-line strapline" />
             </Field>
             <Field
@@ -762,7 +762,7 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
           <ThemeVariantPicker site={site} variants={variants} />
 
           {/* Description */}
-          <Field label="Description (about/SEO)">
+          <Field label="Description (about/SEO)" tip="Short paragraph used as the default meta description for SEO when a page doesn't override it. Aim for ~150 chars — Google truncates longer.">
             <textarea value={site.description ?? ""} onChange={e => updateSite(site.id, { description: e.target.value })} rows={2} className={INPUT} />
           </Field>
 
