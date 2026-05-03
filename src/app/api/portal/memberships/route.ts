@@ -7,6 +7,7 @@ import {
   listMembers, upsertMember, cancelMembership, getTier,
 } from "@/portal/server/memberships";
 import { requireAdmin } from "@/lib/server/auth";
+import { recordAdminAction } from "@/portal/server/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try { await requireAdmin(); }
+  let actor;
+  try { actor = await requireAdmin(); }
   catch (r) { return r as Response; }
   await ensureHydrated();
 
@@ -34,7 +36,8 @@ export async function POST(req: NextRequest) {
   if (!body.orgId || !body.email || !body.tierId) {
     return NextResponse.json({ ok: false, error: "missing-fields" }, { status: 400 });
   }
-  if (!getTier(body.orgId, body.tierId)) {
+  const tier = getTier(body.orgId, body.tierId);
+  if (!tier) {
     return NextResponse.json({ ok: false, error: "unknown-tier" }, { status: 400 });
   }
 
@@ -45,11 +48,18 @@ export async function POST(req: NextRequest) {
     tierId: body.tierId,
     expiresAt: body.expiresAt,
   });
+  recordAdminAction(actor, {
+    category: "customers",
+    action: `Set membership tier "${tier.name}" for ${body.email}`,
+    resourceId: member.id,
+    resourceLink: `/admin/customers/${encodeURIComponent(body.email)}`,
+  });
   return NextResponse.json({ ok: true, member });
 }
 
 export async function DELETE(req: NextRequest) {
-  try { await requireAdmin(); }
+  let actor;
+  try { actor = await requireAdmin(); }
   catch (r) { return r as Response; }
   await ensureHydrated();
 
@@ -59,5 +69,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "missing-fields" }, { status: 400 });
   }
   const cancelled = cancelMembership(orgId, email);
+  if (cancelled) {
+    recordAdminAction(actor, {
+      category: "customers",
+      action: `Cancelled membership for ${email}`,
+      resourceLink: `/admin/customers/${encodeURIComponent(email)}`,
+    });
+  }
   return NextResponse.json({ ok: cancelled, cancelled });
 }

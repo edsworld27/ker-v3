@@ -3,8 +3,9 @@
 //   { orgId, affiliateId, amount, currency?, method?, reference?, note? }
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
-import { listPayouts, recordPayout } from "@/portal/server/affiliates";
+import { listPayouts, recordPayout, listAffiliates } from "@/portal/server/affiliates";
 import { requireAdmin } from "@/lib/server/auth";
+import { recordAdminAction } from "@/portal/server/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try { await requireAdmin(); }
+  let actor;
+  try { actor = await requireAdmin(); }
   catch (r) { return r as Response; }
   await ensureHydrated();
 
@@ -47,5 +49,12 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
   }
+  const aff = listAffiliates(body.orgId).find(a => a.id === body.affiliateId);
+  recordAdminAction(actor, {
+    category: "marketing",
+    action: `Recorded ${(body.amount / 100).toFixed(2)} ${body.currency ?? "GBP"} payout to ${aff?.name ?? body.affiliateId} via ${result.payout.method}`,
+    resourceId: result.payout.id,
+    resourceLink: "/admin/affiliates/payouts",
+  });
   return NextResponse.json(result);
 }
