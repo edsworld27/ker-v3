@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --revenue-widget-primary-color-1: #4f46e5;
+  --revenue-widget-primary-color-1-glow: rgba(79, 70, 229, 0.15);
+  --revenue-secondary-color: #10b981;
+  --revenue-secondary-color-glow: rgba(16, 185, 129, 0.15);
+  --revenue-bg-color: #0f172a;
+  --revenue-widget-surface-color-1: #1e293b;
+  --revenue-widget-surface-color-1-hover: rgba(255, 255, 255, 0.05);
+  --revenue-widget-surface-color-1-glass: rgba(255, 255, 255, 0.03);
+  --revenue-widget-border: rgba(255, 255, 255, 0.1);
+  --revenue-widget-text: #f8fafc;
+  --revenue-widget-text-muted: #94a3b8;
+  --revenue-widget-text-dim: rgba(255, 255, 255, 0.4);
+  --revenue-widget-text-on-primary: #ffffff;
+  --revenue-widget-error: #ef4444;
+  --revenue-widget-success: #10b981;
+  --revenue-widget-info: #3b82f6;
+  --radius-button: 0.75rem;
+  --radius-card: 1.5rem;
+  --radius-panel: 2.5rem;
+}
+
+body {
+  background-color: var(--revenue-bg-color);
+  color: var(--revenue-widget-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+.glass-card {
+  background: var(--revenue-widget-surface-color-1-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--revenue-widget-border);
+}
+
+.premium-card {
+  background: var(--revenue-widget-surface-color-1);
+  border: 1px solid var(--revenue-widget-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card-hover:hover {
+  background: var(--revenue-widget-surface-color-1-hover);
+  border-color: var(--revenue-widget-primary-color-1-glow);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+}
+
+.premium-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+}
+
+.glow-primary {
+  box-shadow: 0 0 15px 0 var(--revenue-widget-primary-color-1-glow);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 15px 0 var(--revenue-secondary-color-glow);
+}
+
+.text-dim {
+  color: var(--revenue-widget-text-dim);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

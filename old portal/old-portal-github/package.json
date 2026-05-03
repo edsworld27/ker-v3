@@ -1,0 +1,12 @@
+{
+  "name": "aqua-portal-v9-deploy-shim",
+  "private": true,
+  "description": "Repo-root shim so Vercel's Next.js framework detection finds `next`. Real workspace lives in main-monorepo/. Build command in vercel.json delegates there.",
+  "scripts": {
+    "build": "cd main-monorepo && npm run build",
+    "dev": "cd main-monorepo && npm run dev"
+  },
+  "dependencies": {
+    "next": "^16.2.1"
+  }
+}

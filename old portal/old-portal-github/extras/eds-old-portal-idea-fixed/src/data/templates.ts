@@ -1,0 +1,375 @@
+import { AgencyTemplate } from '../types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agency Templates — full role + layout presets.
+//
+// Each template defines:
+//   roles        — complete role configs (allowedViews, viewLayouts, permissions)
+//   sidebarLinks — default nav for each role
+//
+// Activating a template writes its roles into agencyConfig.roles and applies
+// its sidebarLinks. DynamicViewRenderer picks up the change instantly.
+// All roles, layouts, and links remain fully editable afterwards.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const PREDEFINED_TEMPLATES: AgencyTemplate[] = [
+
+  // ── 1. Full Service Agency ────────────────────────────────────────────────
+  // Five roles covering everything. CRM, projects, collaboration, AI, support.
+  {
+    id: 't-full-service',
+    name: 'Full Service Agency',
+    description: 'All features, all roles. CRM, projects, collaboration, onboarding, and AI assistant. The default all-rounder.',
+    features: ['CRM', 'Projects', 'Collaboration', 'Onboarding', 'AI Assistant', 'Support Tickets'],
+    sidebarLinks: [
+      { id: 'fs-1', label: 'Dashboard',    iconName: 'LayoutDashboard', view: 'dashboard',         roles: ['Founder', 'AgencyManager', 'AgencyEmployee', 'ClientOwner'], order: 1 },
+      { id: 'fs-2', label: 'Clients',      iconName: 'Users',           view: 'agency-clients',    roles: ['Founder', 'AgencyManager'], order: 2 },
+      { id: 'fs-3', label: 'Projects',     iconName: 'Briefcase',       view: 'project-hub',       roles: ['Founder', 'AgencyManager', 'AgencyEmployee'], order: 3 },
+      { id: 'fs-4', label: 'Tasks',        iconName: 'CheckSquare',     view: 'task-board',        roles: ['Founder', 'AgencyManager', 'AgencyEmployee'], order: 4 },
+      { id: 'fs-5', label: 'Collaborate',  iconName: 'MessageSquare',   view: 'collaboration',     roles: ['Founder', 'AgencyManager', 'AgencyEmployee', 'ClientOwner'], order: 5 },
+      { id: 'fs-6', label: 'Onboarding',   iconName: 'Compass',         view: 'onboarding',        roles: ['ClientOwner'], order: 2 },
+      { id: 'fs-7', label: 'AI Assistant', iconName: 'Sparkles',        view: 'aqua-ai',           roles: ['Founder', 'ClientOwner'], order: 6 },
+      { id: 'fs-8', label: 'Support',      iconName: 'LifeBuoy',        view: 'support',           roles: ['ClientOwner'], order: 3 },
+      { id: 'fs-9', label: 'Resources',    iconName: 'BookOpen',        view: 'resources',         roles: ['ClientOwner'], order: 4 },
+    ],
+    roles: {
+      Founder: {
+        displayName: 'Founder',
+        accentColor: '#6366f1',
+        allowedViews: '*',
+        canImpersonate: true,
+        canManageUsers: true,
+        canManageRoles: true,
+        canAccessConfigurator: true,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:         { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'admin-dashboard': { layout: 'grid-cols-1', components: [{ component: 'AdminDashboardView', props: {} }] },
+          collaboration:     { layout: 'grid-cols-2', components: [{ component: 'SyncCard', props: {} }, { component: 'ProjectTimeline', props: {} }, { component: 'DesignConcepts', props: {} }, { component: 'ProjectChat', props: {} }] },
+          'project-hub':     { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'task-board':      { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          'agency-clients':  { layout: 'grid-cols-1', components: [{ component: 'AgencyClientsView', props: {} }] },
+          crm:               { layout: 'grid-cols-1', components: [{ component: 'CrmView', props: {} }] },
+          'aqua-ai':         { layout: 'grid-cols-1', components: [{ component: 'AquaAiView', props: {} }] },
+          logs:              { layout: 'grid-cols-1', components: [{ component: 'LogsView', props: {} }] },
+          'support-tickets': { layout: 'grid-cols-1', components: [{ component: 'SupportTicketsView', props: {} }] },
+        },
+      },
+      AgencyManager: {
+        displayName: 'Manager',
+        accentColor: '#10b981',
+        allowedViews: ['dashboard', 'admin-dashboard', 'agency-clients', 'project-hub', 'task-board', 'collaboration', 'support-tickets', 'logs', 'client-management'],
+        canImpersonate: false,
+        canManageUsers: true,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:         { layout: 'grid-cols-1', components: [{ component: 'AdminDashboardView', props: {} }] },
+          'admin-dashboard': { layout: 'grid-cols-1', components: [{ component: 'AdminDashboardView', props: {} }] },
+          'agency-clients':  { layout: 'grid-cols-1', components: [{ component: 'AgencyClientsView', props: {} }] },
+          'project-hub':     { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'task-board':      { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          collaboration:     { layout: 'grid-cols-2', components: [{ component: 'SyncCard', props: {} }, { component: 'ProjectTimeline', props: {} }] },
+          logs:              { layout: 'grid-cols-1', components: [{ component: 'LogsView', props: {} }] },
+        },
+      },
+      AgencyEmployee: {
+        displayName: 'Employee',
+        accentColor: '#f59e0b',
+        allowedViews: ['dashboard', 'agency-clients', 'project-hub', 'task-board', 'collaboration'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:     { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          collaboration: { layout: 'grid-cols-2', components: [{ component: 'ProjectTimeline', props: {} }, { component: 'ProjectChat', props: {} }] },
+          'project-hub': { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'task-board':  { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+        },
+      },
+      ClientOwner: {
+        displayName: 'Client',
+        accentColor: '#8b5cf6',
+        allowedViews: ['dashboard', 'onboarding', 'collaboration', 'support', 'resources', 'aqua-ai', 'feature-request'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { team: 'Your Team', projects: 'Your Projects', portal: 'Your Portal' },
+        viewLayouts: {
+          dashboard:         { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          onboarding:        { layout: 'grid-cols-1', components: [{ component: 'OnboardingView', props: {} }] },
+          collaboration:     { layout: 'grid-cols-1', components: [{ component: 'CollaborationView', props: {} }] },
+          support:           { layout: 'grid-cols-1', components: [{ component: 'SupportView', props: {} }] },
+          resources:         { layout: 'grid-cols-1', components: [{ component: 'ResourcesView', props: {} }] },
+          'aqua-ai':         { layout: 'grid-cols-1', components: [{ component: 'AquaAiView', props: {} }] },
+          'feature-request': { layout: 'grid-cols-1', components: [{ component: 'FeatureRequestView', props: {} }] },
+        },
+      },
+      ClientEmployee: {
+        displayName: 'Client Employee',
+        accentColor: '#ec4899',
+        allowedViews: ['dashboard', 'collaboration', 'support', 'resources'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:     { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          collaboration: { layout: 'grid-cols-1', components: [{ component: 'CollaborationView', props: {} }] },
+          support:       { layout: 'grid-cols-1', components: [{ component: 'SupportView', props: {} }] },
+          resources:     { layout: 'grid-cols-1', components: [{ component: 'ResourcesView', props: {} }] },
+        },
+      },
+    },
+  },
+
+  // ── 2. Design Studio ─────────────────────────────────────────────────────
+  // Three roles: Creative Director, Designer, Client.
+  // Collaboration canvas front and centre. Design reviews drive the client portal.
+  {
+    id: 't-design-studio',
+    name: 'Design Studio',
+    description: 'Creative-first. DesignConcepts and visual timeline lead every view. Built for studios doing brand, UX, and web.',
+    features: ['Design Dashboard', 'Visual Collaboration', 'Client Review', 'Asset Resources', 'Website Builder'],
+    sidebarLinks: [
+      { id: 'ds-1', label: 'Studio',        iconName: 'Palette',       view: 'dashboard',         roles: ['CreativeDirector', 'Designer', 'Client'], order: 1 },
+      { id: 'ds-2', label: 'Canvas',         iconName: 'Monitor',       view: 'collaboration',     roles: ['CreativeDirector', 'Designer', 'Client'], order: 2 },
+      { id: 'ds-3', label: 'Design Hub',     iconName: 'Code2',         view: 'design-dashboard',  roles: ['CreativeDirector', 'Designer'], order: 3 },
+      { id: 'ds-4', label: 'Projects',       iconName: 'Layers',        view: 'project-hub',       roles: ['CreativeDirector', 'Designer'], order: 4 },
+      { id: 'ds-5', label: 'Website',        iconName: 'Globe',         view: 'website',           roles: ['CreativeDirector', 'Client'], order: 5 },
+      { id: 'ds-6', label: 'Clients',        iconName: 'Users',         view: 'agency-clients',    roles: ['CreativeDirector'], order: 6 },
+      { id: 'ds-7', label: 'Resources',      iconName: 'BookOpen',      view: 'resources',         roles: ['Client'], order: 3 },
+      { id: 'ds-8', label: 'Discover',       iconName: 'Compass',       view: 'discover',          roles: ['Client'], order: 4 },
+    ],
+    roles: {
+      CreativeDirector: {
+        displayName: 'Creative Director',
+        accentColor: '#f43f5e',
+        allowedViews: '*',
+        canImpersonate: true,
+        canManageUsers: true,
+        canManageRoles: true,
+        canAccessConfigurator: true,
+        labelOverrides: { clients: 'Clients', projects: 'Projects', team: 'Studio' },
+        viewLayouts: {
+          dashboard:          { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'design-dashboard': { layout: 'grid-cols-1', components: [{ component: 'DesignDashboardView', props: {} }] },
+          collaboration:      { layout: 'grid-cols-2', components: [{ component: 'DesignConcepts', props: {} }, { component: 'ProjectTimeline', props: {} }, { component: 'ProjectChat', props: {} }, { component: 'SyncCard', props: {} }] },
+          'project-hub':      { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'task-board':       { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          'agency-clients':   { layout: 'grid-cols-1', components: [{ component: 'AgencyClientsView', props: {} }] },
+          website:            { layout: 'grid-cols-1', components: [{ component: 'WebsiteView', props: {} }] },
+          logs:               { layout: 'grid-cols-1', components: [{ component: 'LogsView', props: {} }] },
+        },
+      },
+      Designer: {
+        displayName: 'Designer',
+        accentColor: '#a855f7',
+        allowedViews: ['dashboard', 'collaboration', 'design-dashboard', 'project-hub', 'task-board'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:          { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'design-dashboard': { layout: 'grid-cols-1', components: [{ component: 'DesignDashboardView', props: {} }] },
+          collaboration:      { layout: 'grid-cols-2', components: [{ component: 'DesignConcepts', props: {} }, { component: 'ProjectChat', props: {} }] },
+          'project-hub':      { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'task-board':       { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+        },
+      },
+      Client: {
+        displayName: 'Client',
+        accentColor: '#06b6d4',
+        allowedViews: ['dashboard', 'collaboration', 'website', 'resources', 'discover'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { team: 'Your Studio', portal: 'Your Project' },
+        viewLayouts: {
+          dashboard:     { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          collaboration: { layout: 'grid-cols-1', components: [{ component: 'CollaborationView', props: {} }] },
+          website:       { layout: 'grid-cols-1', components: [{ component: 'WebsiteView', props: {} }] },
+          resources:     { layout: 'grid-cols-1', components: [{ component: 'ResourcesView', props: {} }] },
+          discover:      { layout: 'grid-cols-1', components: [{ component: 'DiscoverView', props: {} }] },
+        },
+      },
+    },
+  },
+
+  // ── 3. Dev Shop ──────────────────────────────────────────────────────────
+  // Four roles: Tech Lead, Developer, QA, Client.
+  // Sprint boards and dev dashboard front and centre.
+  {
+    id: 't-dev-shop',
+    name: 'Dev Shop',
+    description: 'Built for development teams. Dev dashboard, sprint boards, and task tracking. Feature requests direct from clients.',
+    features: ['Dev Dashboard', 'Sprint Boards', 'Task Tracking', 'Activity Logs', 'Feature Requests'],
+    sidebarLinks: [
+      { id: 'dv-1', label: 'Overview',     iconName: 'Activity',      view: 'dashboard',         roles: ['TechLead', 'Developer', 'QA', 'Client'], order: 1 },
+      { id: 'dv-2', label: 'Dev Hub',      iconName: 'Terminal',      view: 'dev-dashboard',     roles: ['TechLead', 'Developer'], order: 2 },
+      { id: 'dv-3', label: 'Sprints',      iconName: 'CheckSquare',   view: 'task-board',        roles: ['TechLead', 'Developer', 'QA'], order: 3 },
+      { id: 'dv-4', label: 'Projects',     iconName: 'Briefcase',     view: 'project-hub',       roles: ['TechLead', 'Developer', 'QA'], order: 4 },
+      { id: 'dv-5', label: 'Clients',      iconName: 'Users',         view: 'agency-clients',    roles: ['TechLead'], order: 5 },
+      { id: 'dv-6', label: 'Logs',         iconName: 'History',       view: 'logs',              roles: ['TechLead'], order: 6 },
+      { id: 'dv-7', label: 'Collaborate',  iconName: 'MessageSquare', view: 'collaboration',     roles: ['TechLead', 'Developer', 'QA'], order: 7 },
+      { id: 'dv-8', label: 'Requests',     iconName: 'Lightbulb',     view: 'feature-request',   roles: ['Client'], order: 2 },
+      { id: 'dv-9', label: 'Support',      iconName: 'LifeBuoy',      view: 'support',           roles: ['Client'], order: 3 },
+    ],
+    roles: {
+      TechLead: {
+        displayName: 'Tech Lead',
+        accentColor: '#6366f1',
+        allowedViews: '*',
+        canImpersonate: true,
+        canManageUsers: true,
+        canManageRoles: true,
+        canAccessConfigurator: true,
+        labelOverrides: { clients: 'Clients', team: 'Dev Team' },
+        viewLayouts: {
+          dashboard:       { layout: 'grid-cols-1', components: [{ component: 'AdminDashboardView', props: {} }] },
+          'dev-dashboard': { layout: 'grid-cols-1', components: [{ component: 'DevDashboardView', props: {} }] },
+          'task-board':    { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          'project-hub':   { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          'agency-clients': { layout: 'grid-cols-1', components: [{ component: 'AgencyClientsView', props: {} }] },
+          collaboration:   { layout: 'grid-cols-2', components: [{ component: 'SyncCard', props: {} }, { component: 'ProjectTimeline', props: {} }, { component: 'ProjectChat', props: {} }] },
+          logs:            { layout: 'grid-cols-1', components: [{ component: 'LogsView', props: {} }] },
+          'ai-sessions':   { layout: 'grid-cols-1', components: [{ component: 'AiSessionsView', props: {} }] },
+        },
+      },
+      Developer: {
+        displayName: 'Developer',
+        accentColor: '#10b981',
+        allowedViews: ['dashboard', 'dev-dashboard', 'task-board', 'project-hub', 'collaboration'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard:       { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'dev-dashboard': { layout: 'grid-cols-1', components: [{ component: 'DevDashboardView', props: {} }] },
+          'task-board':    { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          'project-hub':   { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          collaboration:   { layout: 'grid-cols-1', components: [{ component: 'ProjectChat', props: {} }] },
+        },
+      },
+      QA: {
+        displayName: 'QA Engineer',
+        accentColor: '#f59e0b',
+        allowedViews: ['dashboard', 'task-board', 'project-hub', 'collaboration'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { tasks: 'Test Cases' },
+        viewLayouts: {
+          dashboard:     { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'task-board':  { layout: 'grid-cols-1', components: [{ component: 'TaskBoardView', props: {} }] },
+          'project-hub': { layout: 'grid-cols-1', components: [{ component: 'ProjectHubView', props: {} }] },
+          collaboration: { layout: 'grid-cols-1', components: [{ component: 'ProjectTimeline', props: {} }] },
+        },
+      },
+      Client: {
+        displayName: 'Client',
+        accentColor: '#8b5cf6',
+        allowedViews: ['dashboard', 'feature-request', 'support'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { support: 'Help', portal: 'Your Project' },
+        viewLayouts: {
+          dashboard:         { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          'feature-request': { layout: 'grid-cols-1', components: [{ component: 'FeatureRequestView', props: {} }] },
+          support:           { layout: 'grid-cols-1', components: [{ component: 'SupportView', props: {} }] },
+        },
+      },
+    },
+  },
+
+  // ── 4. Client Portal ─────────────────────────────────────────────────────
+  // Three roles: Account Manager, Client, Client Team Member.
+  // Rich self-service portal — AI assistant, onboarding, discovery, and resources.
+  {
+    id: 't-client-portal',
+    name: 'Client Portal',
+    description: 'Client-experience first. Deep self-service portal with guided onboarding, AI assistant, and feature requests.',
+    features: ['Client Onboarding', 'AI Assistant', 'Discovery', 'Feature Requests', 'Resources Hub'],
+    sidebarLinks: [
+      { id: 'cp-1',  label: 'Home',          iconName: 'LayoutDashboard', view: 'dashboard',          roles: ['AccountManager', 'Client', 'ClientTeam'], order: 1 },
+      { id: 'cp-2',  label: 'Clients',        iconName: 'Users',           view: 'agency-clients',     roles: ['AccountManager'], order: 2 },
+      { id: 'cp-3',  label: 'Onboarding Hub', iconName: 'Compass',         view: 'onboarding-dashboard', roles: ['AccountManager'], order: 3 },
+      { id: 'cp-4',  label: 'AI',             iconName: 'Sparkles',        view: 'aqua-ai',            roles: ['AccountManager', 'Client'], order: 4 },
+      { id: 'cp-5',  label: 'Onboarding',     iconName: 'Compass',         view: 'onboarding',         roles: ['Client'], order: 2 },
+      { id: 'cp-6',  label: 'AI Assistant',   iconName: 'Sparkles',        view: 'aqua-ai',            roles: ['Client'], order: 3 },
+      { id: 'cp-7',  label: 'Resources',      iconName: 'BookOpen',        view: 'resources',          roles: ['Client', 'ClientTeam'], order: 4 },
+      { id: 'cp-8',  label: 'Requests',       iconName: 'Lightbulb',       view: 'feature-request',    roles: ['Client'], order: 5 },
+      { id: 'cp-9',  label: 'Support',        iconName: 'LifeBuoy',        view: 'support',            roles: ['Client', 'ClientTeam'], order: 6 },
+      { id: 'cp-10', label: 'Discover',       iconName: 'Star',            view: 'discover',           roles: ['Client'], order: 7 },
+    ],
+    roles: {
+      AccountManager: {
+        displayName: 'Account Manager',
+        accentColor: '#6366f1',
+        allowedViews: ['dashboard', 'agency-clients', 'onboarding-dashboard', 'discovery-dashboard', 'aqua-ai', 'logs', 'support-tickets', 'client-management'],
+        canImpersonate: true,
+        canManageUsers: true,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { clients: 'Accounts' },
+        viewLayouts: {
+          dashboard:              { layout: 'grid-cols-1', components: [{ component: 'AdminDashboardView', props: {} }] },
+          'agency-clients':       { layout: 'grid-cols-1', components: [{ component: 'AgencyClientsView', props: {} }] },
+          'onboarding-dashboard': { layout: 'grid-cols-1', components: [{ component: 'OnboardingDashboardView', props: {} }] },
+          'discovery-dashboard':  { layout: 'grid-cols-1', components: [{ component: 'DiscoveryDashboardView', props: {} }] },
+          'aqua-ai':              { layout: 'grid-cols-1', components: [{ component: 'AquaAiView', props: {} }] },
+          'support-tickets':      { layout: 'grid-cols-1', components: [{ component: 'SupportTicketsView', props: {} }] },
+          logs:                   { layout: 'grid-cols-1', components: [{ component: 'LogsView', props: {} }] },
+        },
+      },
+      Client: {
+        displayName: 'Client',
+        accentColor: '#8b5cf6',
+        allowedViews: ['dashboard', 'onboarding', 'aqua-ai', 'resources', 'feature-request', 'support', 'discover'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: { team: 'Your Team', portal: 'Your Portal', support: 'Help Centre' },
+        viewLayouts: {
+          dashboard:         { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          onboarding:        { layout: 'grid-cols-1', components: [{ component: 'OnboardingView', props: {} }] },
+          'aqua-ai':         { layout: 'grid-cols-1', components: [{ component: 'AquaAiView', props: {} }] },
+          resources:         { layout: 'grid-cols-1', components: [{ component: 'ResourcesView', props: {} }] },
+          'feature-request': { layout: 'grid-cols-1', components: [{ component: 'FeatureRequestView', props: {} }] },
+          support:           { layout: 'grid-cols-1', components: [{ component: 'SupportView', props: {} }] },
+          discover:          { layout: 'grid-cols-1', components: [{ component: 'DiscoverView', props: {} }] },
+        },
+      },
+      ClientTeam: {
+        displayName: 'Client Team',
+        accentColor: '#14b8a6',
+        allowedViews: ['dashboard', 'resources', 'support'],
+        canImpersonate: false,
+        canManageUsers: false,
+        canManageRoles: false,
+        canAccessConfigurator: false,
+        labelOverrides: {},
+        viewLayouts: {
+          dashboard: { layout: 'grid-cols-1', components: [{ component: 'DashboardOverviewView', props: {} }] },
+          resources: { layout: 'grid-cols-1', components: [{ component: 'ResourcesView', props: {} }] },
+          support:   { layout: 'grid-cols-1', components: [{ component: 'SupportView', props: {} }] },
+        },
+      },
+    },
+  },
+
+];

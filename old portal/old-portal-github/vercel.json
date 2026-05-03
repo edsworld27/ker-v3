@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install && cd main-monorepo && npm install && bash scripts/setup-db.sh",
+  "buildCommand": "cd main-monorepo && npm run build",
+  "devCommand": "cd main-monorepo && npm run dev",
+  "outputDirectory": "main-monorepo/apps/aqua-host-shell/.next",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_BRIDGE_IFRAME_FALLBACK": "0",
+    "DATABASE_URL": "file:./dev.db"
+  }
+}

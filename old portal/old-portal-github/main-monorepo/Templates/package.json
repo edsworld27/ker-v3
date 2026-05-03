@@ -1,0 +1,7 @@
+{
+  "name": "@aqua/templates",
+  "version": "1.0.0",
+  "description": "Aqua Portal template registry stub",
+  "main": "index.ts",
+  "type": "module"
+}

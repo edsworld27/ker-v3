@@ -1,0 +1,83 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/Templates/*": [
+        "../Templates/*"
+      ],
+      "@aqua/templates/*": [
+        "../Templates/*"
+      ],
+      "@aqua/templates": [
+        "../Templates"
+      ],
+      "@aqua/bridge": [
+        "../Bridge"
+      ],
+      "@aqua/bridge/*": [
+        "../Bridge/*"
+      ],
+      "@HostShell/*": [
+        "./HostShell/*"
+      ],
+      "@FinanceShell/*": [
+        "../aqua-ops-finance/FinanceShell/*"
+      ],
+      "@PeopleShell/*": [
+        "../aqua-ops-people/PeopleShell/*"
+      ],
+      "@RevenueShell/*": [
+        "../aqua-ops-revenue/RevenueShell/*"
+      ],
+      "@ClientShell/*": [
+        "../aqua-client/ClientShell/*"
+      ],
+      "@CRMShell/*": [
+        "../aqua-crm/CRMShell/*"
+      ],
+      "@OpsHubShell/*": [
+        "../aqua-operations/OpsHubShell/*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": false,
+    "incremental": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts",
+    "**/*.ts",
+    "**/*.tsx",
+    "../Bridge/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

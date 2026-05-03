@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel earlier runs on the same branch when a new commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: main-monorepo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: main-monorepo/package-lock.json
+      - run: npm ci --no-audit --no-fund
+
+  test:
+    name: Bridge unit tests (Vitest)
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: main-monorepo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: main-monorepo/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  lint:
+    name: ESLint (all 7 apps)
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: main-monorepo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: main-monorepo/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+
+  typecheck:
+    name: TypeScript (tsc --noEmit)
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: main-monorepo
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - aqua-host-shell
+          - aqua-client
+          - aqua-crm
+          - aqua-operations
+          - aqua-ops-finance
+          - aqua-ops-people
+          - aqua-ops-revenue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: main-monorepo/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Generate Prisma clients (typecheck depends on @prisma/client)
+        run: bash scripts/setup-db.sh
+        env:
+          DATABASE_URL: 'file:./prisma/dev.db'
+      - name: Typecheck ${{ matrix.app }}
+        run: npm run typecheck --workspace=${{ matrix.app }}
+
+  build:
+    name: Next.js build (all 7 apps)
+    runs-on: ubuntu-latest
+    needs: [test, lint, typecheck]
+    defaults:
+      run:
+        working-directory: main-monorepo
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - aqua-host-shell
+          - aqua-client
+          - aqua-crm
+          - aqua-operations
+          - aqua-ops-finance
+          - aqua-ops-people
+          - aqua-ops-revenue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: main-monorepo/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Initialize SQLite Prisma DBs
+        run: bash scripts/setup-db.sh
+        env:
+          DATABASE_URL: 'file:./prisma/dev.db'
+      - name: Build ${{ matrix.app }}
+        run: npm run build --workspace=${{ matrix.app }}

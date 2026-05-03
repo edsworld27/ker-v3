@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --finance-primary-color: #4f46e5;
+  --finance-primary-color-glow: rgba(79, 70, 229, 0.15);
+  --finance-secondary-color: #10b981;
+  --finance-secondary-color-glow: rgba(16, 185, 129, 0.15);
+  --finance-bg-color: #0f172a;
+  --finance-surface-color: #1e293b;
+  --finance-surface-color-hover: rgba(255, 255, 255, 0.05);
+  --finance-surface-color-glass: rgba(255, 255, 255, 0.03);
+  --finance-border-color: rgba(255, 255, 255, 0.1);
+  --finance-text-color: #f8fafc;
+  --finance-text-color-muted: #94a3b8;
+  --finance-text-color-dim: rgba(255, 255, 255, 0.4);
+  --finance-text-color-on-primary: #ffffff;
+  --finance-widget-error: #ef4444;
+  --finance-widget-success: #10b981;
+  --finance-widget-info: #3b82f6;
+  --radius-button: 0.75rem;
+  --radius-card: 1.5rem;
+  --radius-panel: 2.5rem;
+}
+
+body {
+  background-color: var(--finance-bg-color);
+  color: var(--finance-text-color);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+.glass-card {
+  background: var(--finance-surface-color-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--finance-border-color);
+}
+
+.premium-card {
+  background: var(--finance-surface-color);
+  border: 1px solid var(--finance-border-color);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card-hover:hover {
+  background: var(--finance-surface-color-hover);
+  border-color: var(--finance-primary-color-glow);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+}
+
+.premium-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+}
+
+.glow-primary {
+  box-shadow: 0 0 15px 0 var(--finance-primary-color-glow);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 15px 0 var(--finance-secondary-color-glow);
+}
+
+.text-dim {
+  color: var(--finance-text-color-dim);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
