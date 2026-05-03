@@ -1,0 +1,12 @@
+# Vercel only deploys the Milesy Media static landing page.
+# Everything else is preserved in git but not uploaded to Vercel.
+
+01 development/
+02 felicias aqua portal work/
+03 old portal/
+04 the final portal/clients/
+04 the final portal/plugins/
+04 the final portal/portal/
+node_modules/
+.next/
+.data/
