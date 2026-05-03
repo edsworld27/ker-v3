@@ -5,6 +5,14 @@ You are Terminal 1 of three parallel Claude Opus 4.7 sessions building
 plugin, T3 ports the website-editor plugin. Both depend on the chrome /
 plugin-runtime contract you produce.
 
+## Working environment
+
+- **Repo**: https://github.com/edsworld27/ker-v3
+- **Local working directory**: `~/Desktop/ker-v3/`
+- **Branch**: commit directly to `main`. Push when done. (Reviewability comes from the chapter file you update, not from PRs.)
+- **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
+- **Note**: top-level folder names contain spaces (`01 development`, `02 felicias aqua portal work`, `04 the final portal`). Quote paths in the shell. In TypeScript imports use `@/` aliases — never relative paths through the spaces.
+
 ## Mandatory pre-read
 
 In order, read these chapters end-to-end. Don't skip:

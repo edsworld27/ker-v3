@@ -4,6 +4,14 @@ Ed runs three additional Claude terminals (Opus 4.7 max effort, with subagent
 authority). This session acts as chief commander: writes self-contained
 prompts for each terminal, integrates their output back into the dev folder.
 
+## Working environment (every terminal)
+
+- **Repo**: https://github.com/edsworld27/ker-v3
+- **Local working directory**: `~/Desktop/ker-v3/`
+- **Branch**: each terminal commits directly to `main` and pushes when done.
+- **If a terminal doesn't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
+- **Folder names contain spaces** — quote paths in shell commands.
+
 ## How to use
 
 1. Open a fresh Claude Code terminal in `~/Desktop/ker-v3/`.

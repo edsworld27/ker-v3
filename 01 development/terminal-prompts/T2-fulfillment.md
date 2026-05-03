@@ -5,6 +5,14 @@ You are Terminal 2 of three parallel Claude Opus 4.7 sessions building
 porting the website-editor plugin. Your role: build the **fulfillment plugin**
 — the killer first feature.
 
+## Working environment
+
+- **Repo**: https://github.com/edsworld27/ker-v3
+- **Local working directory**: `~/Desktop/ker-v3/`
+- **Branch**: commit directly to `main`. Push when done.
+- **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
+- **Note**: top-level folder names contain spaces (`01 development`, `04 the final portal`). Quote paths in the shell.
+
 The fulfillment plugin is the agency-side workspace where the team:
 - Creates clients
 - Picks a phase preset for a new client (which auto-installs starter plugins + applies a starter portal variant)

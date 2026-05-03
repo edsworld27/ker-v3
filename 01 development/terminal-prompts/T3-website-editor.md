@@ -6,6 +6,14 @@ fulfillment plugin. Your role: port the website editor + 58 blocks +
 portal variants from `02 felicias aqua portal work/` into a self-contained
 plugin package at `04 the final portal/plugins/website-editor/`.
 
+## Working environment
+
+- **Repo**: https://github.com/edsworld27/ker-v3
+- **Local working directory**: `~/Desktop/ker-v3/`
+- **Branch**: commit directly to `main`. Push when done.
+- **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
+- **Note**: source paths contain spaces (`02 felicias aqua portal work/`, `04 the final portal/`). Quote paths in shell commands. Use TypeScript path aliases internally to your plugin so imports don't traverse through the spaces.
+
 ## Mandatory pre-read
 
 1. `01 development/CLAUDE.md`
