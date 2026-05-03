@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { friendlyError } from "@/lib/admin/friendlyError";
 
 export default function ChangePasswordPage() {
   return (
@@ -71,11 +72,8 @@ function ChangePasswordContent() {
       });
       const data = await res.json() as { ok: boolean; error?: string };
       if (!data.ok) {
-        const msg =
-          data.error === "invalid-current-password" ? "Current password is incorrect." :
-          data.error === "rate-limited" ? "Too many attempts — try again in a minute." :
-          data.error ?? "Couldn't update password.";
-        setError(msg);
+        const f = friendlyError(data.error, "Couldn't update password");
+        setError(f.hint ? `${f.message} ${f.hint}` : f.message);
         return;
       }
       setDone(true);

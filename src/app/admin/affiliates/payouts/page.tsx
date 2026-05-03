@@ -13,6 +13,7 @@ import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { notify } from "@/components/admin/Toaster";
 import Tip from "@/components/admin/Tip";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Affiliate {
@@ -297,14 +298,19 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
         | { ok: true; payout: Payout; outstandingAfter: number }
         | { ok: false; error: string; outstanding?: number };
       if (!data.ok) {
-        const msg = data.error === "exceeds-outstanding"
-          ? `Outstanding balance is ${fmt(data.outstanding ?? 0)}.`
-          : data.error === "non-positive-amount"
-          ? "Amount must be greater than zero."
-          : data.error === "unknown-affiliate"
-          ? "Affiliate not found."
-          : data.error;
-        notify({ tone: "error", title: "Couldn't record payout", message: msg });
+        // exceeds-outstanding carries a live `outstanding` figure; we
+        // surface it inline since the friendly-error catalog doesn't
+        // know the org's currency.
+        if (data.error === "exceeds-outstanding") {
+          notify({
+            tone: "error",
+            title: "Amount too high",
+            message: `Outstanding balance is ${fmt(data.outstanding ?? 0)}.`,
+          });
+        } else {
+          const f = friendlyError(data.error, "Couldn't record payout");
+          notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
+        }
         return;
       }
       onSuccess(affiliate.id, pence, data.payout);
