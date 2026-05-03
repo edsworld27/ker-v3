@@ -5,14 +5,36 @@ asynchronously on this repo. They coordinate by appending to log files in
 this folder. The chief commander runs on a self-paced `/loop` that wakes
 periodically, pulls the repo, reads the logs, responds, and re-schedules.
 
-## Files
+## Layout
 
-- `T1.md` — Terminal 1 (foundation) running log.
-- `T2.md` — Terminal 2 (fulfillment plugin) running log.
-- `T3.md` — Terminal 3 (website-editor port) running log.
-- `commander.md` — Chief commander's running log: questions answered, prompt updates, plan changes.
+```
+01 development/messages/
+├── README.md             ← protocol (you are here)
+├── commander.md          ← chief commander's running log (cycle summaries)
+├── terminal-1/
+│   ├── to-orchestrator.md     ← T1 writes here (status + questions)
+│   └── from-orchestrator.md   ← commander writes here (replies + new tasks)
+├── terminal-2/
+│   ├── to-orchestrator.md
+│   └── from-orchestrator.md
+└── terminal-3/
+    ├── to-orchestrator.md
+    └── from-orchestrator.md
+```
 
-All four are **append-only**. Never rewrite earlier entries; only add new ones at the bottom.
+Each file is **append-only**. Never rewrite earlier entries; only add new ones at the bottom.
+
+## Direction of writes
+
+| File | Written by | Read by |
+|------|-----------|---------|
+| `terminal-N/to-orchestrator.md` | terminal N | commander |
+| `terminal-N/from-orchestrator.md` | commander | terminal N |
+| `commander.md` | commander | everyone (status + cycle summaries) |
+
+A terminal **never** writes to another terminal's folder, never writes to
+`commander.md`, never writes to its own `from-orchestrator.md`.
+The commander **never** writes to any `to-orchestrator.md`.
 
 ## Entry format
 
@@ -29,69 +51,75 @@ Every entry: `[ISO timestamp] TYPE: short message`
 
 Type vocabulary:
 
-| TYPE | meaning |
-|------|---------|
-| `STARTED` | beginning a new sub-task |
-| `PROGRESS` | a milestone within a task is complete |
-| `Q-ASSUMED` | hit a question, made a reasonable assumption (state it), continuing — non-blocking |
-| `Q-BLOCKED` | hit a question, no reasonable assumption possible, stopped |
-| `COMMIT` | wrote a commit (hash + one-line message) |
-| `DONE` | task complete (chapter written, MASTER updated, tasks.md ticked) |
-| `WARN` | something off but not blocking — flag it |
-| `RESUMED` | resuming after a Q-BLOCKED was answered |
-| `REPLY` | (commander only) replying to a Q-ASSUMED or Q-BLOCKED — reference timestamp of the question |
+| TYPE | who | meaning |
+|------|-----|---------|
+| `STARTED` | terminal | beginning a new sub-task |
+| `PROGRESS` | terminal | a milestone within a task is complete |
+| `Q-ASSUMED` | terminal | hit a question, made a reasonable assumption (state it), continuing — non-blocking |
+| `Q-BLOCKED` | terminal | hit a question, no reasonable assumption possible, stopped |
+| `COMMIT` | terminal | wrote a commit (hash + one-line message) |
+| `DONE` | terminal | task complete (chapter written, MASTER updated, tasks.md ticked) |
+| `WARN` | terminal | something off but not blocking |
+| `RESUMED` | terminal | resuming after a Q-BLOCKED was answered |
+| `REPLY` | commander | replying to a Q-ASSUMED or Q-BLOCKED — reference timestamp of the question |
+| `TASK` | commander | handing terminal a new sub-task / round-2 prompt |
+| `WAKEUP` | commander | start of a wake cycle (in commander.md) |
+| `SLEEP` | commander | scheduling next wakeup with delay + reason (in commander.md) |
+| `PLAN` | commander | a planning decision affecting future rounds |
 
 ## Protocol — every terminal
 
 ### Before starting any task
-1. `cd ~/Desktop/ker-v3 && git pull`
-2. Read your own log file (`messages/T<N>.md`) to remember where you left off.
-3. Read `messages/commander.md` for any commander replies addressed to you.
-4. Read the latest `tasks.md`.
+1. `cd ~/Desktop/ker-v3 && git pull --rebase`
+2. Read `01 development/messages/terminal-<N>/from-orchestrator.md` — any new commander reply or task addressed to you?
+3. Read `01 development/messages/terminal-<N>/to-orchestrator.md` — your own outbox; figure out where you left off.
+4. Read `01 development/tasks.md`.
 
 ### While working
-- **Don't stop on questions.** If a reasonable assumption exists, append a `Q-ASSUMED` entry stating the assumption + your reasoning, and keep going.
-- **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible AND continuing without an answer would damage architectural integrity.
-- After every commit, `git pull --rebase` then `git push` (so concurrent terminals don't conflict).
-- After every commit, append a `COMMIT` entry to your log with hash + one-line message.
+- **Don't stop on questions.** If a reasonable assumption exists, append a `Q-ASSUMED` entry to your `to-orchestrator.md` with assumption + reasoning, and keep going.
+- **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible.
+- After every commit, `git pull --rebase` then `git push`. Append a `COMMIT` entry to your `to-orchestrator.md`.
 
 ### When done with a task
-- Append a `DONE` entry.
-- Update the relevant chapter file in `01 development/context/prior research/`.
-- Update `01 development/context/MASTER.md` with the new chapter row.
-- Move row in `tasks.md` to "Done".
+- Append a `DONE` entry to your `to-orchestrator.md`.
+- Add or update the relevant chapter in `01 development/context/prior research/`.
+- Add a row to `01 development/context/MASTER.md` for any new chapter.
+- Move the row in `tasks.md` to "Done".
 - Final commit + push.
 
 ### When blocked
-- Append `Q-BLOCKED` entry.
-- Stop work.
-- Wait. Commander will reply in `commander.md` within ~30 minutes.
-- When commander replies, `git pull`, append `RESUMED` to your log, continue.
+- Append `Q-BLOCKED` entry to your `to-orchestrator.md`.
+- Stop working.
+- Sleep 600s (10 min) — commander will reply within that window.
+- On wake: read `from-orchestrator.md`. If a `REPLY` is there, append `RESUMED` to your outbox and continue.
 
-## Protocol — chief commander (this is the orchestrator's loop)
+## Protocol — chief commander
 
-Every wakeup:
-1. `git pull`.
-2. Read all 4 log files (T1, T2, T3, commander).
-3. Identify changes since commander's last entry:
-   - `Q-BLOCKED` → answer immediately. Append `REPLY` entry to commander.md.
-   - `Q-ASSUMED` with risky assumption → review; if wrong, post correction.
-   - `DONE` → mark task done in `tasks.md`, draft next-round prompt if applicable.
+Each wake cycle:
+
+1. `git pull --rebase`.
+2. Read each `terminal-N/to-orchestrator.md` (find entries newer than your last `WAKEUP` in `commander.md`).
+3. Read your own `commander.md` (find your last entry).
+4. For each new entry per terminal:
+   - `Q-BLOCKED` → write a `REPLY` into that terminal's `from-orchestrator.md` referencing the question's timestamp. Be specific.
+   - `Q-ASSUMED` with risky/wrong assumption → write a `REPLY` correcting it.
+   - `DONE` → mark task done in `tasks.md`. If terminal is fully done with a round, write a `TASK` for next round into their `from-orchestrator.md`.
    - `WARN` → assess and respond.
-   - `PROGRESS` only → just note "T<N> progressing" in commander.md.
-4. Append a status summary entry to `commander.md`.
-5. Update `tasks.md` / `phases.md` / individual terminal prompts if priorities shifted.
-6. `git add -A && git commit && git push`.
-7. Schedule next wakeup based on activity:
-   - Any `Q-BLOCKED` outstanding: 600s (10 min)
-   - Active progress, no blockers: 1500s (25 min)
-   - Quiet, no new entries: 1800s (30 min)
-   - All terminals `DONE` and Round 2 ready: 1200s (20 min) to draft Round 2 prompts
+   - `PROGRESS` only → just note "T<N> progressing" briefly.
+5. Append a `WAKEUP` summary entry to `commander.md`: `[ISO] WAKEUP: <one-line summary>`.
+6. Update `tasks.md`, `phases.md`, individual prompt files if priorities shifted.
+7. Commit + push.
+8. Schedule next wake based on activity:
+   - Any `Q-BLOCKED` outstanding (reply not yet sent or not yet acted on): 600s
+   - Active progress + commits since last wake: 1500s
+   - Quiet (no new entries): 1800s
+   - All terminals fully `DONE` for current round: 1200s to draft next round
+9. Append a `SLEEP` entry to `commander.md` with the chosen delay + reason.
 
 ## Why this works
 
-- **No synchronous coordination.** Each terminal runs independently; the log is the only shared state.
-- **Git is the message bus.** Pull-before-start + push-after-commit keeps everyone in sync.
-- **Append-only** means no race-condition merges of conflicting edits to the same lines.
-- **Chief commander is async.** Terminals don't wait for the commander except on `Q-BLOCKED`; everything else continues at full speed.
-- **Ed watches from outside.** Anyone can `git log` to see exactly what every actor did.
+- **Per-terminal folders** = clean inbox/outbox mental model. Easy to find what's addressed to whom.
+- **Append-only** = no race-condition merges of conflicting edits.
+- **Git is the message bus.** Pull-before, push-after. Concurrent commits resolve via rebase.
+- **Commander is async.** Terminals only wait for commander on `Q-BLOCKED`; everything else continues at full speed.
+- **Anyone can audit** with `git log` + `cat` on the message files.

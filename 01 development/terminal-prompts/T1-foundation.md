@@ -20,11 +20,10 @@ plugin-runtime contract you produce.
 You operate alongside T2 + T3 + a chief commander on `/loop`. **Read
 `01 development/messages/README.md` BEFORE you do anything.** Then:
 
-- Append every meaningful step to `01 development/messages/T1.md` using the format `[ISO timestamp] TYPE: message`.
-- Types you'll use most: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`.
+- **Outbox**: append every meaningful step to `01 development/messages/terminal-1/to-orchestrator.md`. Format: `[ISO timestamp] TYPE: message`. Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Inbox**: read `01 development/messages/terminal-1/from-orchestrator.md` before each sub-task and after each push — commander writes replies and new tasks for you here.
 - **Don't stop on questions.** If a reasonable assumption exists, log `Q-ASSUMED` (state assumption + reasoning) and keep going.
-- **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible. Then wait for the commander's `REPLY` in `messages/commander.md`. Commander wakes every 10–30 minutes.
-- Read `messages/commander.md` before starting a new sub-task and after every push (commander may have replied to you).
+- **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible. Sleep 600s and wake to check your inbox.
 
 You're on Claude auto-mode — keep working without asking Ed unless you hit a true `Q-BLOCKED`. The commander handles routing.
 

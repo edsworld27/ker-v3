@@ -20,11 +20,10 @@ porting the website-editor plugin. Your role: build the **fulfillment plugin**
 You operate alongside T1 + T3 + a chief commander on `/loop`. **Read
 `01 development/messages/README.md` BEFORE you do anything.** Then:
 
-- Append every meaningful step to `01 development/messages/T2.md` using the format `[ISO timestamp] TYPE: message`.
-- Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Outbox**: append every meaningful step to `01 development/messages/terminal-2/to-orchestrator.md`. Format: `[ISO timestamp] TYPE: message`. Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Inbox**: read `01 development/messages/terminal-2/from-orchestrator.md` before each sub-task and after each push.
 - **Don't stop on questions.** Make a reasonable assumption, log `Q-ASSUMED` with reasoning, keep going.
-- **Only stop on `Q-BLOCKED`.** Commander replies via `messages/commander.md` within 10–30 min.
-- Read `messages/commander.md` before each sub-task and after each push.
+- **Only stop on `Q-BLOCKED`.** Sleep 600s and wake to check inbox.
 
 T2 has a soft dependency on T3 for the portal-variant data shape (`applyStarterVariant`). If T3 hasn't shipped that part yet, log a clean `Q-ASSUMED` with your assumed contract and keep going. The commander integrates later.
 

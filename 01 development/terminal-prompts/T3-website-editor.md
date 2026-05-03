@@ -21,11 +21,10 @@ plugin package at `04 the final portal/plugins/website-editor/`.
 You operate alongside T1 + T2 + a chief commander on `/loop`. **Read
 `01 development/messages/README.md` BEFORE you do anything.** Then:
 
-- Append every meaningful step to `01 development/messages/T3.md` using the format `[ISO timestamp] TYPE: message`.
-- Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Outbox**: append every meaningful step to `01 development/messages/terminal-3/to-orchestrator.md`. Format: `[ISO timestamp] TYPE: message`. Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Inbox**: read `01 development/messages/terminal-3/from-orchestrator.md` before each sub-task and after each push.
 - **Don't stop on questions.** Make a reasonable assumption, log `Q-ASSUMED` with reasoning, keep going.
-- **Only stop on `Q-BLOCKED`.** Commander replies via `messages/commander.md` within 10–30 min.
-- Read `messages/commander.md` before each sub-task and after each push.
+- **Only stop on `Q-BLOCKED`.** Sleep 600s and wake to check inbox.
 
 T3 produces the `applyStarterVariant` API that T2 will call from phase transitions. Document the contract in `04-plugin-website-editor.md` so T2 can integrate against it (or, if T2 lands first with assumptions, the commander adjusts).
 

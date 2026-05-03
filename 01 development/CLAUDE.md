@@ -14,24 +14,33 @@ The Aqua portal build runs as **four parallel sessions**:
 All four communicate **asynchronously** via append-only logs at
 `01 development/messages/`:
 
-- `messages/T1.md`, `T2.md`, `T3.md` — each terminal's running log
-- `messages/commander.md` — commander's running log (replies, plans, sleep schedules)
+```
+messages/
+├── README.md                  ← protocol (read this!)
+├── commander.md               ← commander's running log
+├── terminal-1/
+│   ├── to-orchestrator.md     ← T1 writes here
+│   └── from-orchestrator.md   ← commander writes here for T1
+├── terminal-2/  (same shape)
+└── terminal-3/  (same shape)
+```
 
 **Read `01 development/messages/README.md` before doing anything.** It defines
-the entry format, the protocol, and the cadence.
+the entry format, the directionality, and the cadence.
 
 ## Rule of work — every session
 
 Before any task:
 
-1. `cd ~/Desktop/ker-v3 && git pull`
+1. `cd ~/Desktop/ker-v3 && git pull --rebase`
 2. Read `01 development/CLAUDE.md` (this file).
 3. Read `01 development/messages/README.md` (the comms protocol).
 4. Read `01 development/context/MASTER.md` (the context tree contents page).
 5. Read `01 development/context/prior research/04-architecture.md` (the locked design).
 6. Read `01 development/eds requirments.md` (Ed's spec).
-7. Read your own `messages/T<N>.md` (or `commander.md`) — figure out where you left off.
-8. Read `messages/commander.md` if you're a terminal — commander may have replied to you.
+7. Read your own folder's files:
+   - Terminal N: `messages/terminal-N/from-orchestrator.md` (any reply/task for you?) AND `messages/terminal-N/to-orchestrator.md` (your last entry — figure out where you left off).
+   - Commander: `messages/commander.md` (your last cycle entry) AND every terminal's `to-orchestrator.md` (what's new since).
 
 While working:
 
@@ -40,7 +49,8 @@ While working:
   - `phases.md` — high-level roadmap.
   - `tasks.md` — granular task list.
   - `ideas.md` — surfaced ideas not part of the active task.
-  - `messages/T<N>.md` (terminals) or `messages/commander.md` (commander) — running log.
+  - For terminals: append to your own `messages/terminal-N/to-orchestrator.md`.
+  - For commander: append to `messages/commander.md` AND write replies into per-terminal `from-orchestrator.md` files.
 - **Don't stop on questions.** If a reasonable assumption exists, log it as `Q-ASSUMED`, state the assumption + reasoning, and keep going.
 - **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible.
 - After every commit: `git pull --rebase && git push`. Append a `COMMIT` entry to your log.
@@ -60,9 +70,7 @@ All durable memory lives in `01 development/context/`. Treat it like a book:
 - **Recall**: open `context/MASTER.md`, find the chapter row, open the chapter file.
 - **Write**: drop a new chapter file *and* add a row in `MASTER.md`.
 
-Never stash project memory anywhere else (not in this CLAUDE.md, not inline
-in code comments, not in scratch files). The context tree is the single
-source of truth.
+Never stash project memory anywhere else. The context tree is the single source of truth.
 
 ## What to ignore
 
@@ -76,7 +84,7 @@ do not edit those folders unless Ed explicitly asks.
 
 ## Authority boundaries
 
-- **Terminals (T1 / T2 / T3)** can: write code in their assigned folder, update their own log, append to chapter files within their scope, update `tasks.md` rows for their own task, commit + push.
-- **Terminals must NOT**: modify another terminal's prompt, edit `commander.md`, change `04-architecture.md`, modify `eds requirments.md`, modify the messages README/protocol.
-- **Chief commander** can: do anything terminals can + edit prompts, edit architecture chapter (rare), edit messages README, plan next rounds.
+- **Terminals (T1 / T2 / T3)** can: write code in their assigned folder, append to their own `to-orchestrator.md`, append to chapter files within their scope, update `tasks.md` rows for their own task, commit + push.
+- **Terminals must NOT**: write to another terminal's folder, write to `commander.md`, write to their own `from-orchestrator.md`, change `04-architecture.md`, modify `eds requirments.md`, modify the messages README/protocol.
+- **Chief commander** can: do anything terminals can + write to per-terminal `from-orchestrator.md` files, append to `commander.md`, edit prompts, edit architecture chapter (rare), edit messages README, plan next rounds.
 - **Ed** is the only authority above the chief commander. If Ed says something, it overrides everything in this file.
