@@ -513,6 +513,7 @@ function VisualEditorPageInner() {
         <PageSettingsModal
           siteId={site.id}
           page={pageSettingsPage}
+          isPro={complexity === "pro"}
           onClose={() => setPageSettingsId(null)}
           onSaved={async () => {
             const next = await loadPages(site.id);
@@ -1045,10 +1046,11 @@ function NewFunnelModal({
 // ── Page settings modal ────────────────────────────────────────────────────
 
 function PageSettingsModal({
-  siteId, page, onClose, onSaved,
+  siteId, page, isPro, onClose, onSaved,
 }: {
   siteId: string;
   page: PageEntry;
+  isPro: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1057,6 +1059,10 @@ function PageSettingsModal({
   const [description, setDescription] = useState("");
   const [customHead, setCustomHead] = useState("");
   const [customFoot, setCustomFoot] = useState("");
+  const [customCss,  setCustomCss]  = useState("");
+  const [themeId,    setThemeId]    = useState<string>("");
+  const [hideNav,    setHideNav]    = useState(false);
+  const [hideFooter, setHideFooter] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1068,6 +1074,10 @@ function PageSettingsModal({
       setDescription(doc.description ?? "");
       setCustomHead(doc.customHead ?? "");
       setCustomFoot(doc.customFoot ?? "");
+      setCustomCss(doc.customCss ?? "");
+      setThemeId(doc.themeId ?? "");
+      setHideNav(!!doc.layoutOverrides?.hideNav);
+      setHideFooter(!!doc.layoutOverrides?.hideFooter);
       setLoaded(true);
     });
     return () => { cancelled = true; };
@@ -1086,6 +1096,14 @@ function PageSettingsModal({
       description: description.trim() || undefined,
       customHead: customHead || undefined,
       customFoot: customFoot || undefined,
+      // Pro-only fields go through unconditionally so toggling complexity
+      // doesn't silently drop saved values — the surface is hidden but
+      // the state stays intact.
+      customCss: customCss || undefined,
+      themeId: themeId || undefined,
+      layoutOverrides: (hideNav || hideFooter)
+        ? { hideNav: hideNav || undefined, hideFooter: hideFooter || undefined }
+        : undefined,
     });
     setBusy(false);
     if (!out) { setError("Save failed."); return; }
@@ -1148,6 +1166,69 @@ function PageSettingsModal({
           </label>
         </div>
       </details>
+
+      {isPro && (
+        <details className="rounded-lg border border-cyan-400/20 bg-cyan-500/5 px-3 py-2">
+          <summary className="text-[11px] text-cyan-200 cursor-pointer hover:text-cyan-100 flex items-center gap-2">
+            <span className="text-[9px] uppercase tracking-[0.18em] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-100">Pro</span>
+            Theme · layout · custom CSS
+          </summary>
+          <div className="mt-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Theme override</span>
+                <select
+                  value={themeId}
+                  onChange={e => setThemeId(e.target.value)}
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[12px] text-brand-cream focus:outline-none focus:border-cyan-400/40"
+                >
+                  <option value="">Inherit site theme</option>
+                  <option value="default">Default</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </label>
+              <div className="block">
+                <span className="text-[10px] tracking-wider uppercase text-brand-cream/45 block">Layout</span>
+                <div className="mt-1 space-y-1">
+                  <label className="flex items-center gap-2 text-[12px] text-brand-cream cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={hideNav}
+                      onChange={e => setHideNav(e.target.checked)}
+                      className="accent-cyan-400"
+                    />
+                    Hide site nav on this page
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-brand-cream cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={hideFooter}
+                      onChange={e => setHideFooter(e.target.checked)}
+                      className="accent-cyan-400"
+                    />
+                    Hide site footer
+                  </label>
+                </div>
+              </div>
+            </div>
+            <label className="block">
+              <span className="text-[10px] tracking-wider uppercase text-brand-cream/45">Page CSS</span>
+              <textarea
+                value={customCss}
+                onChange={e => setCustomCss(e.target.value)}
+                rows={5}
+                spellCheck={false}
+                placeholder={"h1 { letter-spacing: -0.02em; }\n.cta { background: var(--brand-amber); }"}
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-[11px] font-mono text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-cyan-400/40"
+              />
+              <span className="block text-[10px] text-brand-cream/40 mt-1">
+                Scoped to this page&rsquo;s subtree — rules don&rsquo;t leak globally. Theme tokens (e.g. <code>var(--brand-amber)</code>) are available.
+              </span>
+            </label>
+          </div>
+        </details>
+      )}
       {!loaded && <p className="text-[11px] text-brand-cream/45">Loading…</p>}
       {error && <p className="text-[11px] text-red-300">{error}</p>}
       <ModalActions

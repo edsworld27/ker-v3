@@ -74,6 +74,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Force-password-change guard: when the server flags the current user
+  // with mustChangePassword (operator-created account, post-reset), bounce
+  // them to /account/change-password before any admin chrome renders.
+  // /api/auth/me returns the live ServerUser flag.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { user?: { mustChangePassword?: boolean } };
+        if (cancelled) return;
+        if (data.user?.mustChangePassword) {
+          const next = encodeURIComponent(pathname ?? "/admin");
+          router.replace(`/account/change-password?forced=1&next=${next}`);
+        }
+      } catch {
+        // Network blip — don't block admin entry on a fetch failure.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pathname, router]);
+
   useEffect(() => {
     setSession(getSession());
     setHydrated(true);
@@ -97,6 +120,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setBranding(getBranding());
       setCustomTabs(listCustomTabs());
     };
+    // Brand kit follows the active org: when the operator switches
+    // orgs (org switcher fires "lk-orgs-change"), re-read getBranding()
+    // so the admin chrome (logo, panel name, accent) updates without a
+    // navigation. The orgs cache is persisted to localStorage now, so
+    // readBrandPluginBranding picks up the new active tenant
+    // synchronously.
+    const onOrgsChange = () => {
+      setBranding(getBranding());
+      setCustomTabs(listCustomTabs());
+    };
+    window.addEventListener("lk-orgs-change", onOrgsChange);
     window.addEventListener(AUTH_EVENT, refresh);
     window.addEventListener("storage", refresh);
     const off0 = onAdminConfigChange(refreshAdminConfig);
@@ -116,6 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("lk-orgs-change", onOrgsChange);
       off0(); off1(); off2(); off3(); off4(); off5();
     };
   }, [pathname]);

@@ -108,3 +108,48 @@ export async function constructWebhookEvent(rawBody: string, signature: string) 
   if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET is not set.");
   return stripe.webhooks.constructEvent(rawBody, signature, secret);
 }
+
+// ── Billing portal ────────────────────────────────────────────────────────
+//
+// Stripe's hosted Customer Portal — customers manage their subscription
+// (plan changes, payment method, cancel, invoice history) without us
+// rebuilding any of it. Each portal session is a one-shot URL that
+// redirects to Stripe; expiry is short, so we mint per-click.
+
+export interface BillingPortalInput {
+  customerId?: string;          // Stripe customer id, when known
+  customerEmail?: string;       // fallback — we'll resolve via Stripe customer search
+  returnUrl: string;            // where Stripe sends the customer back to
+}
+
+export interface BillingPortalResult {
+  url: string;
+}
+
+export async function createBillingPortalSession(input: BillingPortalInput): Promise<BillingPortalResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripe = (await getStripe()) as any;
+
+  let customerId = input.customerId;
+
+  if (!customerId) {
+    if (!input.customerEmail) {
+      throw new Error("billing-portal: provide customerId or customerEmail");
+    }
+    // Stripe's customer search index is async — for fresh customers
+    // (just-created in this request) `list({email})` is more reliable.
+    // We pick the first match; multi-customer-per-email is rare and the
+    // operator can pass the explicit id when it matters.
+    const list = await stripe.customers.list({ email: input.customerEmail, limit: 1 });
+    if (!list.data?.length) {
+      throw new Error(`No Stripe customer found for ${input.customerEmail}`);
+    }
+    customerId = list.data[0].id as string;
+  }
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: input.returnUrl,
+  });
+  return { url: session.url as string };
+}

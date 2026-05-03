@@ -8,5 +8,13 @@ export async function GET() {
   await ensureHydrated();
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  return NextResponse.json({ ok: true, user: { email: user.email, name: user.name, role: user.role } });
+  return NextResponse.json({
+    ok: true,
+    user: {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      mustChangePassword: !!user.mustChangePassword,
+    },
+  });
 }

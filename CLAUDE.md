@@ -269,37 +269,50 @@ src/app/api/portal/             ← plugin + tenant API
   to make any block-tree-based content editable in `/admin/editor`
   (extending the portal-variant pattern). Bigger refactor; deferred.
 
-## Next priorities (in order)
+## Next priorities (verification-only — no code left to write)
 
-1. **Real CRUD on the most-used stub admin pages** — start with
-   memberships/tiers (Felicia's likely first non-trivial config),
-   donations/donors, affiliates/payouts. Each is a small feature
-   — server module + storage + API + UI.
-2. **Audit log capture** — hook every admin mutation through a single
-   wrapper that emits `admin.action`; AuditLog plugin's runtime
-   listens + persists with diffs. The page already exists at
-   `/admin/auditlog`; wiring the recorder is the gap.
-3. **Backups runtime** — S3-compatible client, cron trigger, restore
-   flow (compliance prerequisite). Page + scaffold ready.
-4. **Custom domain auto-attach** — Vercel API integration so adding a
-   domain in `/admin/sites` actually wires it up rather than just
-   showing DNS instructions.
-5. **Subscriptions Stripe billing-portal handoff** — operator paste of
-   Stripe key already works for one-off charges; surfacing the hosted
-   billing portal so customers can self-serve plan changes is the
-   missing piece.
-6. **Pro mode features** — exposing theme tokens, layout-overrides
-   drawer, page-level custom CSS as Pro-only surfaces (the flag /
-   conditional rendering in the editor is already in place, just
-   needs the surfaces).
-7. **Brand kit refresh on org switch** — `getBranding()` already reads
-   the active org's brand-plugin config, but the in-memory orgs cache
-   needs to persist / reload on the `lk-orgs-change` event so the
-   admin chrome updates without a navigation.
-8. **Plugin sandbox / hot-reload in dev** — drop a folder in
-   `src/plugins/`, restart, the marketplace picks it up
-   (this works today; what's missing is the validation step that
-   refuses malformed manifests).
+The full code path for every previously-documented priority is now in
+the tree. What remains is plugging in credentials and validating
+against real services.
+
+1. **Email plugin actually sending** — operator pastes a Resend /
+   Postmark key under the Email plugin config, hits "Test send",
+   confirms inbox delivery. All plumbing (transports, templates, log)
+   is in place.
+2. **Stripe end-to-end** — full test purchase against Felicia's
+   storefront with real Stripe keys. Order persists + email
+   confirmation arrives + Analytics event is recorded. Validation,
+   not fresh code.
+(S3 adapter for Backups now ships in-tree — `src/lib/s3/server.ts`
+implements AWS SigV4 against any S3-compatible endpoint, dispatched
+per-org from `src/portal/server/backups.ts` based on plugin config.
+Operators paste bucket / region / access keys and "Backup now" hits
+real S3 — no remaining code work, just configuration.)
+
+The following infra-grade items shipped in this session:
+- Real CRUD on memberships/tiers, memberships/members,
+  donations/donors, affiliates/payouts, affiliates/stats
+- Audit log capture (`recordAdminAction` + instrumented mutating
+  endpoints + `/admin/auditlog` rendering the activity feed)
+- Force-password-change flow (`mustChangePassword` flag + admin-shell
+  redirect + `/account/change-password` + `/api/auth/change-password`)
+- Brand kit refresh on org switch (`lk_orgs_v1` localStorage mirror
+  + admin layout subscription)
+- Plugin manifest validator (`_validate.ts`) wired into the registry
+- Pro-mode editor surfaces (theme override, layout overrides,
+  page-level custom CSS in Page Settings modal)
+- Subscriptions Stripe billing-portal handoff
+  (`createBillingPortalSession`, `POST /api/stripe/billing-portal`,
+  `/admin/subscriptions` "Open portal" card — dual-mode customer +
+  admin)
+- Backups runtime (`src/portal/server/backups.ts` + `serializeStateJson`
+  / `restoreStateFromJson` storage hooks + `/api/portal/backups`
+  list / create / download / delete / restore + `/admin/backups`
+  + `/admin/backups/restore` with typed-id confirmation)
+- Custom domain auto-attach via Vercel API
+  (`src/lib/vercel/server.ts` + `/api/portal/domains` +
+  `/admin/sites` "Add + attach to Vercel" button surfacing
+  verification records)
 
 ## Future ideas (parking)
 

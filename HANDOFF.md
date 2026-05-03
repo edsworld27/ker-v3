@@ -242,16 +242,26 @@ is friction-free; production deploys must not set them.
 
 ---
 
-## Next priorities (in order, not started)
+## What shipped in this continue-work session
 
-1. **Audit log capture** — wrap every admin mutation through a single hook that emits `admin.action`. Plumbing exists; instrumentation is partial.
-2. **Backups runtime** — S3-compatible client + cron + restore flow. Compliance prerequisite.
-3. **Custom domain auto-attach** — Vercel API integration so adding a domain in `/admin/sites` actually wires it up rather than just showing DNS instructions.
-4. **Force-password-change on first login** — `forcePasswordChange` flag on `ServerUser`, redirect to `/account/change-password`, use the `setUserPassword` export already in place.
-5. **Email plugin actually sending** — operator pastes Resend key, hits "Test send", confirms inbox delivery. Plumbing is there; verify end-to-end.
-6. **Stripe end-to-end** — real test purchase on Felicia's site. Confirm Order persisted + email confirmation arrived + Analytics events recorded.
-7. **Brand kit refresh on org switch** — `getBranding()` reads active org's brand-plugin config but the cache needs to reload on `lk-orgs-change` so admin chrome updates without a navigation.
-8. **Subscriptions plugin** — Stripe billing-portal redirect + dunning emails.
+Nine priorities cleared in `claude/continue-work-1FFJ6`:
+
+1. **Real CRUD on memberships / donations / affiliates** — `/admin/memberships/{tiers,members}`, `/admin/donations/donors`, `/admin/affiliates/{payouts,stats}` are now real working pages backed by the existing runtimes. Adds `recordPayout` to the affiliates server so commission settlement is a real persisted action.
+2. **Audit log capture** — `recordAdminAction(actor, …)` helper in `src/portal/server/activity.ts`; mutating endpoints in memberships + affiliates now instrument; `/admin/auditlog` renders the activity feed with category / actor / search filters, diff viewer, and CSV export.
+3. **Force-password-change on first login** — `mustChangePassword` flag on `ServerUser`, surfaced through `/api/auth/me` + `/api/auth/login`, admin shell redirects to `/account/change-password?forced=1` when set, `/api/auth/change-password` clears the flag on success.
+4. **Brand kit refresh on org switch** — `lk_orgs_v1` localStorage mirror (so `readBrandPluginBranding` synchronously sees the right tenant on first render) + admin layout subscription to `lk-orgs-change` (so the chrome flips without a navigation).
+5. **Plugin manifest validator** — `src/plugins/_validate.ts` runs at registry boot; malformed manifests are filtered out with descriptive console errors instead of crashing the layout. Re-exported from `_registry.ts` for the marketplace + plugin authoring UI.
+6. **Pro-mode editor surfaces** — Page Settings modal grows a Pro-only `<details>` for theme override / hideNav-hideFooter / page-scoped custom CSS. Renderer scopes the CSS via `[data-portal-page="…"]` so rules can't leak globally.
+7. **Subscriptions Stripe billing-portal handoff** — `createBillingPortalSession` in `src/lib/stripe/server.ts`; `POST /api/stripe/billing-portal` is dual-mode (customer self-serve via session, admin "send portal link" via email lookup); `/admin/subscriptions` grows an "Open portal" card.
+8. **Backups runtime** — `src/portal/server/backups.ts` with file adapter (default; writes to `.data/backups/`), retention sweep, full restore flow. `POST /api/portal/backups` doubles as the cron-trigger endpoint (UA-sniffed `kind`). `/admin/backups` lists snapshots with download / restore / delete; `/admin/backups/restore` demands a typed-id confirmation. S3 adapter declared and stubbed with a typed error so the gap is visible.
+9. **Custom domain auto-attach via Vercel API** — `src/lib/vercel/server.ts` (no SDK dep) wraps `/v10/projects/{id}/domains`. `POST /api/portal/domains` attaches; verification records pass through verbatim. `/admin/sites` grows an "Add + attach to Vercel" button next to the existing local-add button — toast surfaces verified / DNS-pending / Vercel-not-configured states.
+
+## Truly remaining (verification-only — no code left to write)
+
+1. **Email plugin actually sending** — operator pastes Resend / Postmark key, hits "Test send", confirms inbox delivery. Plumbing is in place.
+2. **Stripe end-to-end** — full test purchase against Felicia's storefront with real Stripe keys. Validation, not fresh code.
+
+(The S3 adapter for Backups now ships in-tree — `src/lib/s3/server.ts` + plugin-config-driven dispatch in `src/portal/server/backups.ts`. Operator pins `adapter:"s3"` + pastes bucket / region / access keys → "Backup now" hits real S3.)
 
 ## Future ideas (parking lot)
 
@@ -267,17 +277,18 @@ is friction-free; production deploys must not set them.
 ## Quick verify
 
 ```sh
-git log origin/main --oneline | grep "Merge pull request #" | head -25
-# Should list PRs #45 through #66 (the 22 PRs from this session).
+# Continue-work session shipped its work on PR #85.
+git log origin/claude/continue-work-1FFJ6 --oneline | head -10
 
 npx tsc --noEmit
-# Clean apart from sandbox-only `next/*` declaration noise.
+# Clean apart from sandbox-only `next/*` and `react/jsx-runtime` noise.
 
-ls src/components/admin/{ConfirmHost,Toaster,PromptHost,Spinner,SetupRequired,PluginMarketplace}.tsx
-# All present.
+ls src/portal/server/{activity,memberships,donations,affiliates}.ts
+ls src/app/admin/{memberships,donations,affiliates,auditlog,account/change-password}/page.tsx 2>/dev/null
+ls src/plugins/_validate.ts
 
 cat HELLO_ED.md
 # Receipt that this session ran.
 ```
 
-If those four things check out, lift off.
+If those check out, lift off.

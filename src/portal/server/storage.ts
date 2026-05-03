@@ -525,6 +525,26 @@ export async function reset(): Promise<void> {
   await flush();
 }
 
+// ── Backup hooks ─────────────────────────────────────────────────────────
+//
+// The Backups plugin uses these to persist + restore full state
+// snapshots without reaching into private internals. Both honour the
+// same parseBlob migration path the live loader does, so a backup
+// file written before a schema bump still restores cleanly.
+
+export function serializeStateJson(): string {
+  return JSON.stringify(cache ?? empty());
+}
+
+export function restoreStateFromJson(json: string): void {
+  // parseBlob handles missing slices + per-slice migrations (e.g.
+  // forward-compat fallbacks). Throws on malformed JSON.
+  const restored = parseBlob(json);
+  cache = restored;
+  hydrated = true;
+  scheduleFlush();
+}
+
 export function isPersistent(): boolean {
   return writable;
 }

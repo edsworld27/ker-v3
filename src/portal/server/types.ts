@@ -557,6 +557,12 @@ export interface ServerUser {
   passwordHash: string;        // sha256(password + email-salt)
   role: UserRole;              // global role; per-org membership lives on OrgRecord.members
   createdAt: number;
+  // Set when an operator creates the account with a temporary password
+  // (admin invite, password reset). Cleared on the user's first
+  // self-served password change. While set, the login response carries
+  // `mustChangePassword: true` and the client should redirect to
+  // /account/change-password before granting access.
+  mustChangePassword?: boolean;
 }
 
 export interface OrgMembership {
@@ -880,6 +886,11 @@ export interface EditorPage {
   // page without polluting the global head.
   customHead?: string;
   customFoot?: string;
+  // Pro-mode page-level CSS. Rendered inside a <style> tag scoped to
+  // the page's data-portal-page attribute, so rules are sandboxed to
+  // this page's subtree and don't leak globally. Use for one-off layout
+  // tweaks the operator doesn't want to ship to the whole site.
+  customCss?: string;
   // Theme this page renders in. Empty = inherit the site's default
   // theme. Set to a theme id when the admin wants this page (or
   // section of pages, e.g. /landing) to use Light or Dark explicitly.

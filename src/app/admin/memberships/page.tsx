@@ -59,9 +59,23 @@ function MembershipsPageInner() {
             {members.filter(m => m.active).length} active members across {tiers.length} {tiers.length === 1 ? "tier" : "tiers"}.
           </p>
         </div>
-        <Link href="/aqua/agency/plugins/memberships" className="text-[11px] text-cyan-300/80 hover:text-cyan-200">
-          Configure plugin →
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/admin/memberships/tiers"
+            className="text-[11px] uppercase tracking-[0.2em] text-brand-cream/85 hover:text-brand-cream rounded-lg border border-white/15 hover:border-white/30 px-3 py-1.5 transition-colors"
+          >
+            Tiers
+          </Link>
+          <Link
+            href="/admin/memberships/members"
+            className="text-[11px] uppercase tracking-[0.2em] text-brand-cream/85 hover:text-brand-cream rounded-lg border border-white/15 hover:border-white/30 px-3 py-1.5 transition-colors"
+          >
+            Directory
+          </Link>
+          <Link href="/aqua/agency/plugins/memberships" className="text-[11px] text-cyan-300/80 hover:text-cyan-200">
+            Configure plugin →
+          </Link>
+        </div>
       </header>
 
       {loading ? (

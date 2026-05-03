@@ -37,9 +37,22 @@ export interface ReferralEvent {
   createdAt: number;
 }
 
+export interface PayoutRecord {
+  id: string;
+  orgId: string;
+  affiliateId: string;
+  amount: number;            // pence/cents
+  currency: string;
+  method: "manual" | "stripe-connect" | "paypal";
+  reference?: string;        // operator-supplied (Stripe transfer id, PayPal txn, etc.)
+  note?: string;
+  createdAt: number;
+}
+
 interface AffiliatesState {
   affiliates?: Affiliate[];
   referralEvents?: ReferralEvent[];
+  payouts?: PayoutRecord[];
 }
 
 function makeId(prefix: string): string {
@@ -168,4 +181,63 @@ export function affiliateStats(orgId: string, affiliateId: string): {
     totalPaid: aff.totalPaid,
     conversionRate: clicks === 0 ? 0 : (conversions / clicks) * 100,
   };
+}
+
+// ─── Payouts ───────────────────────────────────────────────────────────────
+
+export function listPayouts(orgId: string, affiliateId?: string): PayoutRecord[] {
+  const s = getState() as unknown as AffiliatesState;
+  return (s.payouts ?? [])
+    .filter(p => p.orgId === orgId && (!affiliateId || p.affiliateId === affiliateId))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export interface RecordPayoutInput {
+  orgId: string;
+  affiliateId: string;
+  amount: number;            // pence/cents
+  currency?: string;         // default GBP
+  method?: PayoutRecord["method"];
+  reference?: string;
+  note?: string;
+}
+
+export type RecordPayoutResult =
+  | { ok: true; payout: PayoutRecord; outstandingAfter: number }
+  | { ok: false; error: "unknown-affiliate" | "non-positive-amount" | "exceeds-outstanding"; outstanding: number };
+
+export function recordPayout(input: RecordPayoutInput): RecordPayoutResult {
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    return { ok: false, error: "non-positive-amount", outstanding: 0 };
+  }
+  let result!: RecordPayoutResult;
+  mutate(state => {
+    const s = state as unknown as AffiliatesState;
+    const aff = (s.affiliates ?? []).find(a => a.orgId === input.orgId && a.id === input.affiliateId);
+    if (!aff) {
+      result = { ok: false, error: "unknown-affiliate", outstanding: 0 };
+      return;
+    }
+    const outstanding = aff.totalEarned - aff.totalPaid;
+    if (input.amount > outstanding) {
+      result = { ok: false, error: "exceeds-outstanding", outstanding };
+      return;
+    }
+    const payout: PayoutRecord = {
+      id: makeId("pay"),
+      orgId: input.orgId,
+      affiliateId: input.affiliateId,
+      amount: input.amount,
+      currency: (input.currency ?? "GBP").toUpperCase(),
+      method: input.method ?? aff.payoutMethod ?? "manual",
+      reference: input.reference,
+      note: input.note,
+      createdAt: Date.now(),
+    };
+    if (!s.payouts) s.payouts = [];
+    s.payouts.push(payout);
+    aff.totalPaid += input.amount;
+    result = { ok: true, payout, outstandingAfter: outstanding - input.amount };
+  });
+  return result;
 }

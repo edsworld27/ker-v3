@@ -1,13 +1,16 @@
 "use client";
 
 // /admin/subscriptions — Subscriptions plugin landing page.
-// Operator overview of recurring billing across the org. Real data
-// flows in once the Stripe billing-portal handoff lands; until then
-// the page surfaces the configured plans and a stub empty state.
+// Operator overview of recurring billing across the org. Surfaces the
+// configured plans, links to plan management, and a "Send portal link"
+// affordance the operator can use to push any customer (by email) into
+// the Stripe-hosted billing portal for self-serve plan changes.
 
+import { useState } from "react";
 import Link from "next/link";
 import PluginPageScaffold from "@/components/admin/PluginPageScaffold";
 import { getActiveOrgId } from "@/lib/admin/orgs";
+import { notify } from "@/components/admin/Toaster";
 
 export default function AdminSubscriptionsPage() {
   return (
@@ -24,6 +27,8 @@ export default function AdminSubscriptionsPage() {
         <Stat label="Churn (30d)" value="—" hint="Cancellations as a share of starting active." />
       </section>
 
+      <BillingPortalCard />
+
       <section className="rounded-2xl border border-white/8 bg-brand-black-card p-6 sm:p-8 space-y-3">
         <h2 className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/55">Get started</h2>
         <ol className="text-[13px] text-brand-cream/85 list-decimal list-inside space-y-2">
@@ -38,6 +43,66 @@ export default function AdminSubscriptionsPage() {
         </ol>
       </section>
     </PluginPageScaffold>
+  );
+}
+
+function BillingPortalCard() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function send() {
+    const target = email.trim();
+    if (!target) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/stripe/billing-portal", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerEmail: target }),
+      });
+      const data = await res.json() as { ok: boolean; url?: string; error?: string };
+      if (!data.ok || !data.url) {
+        notify({ tone: "error", title: "Couldn't mint portal link", message: data.error ?? `HTTP ${res.status}` });
+        return;
+      }
+      window.open(data.url, "_blank", "noopener");
+      notify({ tone: "ok", message: `Portal opened for ${target}` });
+    } catch (e: unknown) {
+      notify({ tone: "error", title: "Network error", message: e instanceof Error ? e.message : "Try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-white/8 bg-brand-black-card p-6 sm:p-8 space-y-3">
+      <h2 className="text-[10px] tracking-[0.28em] uppercase text-brand-cream/55">Stripe billing portal</h2>
+      <p className="text-[12px] text-brand-cream/55 max-w-prose">
+        Mint a one-shot Stripe Customer Portal URL for a subscriber. They can change plans, swap card, cancel — without you rebuilding any of it.
+      </p>
+      <form
+        onSubmit={e => { e.preventDefault(); void send(); }}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="customer@example.com"
+          className="flex-1 min-w-[16rem] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-brand-cream focus:outline-none focus:border-brand-orange/50"
+        />
+        <button
+          type="submit"
+          disabled={busy || !email.trim()}
+          className="text-[11px] uppercase tracking-[0.2em] text-brand-black bg-brand-amber hover:bg-brand-amber/90 rounded-lg px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {busy ? "Working…" : "Open portal"}
+        </button>
+      </form>
+      <p className="text-[10px] text-brand-cream/40">
+        Requires <code className="font-mono">STRIPE_SECRET_KEY</code> + a Stripe customer record matching the email.
+      </p>
+    </section>
   );
 }
 

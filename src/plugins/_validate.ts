@@ -1,0 +1,269 @@
+// Plugin manifest validator.
+//
+// Runs at registration (registerPlugin) and once over the in-tree
+// PLUGINS array on import. Rejects manifests that are malformed enough
+// that the runtime, marketplace, or sidebar would render in an
+// undefined state. Validation is pragmatic — it catches the common
+// authoring mistakes (missing id, duplicate nav items, bad hrefs, plan
+// strings that don't exist) rather than enforcing the full type
+// contract at runtime.
+//
+// Authors get fast, specific feedback at boot when their manifest is
+// broken instead of obscure crashes from the layout / marketplace.
+
+import type { AquaPlugin, NavItem, PluginFeature, SettingsField, SettingsGroup } from "./_types";
+
+const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
+const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const VALID_STATUSES = new Set(["stable", "beta", "alpha"]);
+const VALID_CATEGORIES = new Set(["core", "content", "commerce", "marketing", "support", "ops"]);
+const VALID_FIELD_TYPES = new Set(["text", "password", "url", "email", "select", "boolean", "textarea", "number", "color"]);
+const VALID_PLAN_IDS = new Set(["free", "starter", "pro", "enterprise"]);
+const VALID_PANEL_IDS = new Set([
+  "main", "store", "marketing", "content", "settings",
+  "ops", "tools", "website",
+]);
+
+export interface PluginValidationResult {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export function validatePlugin(plugin: AquaPlugin): PluginValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!plugin || typeof plugin !== "object") {
+    return { ok: false, errors: ["Plugin manifest must be an object."], warnings };
+  }
+
+  // ── Identity
+  if (typeof plugin.id !== "string" || !plugin.id) {
+    errors.push("plugin.id is required (lowercase, no spaces).");
+  } else if (!PLUGIN_ID_PATTERN.test(plugin.id)) {
+    errors.push(`plugin.id "${plugin.id}" must match /^[a-z][a-z0-9-]*$/.`);
+  }
+
+  requireString(plugin, "name", errors);
+  requireString(plugin, "tagline", errors);
+  requireString(plugin, "description", errors);
+
+  if (typeof plugin.version !== "string" || !plugin.version) {
+    errors.push("plugin.version is required (semver, e.g. 1.0.0).");
+  } else if (!SEMVER_PATTERN.test(plugin.version)) {
+    errors.push(`plugin.version "${plugin.version}" must be semver (1.0.0).`);
+  }
+
+  if (!VALID_STATUSES.has(plugin.status)) {
+    errors.push(`plugin.status "${plugin.status}" must be one of stable / beta / alpha.`);
+  }
+  if (!VALID_CATEGORIES.has(plugin.category)) {
+    errors.push(`plugin.category "${plugin.category}" must be one of core / content / commerce / marketing / support / ops.`);
+  }
+
+  // ── Plans (optional)
+  if (plugin.plans !== undefined) {
+    if (!Array.isArray(plugin.plans)) {
+      errors.push("plugin.plans must be an array of plan ids.");
+    } else {
+      for (const p of plugin.plans) {
+        if (!VALID_PLAN_IDS.has(p)) {
+          errors.push(`plugin.plans contains unknown plan "${p}".`);
+        }
+      }
+    }
+  }
+
+  // ── Dependencies
+  if (plugin.requires !== undefined && !Array.isArray(plugin.requires)) {
+    errors.push("plugin.requires must be an array of plugin ids.");
+  }
+  if (plugin.conflicts !== undefined && !Array.isArray(plugin.conflicts)) {
+    errors.push("plugin.conflicts must be an array of plugin ids.");
+  }
+  if (plugin.id && plugin.requires?.includes(plugin.id)) {
+    errors.push("plugin.requires cannot include the plugin's own id.");
+  }
+  if (plugin.id && plugin.conflicts?.includes(plugin.id)) {
+    errors.push("plugin.conflicts cannot include the plugin's own id.");
+  }
+
+  // ── Nav items
+  if (!Array.isArray(plugin.navItems)) {
+    errors.push("plugin.navItems must be an array (use [] when the plugin has no sidebar items).");
+  } else {
+    validateNavItems(plugin.navItems, errors, warnings);
+  }
+
+  // ── Features
+  if (!Array.isArray(plugin.features)) {
+    errors.push("plugin.features must be an array.");
+  } else {
+    validateFeatures(plugin.features, errors);
+  }
+
+  // ── Settings
+  if (!plugin.settings || typeof plugin.settings !== "object") {
+    errors.push("plugin.settings is required (use { groups: [] } when there are none).");
+  } else if (!Array.isArray(plugin.settings.groups)) {
+    errors.push("plugin.settings.groups must be an array.");
+  } else {
+    validateSettingsGroups(plugin.settings.groups, errors);
+  }
+
+  // ── Pages / API (just shape — content not deeply validated)
+  if (!Array.isArray(plugin.pages)) {
+    errors.push("plugin.pages must be an array.");
+  }
+  if (!Array.isArray(plugin.api)) {
+    errors.push("plugin.api must be an array.");
+  }
+
+  return { ok: errors.length === 0, errors, warnings };
+}
+
+function requireString(obj: AquaPlugin, key: "name" | "tagline" | "description", errors: string[]) {
+  const v = obj[key];
+  if (typeof v !== "string" || !v.trim()) {
+    errors.push(`plugin.${key} is required.`);
+  }
+}
+
+function validateNavItems(items: NavItem[], errors: string[], warnings: string[]) {
+  const ids = new Set<string>();
+  for (const [i, item] of items.entries()) {
+    const where = `navItems[${i}]`;
+    if (!item || typeof item !== "object") {
+      errors.push(`${where} must be an object.`);
+      continue;
+    }
+    if (typeof item.id !== "string" || !item.id) {
+      errors.push(`${where}.id is required.`);
+    } else if (ids.has(item.id)) {
+      errors.push(`${where}.id "${item.id}" is duplicated within this manifest.`);
+    } else {
+      ids.add(item.id);
+    }
+    if (typeof item.label !== "string" || !item.label) {
+      errors.push(`${where}.label is required.`);
+    }
+    if (typeof item.href !== "string" || !item.href) {
+      errors.push(`${where}.href is required.`);
+    } else if (!item.href.startsWith("/")) {
+      errors.push(`${where}.href "${item.href}" must start with "/".`);
+    }
+    if (item.panelId !== undefined && !VALID_PANEL_IDS.has(item.panelId)) {
+      warnings.push(`${where}.panelId "${item.panelId}" is non-standard — sidebar may not pick it up.`);
+    }
+  }
+}
+
+function validateFeatures(features: PluginFeature[], errors: string[]) {
+  const ids = new Set<string>();
+  for (const [i, f] of features.entries()) {
+    const where = `features[${i}]`;
+    if (typeof f.id !== "string" || !f.id) {
+      errors.push(`${where}.id is required.`);
+    } else if (ids.has(f.id)) {
+      errors.push(`${where}.id "${f.id}" is duplicated.`);
+    } else {
+      ids.add(f.id);
+    }
+    if (typeof f.label !== "string" || !f.label) {
+      errors.push(`${where}.label is required.`);
+    }
+    if (typeof f.default !== "boolean") {
+      errors.push(`${where}.default must be a boolean.`);
+    }
+    if (f.plans !== undefined) {
+      if (!Array.isArray(f.plans)) {
+        errors.push(`${where}.plans must be an array.`);
+      } else {
+        for (const p of f.plans) {
+          if (!VALID_PLAN_IDS.has(p)) {
+            errors.push(`${where}.plans contains unknown plan "${p}".`);
+          }
+        }
+      }
+    }
+  }
+}
+
+function validateSettingsGroups(groups: SettingsGroup[], errors: string[]) {
+  const groupIds = new Set<string>();
+  for (const [i, g] of groups.entries()) {
+    const where = `settings.groups[${i}]`;
+    if (typeof g.id !== "string" || !g.id) {
+      errors.push(`${where}.id is required.`);
+    } else if (groupIds.has(g.id)) {
+      errors.push(`${where}.id "${g.id}" is duplicated.`);
+    } else {
+      groupIds.add(g.id);
+    }
+    if (typeof g.label !== "string" || !g.label) {
+      errors.push(`${where}.label is required.`);
+    }
+    if (!Array.isArray(g.fields)) {
+      errors.push(`${where}.fields must be an array.`);
+      continue;
+    }
+    validateSettingsFields(g.fields, `${where}.fields`, errors);
+  }
+}
+
+function validateSettingsFields(fields: SettingsField[], where: string, errors: string[]) {
+  const ids = new Set<string>();
+  for (const [i, f] of fields.entries()) {
+    const fieldWhere = `${where}[${i}]`;
+    if (typeof f.id !== "string" || !f.id) {
+      errors.push(`${fieldWhere}.id is required.`);
+    } else if (ids.has(f.id)) {
+      errors.push(`${fieldWhere}.id "${f.id}" is duplicated within this group.`);
+    } else {
+      ids.add(f.id);
+    }
+    if (typeof f.label !== "string" || !f.label) {
+      errors.push(`${fieldWhere}.label is required.`);
+    }
+    if (!VALID_FIELD_TYPES.has(f.type)) {
+      errors.push(`${fieldWhere}.type "${f.type}" is unsupported.`);
+    }
+    if (f.type === "select" && (!Array.isArray(f.options) || f.options.length === 0)) {
+      errors.push(`${fieldWhere} (type:"select") must declare options.`);
+    }
+  }
+}
+
+// Cross-plugin checks — id collisions, missing requires, conflict
+// declarations that don't resolve. Run after every plugin is loaded.
+export function validateRegistry(plugins: AquaPlugin[]): PluginValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const ids = new Set<string>();
+  for (const p of plugins) {
+    if (!p || typeof p.id !== "string") continue;
+    if (ids.has(p.id)) {
+      errors.push(`Duplicate plugin id "${p.id}" in registry.`);
+    } else {
+      ids.add(p.id);
+    }
+  }
+
+  for (const p of plugins) {
+    for (const req of p.requires ?? []) {
+      if (!ids.has(req)) {
+        warnings.push(`Plugin "${p.id}" requires "${req}" which isn't registered.`);
+      }
+    }
+    for (const c of p.conflicts ?? []) {
+      if (!ids.has(c)) {
+        // Conflict with an unknown plugin is just a no-op, not an error.
+        warnings.push(`Plugin "${p.id}" lists conflict "${c}" which isn't registered.`);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings };
+}

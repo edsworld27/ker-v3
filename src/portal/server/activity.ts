@@ -94,6 +94,41 @@ export function clearActivity(): void {
   mutate(state => { state.activity = []; });
 }
 
+// ── Admin-action recorder ────────────────────────────────────────────────
+//
+// Wrapper used by mutating admin endpoints so they don't all have to
+// reach into the activity store directly. Pass the result of
+// requireAdmin() (which may be null when dev-bypass is on) and the
+// recorder fills in actor metadata sensibly.
+
+export interface ServerActor {
+  email: string;
+  name?: string;
+}
+
+export interface RecordAdminActionInput {
+  category: ActivityCategory;
+  action: string;
+  resourceId?: string;
+  resourceLink?: string;
+  diff?: Record<string, { from: unknown; to: unknown }>;
+}
+
+export function recordAdminAction(
+  actor: ServerActor | null | undefined,
+  input: RecordAdminActionInput,
+): ActivityEntry {
+  return appendActivity({
+    actorEmail: actor?.email ?? "system",
+    actorName: actor?.name ?? actor?.email ?? "Dev bypass",
+    category: input.category,
+    action: input.action,
+    resourceId: input.resourceId,
+    resourceLink: input.resourceLink,
+    diff: input.diff,
+  });
+}
+
 // Stats for the dashboard — total + entries grouped by category, plus the
 // effective retention window so the admin can see what's enforced.
 export function getActivityStats(): {
