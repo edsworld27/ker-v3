@@ -5,12 +5,8 @@
 - [ ] **T2 — Fulfillment plugin** (waiting to launch). See `terminal-prompts/T2-fulfillment.md`.
 - [ ] **T3 — Website-editor port** (waiting to launch). See `terminal-prompts/T3-website-editor.md`.
 
-## Blocked / needs Ed
-- [ ] NotebookLM auth — Ed says "set up notebooklm" → I run `setup_auth` →
-      Ed signs in via browser → creates "the aqua portal finalised" notebook
-      in NotebookLM web UI → pastes share URL back here.
-- [ ] `eds requirments.md` is empty. Ed populates it before terminals
-      start (or terminals proceed on the architecture chapter as the spec).
+## Deferred
+- [ ] NotebookLM setup — skipped for now. Revisit when we need outside research.
 
 ## Up next (Round 2, after Round 1 lands)
 - [ ] Wire all three plugins into T1's shell — test install / uninstall / render.
@@ -30,3 +26,5 @@
       14 decisions logged.
 - [x] Round 1 terminal prompts drafted (T1 / T2 / T3).
 - [x] Vercel pinned to deploy only `04 the final portal/milesymedia website/`.
+- [x] `eds requirments.md` populated. Drafted by Claude from conversation;
+      Ed amends as needed.
