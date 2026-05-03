@@ -8,6 +8,7 @@ import { listAllSources, type OrderSource } from "@/lib/admin/marketing";
 import { getProducts } from "@/lib/products";
 import { getActiveOrg, loadOrgs } from "@/lib/admin/orgs";
 import type { OrgRecord } from "@/portal/server/types";
+import SetupChecklist from "@/components/admin/SetupChecklist";
 
 const FIRST_RUN_DISMISS_KEY = "lk_first_run_dismissed_v1";
 
@@ -75,6 +76,8 @@ export default function AdminOverviewPage() {
         <h1 className="font-display text-3xl sm:text-4xl text-brand-cream">Overview</h1>
         <p className="text-brand-cream/45 text-sm mt-1">Last 30 days · GBP</p>
       </div>
+
+      <SetupChecklist />
 
       {isFirstRun && (
         <section className="rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent p-5 sm:p-6 relative">

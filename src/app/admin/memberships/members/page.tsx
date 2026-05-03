@@ -12,6 +12,7 @@ import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface MemberRecord {
@@ -99,7 +100,8 @@ function MembersPageInner() {
       });
       const data = await res.json() as { ok: boolean; error?: string; member?: MemberRecord };
       if (!data.ok || !data.member) {
-        notify({ tone: "error", title: "Couldn't update tier", message: data.error ?? "Server rejected the change." });
+        const f = friendlyError(data.error, "Couldn't update tier");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       setMembers(prev => prev.map(m => m.email === member.email ? data.member! : m));

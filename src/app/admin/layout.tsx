@@ -32,6 +32,7 @@ import NotificationBell from "@/components/admin/NotificationBell";
 import ConfirmHost from "@/components/admin/ConfirmHost";
 import Toaster from "@/components/admin/Toaster";
 import PromptHost from "@/components/admin/PromptHost";
+import HelpButton from "@/components/admin/HelpButton";
 
 type Counters = Record<BadgeKey, number>;
 
@@ -383,6 +384,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Styled prompt() dialog host — replaces window.prompt() */}
       <PromptHost />
+
+      {/* Floating "?" help drawer — per-page docs from helpDocs registry */}
+      <HelpButton />
 
       {/* Mobile floating ⌘K button (desktop users use the keyboard shortcut) */}
       <button

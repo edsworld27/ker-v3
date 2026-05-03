@@ -11,6 +11,7 @@ import { getSession } from "@/lib/auth";
 import { logActivity, clearActivity } from "@/lib/admin/activity";
 import { listSites, setActiveSiteId } from "@/lib/admin/sites";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { HELP_DOCS } from "@/lib/admin/helpDocs";
 
 interface CommandItem {
   id: string;
@@ -79,6 +80,7 @@ const STATIC_PAGES: CommandItem[] = [
 
   { id: "go-storefront",  label: "Open Storefront",      group: "Quick Links", icon: "↗", href: "/" },
   { id: "go-account",     label: "Open Customer Account",group: "Quick Links", icon: "↗", href: "/account" },
+  { id: "go-help",        label: "Help — how everything works", group: "Quick Links", icon: "?", href: "/admin/help" },
 ];
 
 const ACTIONS: CommandItem[] = [
@@ -165,7 +167,19 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         setActiveSiteId(s.id, session?.user.email);
       },
     }));
-    return [...customers, ...orders, ...products, ...tabs, ...sites];
+    // Help docs — searchable from the palette so Felicia can type
+    // "stripe", "backup", "domain" and jump straight to the page that
+    // documents it. The hint text exposes the doc's intro so search
+    // matches against content, not just the route name.
+    const help = Object.entries(HELP_DOCS).map(([route, doc]) => ({
+      id: `help-${route}`,
+      label: `Help — ${doc.title}`,
+      hint: doc.intro?.slice(0, 90) ?? route,
+      group: "Help",
+      icon: "?",
+      href: route,
+    }));
+    return [...customers, ...orders, ...products, ...tabs, ...sites, ...help];
   }, [open]);
 
   const all = useMemo(() => [...STATIC_PAGES, ...ACTIONS, ...dynamic], [dynamic]);

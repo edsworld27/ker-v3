@@ -12,6 +12,8 @@ import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { notify } from "@/components/admin/Toaster";
+import Tip from "@/components/admin/Tip";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Affiliate {
@@ -296,14 +298,19 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
         | { ok: true; payout: Payout; outstandingAfter: number }
         | { ok: false; error: string; outstanding?: number };
       if (!data.ok) {
-        const msg = data.error === "exceeds-outstanding"
-          ? `Outstanding balance is ${fmt(data.outstanding ?? 0)}.`
-          : data.error === "non-positive-amount"
-          ? "Amount must be greater than zero."
-          : data.error === "unknown-affiliate"
-          ? "Affiliate not found."
-          : data.error;
-        notify({ tone: "error", title: "Couldn't record payout", message: msg });
+        // exceeds-outstanding carries a live `outstanding` figure; we
+        // surface it inline since the friendly-error catalog doesn't
+        // know the org's currency.
+        if (data.error === "exceeds-outstanding") {
+          notify({
+            tone: "error",
+            title: "Amount too high",
+            message: `Outstanding balance is ${fmt(data.outstanding ?? 0)}.`,
+          });
+        } else {
+          const f = friendlyError(data.error, "Couldn't record payout");
+          notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
+        }
         return;
       }
       onSuccess(affiliate.id, pence, data.payout);
@@ -334,7 +341,11 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
           </p>
         </div>
 
-        <Field label="Amount" hint="In your billing currency. Defaults to the full outstanding balance.">
+        <Field
+          label="Amount"
+          hint="In your billing currency. Defaults to the full outstanding balance."
+          tip="The full outstanding balance is pre-filled. Lower it if you're paying in instalments. You can't pay more than what's owed — the form prevents over-payment."
+        >
           <input
             type="number"
             min={0.01}
@@ -346,7 +357,10 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
           />
         </Field>
 
-        <Field label="Method">
+        <Field
+          label="Method"
+          tip="How you actually moved the money. 'Manual' = you sent a bank transfer outside the system. Stripe Connect / PayPal options are for when those integrations are wired up — today they're labels-only."
+        >
           <select
             value={method}
             onChange={e => setMethod(e.target.value as NonNullable<Affiliate["payoutMethod"]>)}
@@ -358,7 +372,11 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
           </select>
         </Field>
 
-        <Field label="Reference" hint="Optional — Stripe transfer id, PayPal txn, bank reference.">
+        <Field
+          label="Reference"
+          hint="Optional — Stripe transfer id, PayPal txn, bank reference."
+          tip="So you can match the entry to your bank or Stripe statement when reconciling. Operators reading the audit log will see this verbatim."
+        >
           <input
             value={reference}
             onChange={e => setReference(e.target.value)}
@@ -367,7 +385,11 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
           />
         </Field>
 
-        <Field label="Note" hint="Optional internal note.">
+        <Field
+          label="Note"
+          hint="Optional internal note."
+          tip="Anything you want to remember next time you look. Never shown to the affiliate."
+        >
           <input
             value={note}
             onChange={e => setNote(e.target.value)}
@@ -397,10 +419,13 @@ function PayoutModal({ orgId, affiliate, onClose, onSuccess }: PayoutModalProps)
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, tip, children }: { label: string; hint?: string; tip?: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-brand-cream/55">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] text-brand-cream/55 inline-flex items-center gap-1.5">
+        {label}
+        {tip && <Tip text={tip} />}
+      </span>
       {children}
       {hint && <span className="block text-[11px] text-brand-cream/40">{hint}</span>}
     </label>
