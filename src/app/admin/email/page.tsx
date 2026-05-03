@@ -17,6 +17,7 @@ import PageSpinner from "@/components/admin/Spinner";
 import { notify } from "@/components/admin/Toaster";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { friendlyError } from "@/lib/admin/friendlyError";
+import Tip from "@/components/admin/Tip";
 import { getActiveOrg, getActiveOrgId, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 
 interface ResolvedTemplate {
@@ -219,7 +220,10 @@ function TemplatesPanel() {
             {isEditing && (
               <div className="space-y-2 pt-2 border-t border-white/5">
                 <label className="block">
-                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">Subject</span>
+                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1 inline-flex items-center gap-1.5">
+                    Subject
+                    <Tip text="The email's subject line — what shows up in the recipient's inbox preview. Variables like {{customer_name}} and {{order_id}} are interpolated at send time." />
+                  </span>
                   <input
                     type="text"
                     value={draftSubject}
@@ -228,7 +232,10 @@ function TemplatesPanel() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">HTML body</span>
+                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1 inline-flex items-center gap-1.5">
+                    HTML body
+                    <Tip text="The rich-text version most modern email clients show. Use HTML tags for layout. Variables like {{customer_name}} interpolate at send. Test by hitting Test send before going live with template changes." />
+                  </span>
                   <textarea
                     value={draftHtml}
                     onChange={e => setDraftHtml(e.target.value)}
@@ -237,7 +244,10 @@ function TemplatesPanel() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1">Plain-text body</span>
+                  <span className="block text-[10px] tracking-[0.18em] uppercase text-brand-cream/45 mb-1 inline-flex items-center gap-1.5">
+                    Plain-text body
+                    <Tip text="The text-only fallback for clients that block HTML (some corporate email systems, screen readers). Same content as HTML but stripped to plain text. Always provide one — emails without it look like spam to filters." />
+                  </span>
                   <textarea
                     value={draftText}
                     onChange={e => setDraftText(e.target.value)}
@@ -342,7 +352,8 @@ function ComposePanel() {
         setResult({ tone: "success", text: `Sent — ${data.messageId ?? "no id"}` });
         notify({ tone: "success", title: "Email sent", message: `to ${to}` });
       } else {
-        setResult({ tone: "error", text: `Failed: ${data.error ?? "unknown error"}` });
+        const f = friendlyError(data.error, "Send failed");
+        setResult({ tone: "error", text: f.hint ? `${f.message} ${f.hint}` : f.message });
       }
     } finally {
       setBusy(false);

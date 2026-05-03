@@ -776,6 +776,150 @@ export const HELP_DOCS: Record<string, HelpDoc> = {
       },
     ],
   },
+
+  "/admin/products/[slug]": {
+    title: "Product detail",
+    intro: "Edit a single product's pricing, copy, image, badge, and variants. Saves immediately.",
+    sections: [
+      {
+        heading: "Regular vs sale price",
+        body: "Set sale price to discount the regular price; storefront crosses out the regular and shows sale. Leave sale blank for no discount.",
+      },
+      {
+        heading: "SKU",
+        body: "Stock-keeping unit — your internal product code, must be unique. Appears on packing slips and connects to inventory counts.",
+      },
+      {
+        heading: "Variants",
+        body: "Click 'Variants' tab for size/colour SKUs that share this product page. Each variant has its own stock count.",
+      },
+    ],
+  },
+
+  "/admin/products/new": {
+    title: "Add a product",
+    intro: "Create a new product. Minimum to be sellable: name, description, price, image. You can add variants and SEO later.",
+    sections: [
+      {
+        heading: "Slug",
+        body: "The URL-safe product handle (e.g. 'lavender-soap-100g'). Auto-generated from the name; edit if you want a cleaner URL. Permanent once set — change later breaks any links to the product.",
+      },
+      {
+        heading: "Range",
+        body: "Optional grouping (e.g. 'odo', 'nkrabea'). Lets you filter the catalog by range and lets the storefront show range-specific landing pages.",
+      },
+    ],
+  },
+
+  "/admin/blog/[id]": {
+    title: "Blog post detail",
+    intro: "Edit a single blog post — title, excerpt, body, featured image, tags, scheduled publish.",
+    sections: [
+      {
+        heading: "Draft vs published",
+        body: "Drafts don't appear on the storefront. Hit Publish when ready — published posts show on /blog and on the home-page blog block. You can revert to draft later.",
+      },
+      {
+        heading: "Scheduling",
+        body: "Set a future publish date — the post stays as draft until that timestamp, then auto-publishes. Useful for content calendars.",
+      },
+      {
+        heading: "Featured image",
+        body: "The image at the top of the post and on the blog index card. 1200×630 is a safe size — works as the OG image too.",
+      },
+    ],
+  },
+
+  "/admin/pages": {
+    title: "Pages",
+    intro: "Every page in the editor across every site. Click into a page to edit it; or jump directly to /admin/editor for the visual workspace.",
+    sections: [
+      {
+        heading: "Pages vs blog posts",
+        body: "Pages are static (about, contact, custom landing). Blog posts are time-stamped and group on /blog. Use pages for evergreen content.",
+      },
+      {
+        heading: "Statuses",
+        body: "Draft = admin-only. Published = serves to public visitors. Reverting to draft pulls the page from public access immediately.",
+      },
+    ],
+  },
+
+  "/admin/portals": {
+    title: "Portals",
+    intro: "Customer-facing portal pages designed in the visual editor — login, affiliates dashboard, order history, account home. Multiple variants per role; pick which one's live.",
+    sections: [
+      {
+        heading: "Variants",
+        body: "Each role (login, affiliates, orders, account) can have multiple block-tree designs. The 'active' one is what visitors see. Useful for A/B testing portal layouts.",
+      },
+      {
+        heading: "Preview",
+        body: "Preview any variant (active or draft) without flipping it live — handy for showing a stakeholder before committing.",
+      },
+    ],
+  },
+
+  "/admin/activity": {
+    title: "Activity",
+    intro: "Live timeline of admin actions — who did what when. Same data as the audit log, with a more browse-y UI.",
+    sections: [
+      {
+        heading: "Activity vs audit log",
+        body: "/admin/auditlog is the compliance-framed view (filters, diff viewer, CSV export, retention controls). This page is the chatty 'what's been happening' view. Same underlying data.",
+      },
+      {
+        heading: "Categories",
+        body: "Each action is tagged (orders, customers, content, settings, …). Filter to focus on one area when reviewing activity.",
+      },
+    ],
+  },
+
+  "/admin/dashboards": {
+    title: "Dashboards",
+    intro: "Customisable dashboard widgets per operator. Pick which KPIs and charts surface on /admin.",
+    sections: [
+      {
+        heading: "Per-operator",
+        body: "Each team member can customise their own dashboard. Yours doesn't affect anyone else's.",
+      },
+      {
+        heading: "Widget library",
+        body: "Add KPIs (revenue, orders, customers), charts (revenue-by-day, top products), or activity feeds. Drag to reorder.",
+      },
+    ],
+  },
+
+  "/admin/compliance": {
+    title: "Compliance",
+    intro: "GDPR / SOC 2 / HIPAA toggles. Sets retention windows, audit-log requirements, cookie-consent behaviour, data-export workflows.",
+    sections: [
+      {
+        heading: "Modes",
+        body: "Pick None / GDPR / SOC 2 / HIPAA. Each enables a stricter set of defaults — HIPAA mode forces 6-year audit retention and turns on the auditlog plugin automatically.",
+      },
+      {
+        heading: "Cookie banner",
+        body: "GDPR + stricter modes show a consent banner on the storefront. Visitors must opt in before any tracking/analytics cookies fire. Configure copy + categories under the Compliance plugin.",
+      },
+    ],
+  },
+
+  "/admin/billing": {
+    title: "Billing",
+    intro: "The agency's billing — your subscription with the platform (not your customers' subscriptions). Plan, payment method, invoices.",
+    sections: [
+      {
+        heading: "Plan",
+        body: "Free / Starter / Pro / Enterprise. Higher plans unlock more sites, more team members, and premium plugins. Change plans inline; effective immediately, prorated.",
+      },
+      {
+        heading: "Invoices",
+        body: "Stripe-hosted PDFs for each billing cycle. Always available; auto-emailed when each cycle closes.",
+      },
+    ],
+  },
+
 };
 
 // Look up a doc for the current pathname. Falls back through
