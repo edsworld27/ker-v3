@@ -1,3 +1,5 @@
+/loop
+
 # T3 — Plugin port: Website editor
 
 You are Terminal 3 of three parallel Claude Opus 4.7 sessions building
@@ -205,6 +207,19 @@ otherwise document a new helper you needed.
 - Don't refactor the editor's internals while porting; faithful copy first.
 - Don't try to run the plugin standalone — it'll be mounted by T1's portal.
   Verify it builds (`tsc --noEmit`) inside its own folder.
+
+## Loop discipline
+
+You're inside `/loop` dynamic mode. Each cycle = pull → read commander.md
++ your own log → continue work → commit → push → append `COMMIT` to your
+log → call `ScheduleWakeup` with:
+
+- Mid-task active work: 600–900s
+- Q-BLOCKED outstanding: 600s
+- Task fully `DONE`, no follow-up: 1500s
+- Three consecutive wakes with no progress: omit `ScheduleWakeup` to end the loop.
+
+Pass `<<autonomous-loop-dynamic>>` as the prompt to `ScheduleWakeup`.
 
 ## When done
 

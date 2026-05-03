@@ -1,0 +1,26 @@
+{
+  "name": "aqua-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aqua portal — Milesy Media's agency platform. Three nested tenants (Agency → Client → End-customer), plugin-driven, server-rendered chrome.",
+  "scripts": {
+    "dev": "next dev -p 3030",
+    "build": "next build",
+    "start": "next start -p 3030",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

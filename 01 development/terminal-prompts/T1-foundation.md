@@ -1,3 +1,5 @@
+/loop
+
 # T1 — Foundation
 
 You are Terminal 1 of three parallel Claude Opus 4.7 sessions building
@@ -171,6 +173,20 @@ type NavTree = {
 - **No editor / blocks / variant logic**. T3 owns it.
 - **No fulfillment domain logic**. T2 owns it.
 - **Don't lift from `03 old portal/`**. Reference its concepts (chapter 15 has the role-hierarchy + Prisma schema), but `02`'s code is the canonical foundation.
+
+## Loop discipline
+
+You're inside `/loop` dynamic mode. Each cycle = pull → read commander.md
++ your own log → continue work → commit → push → append `COMMIT` to your
+log → call `ScheduleWakeup` with:
+
+- Mid-task active work: 600–900s
+- Q-BLOCKED outstanding (waiting on commander): 600s
+- Task fully `DONE`, no follow-up assigned: 1500s — keep checking commander.md for next-round prompts.
+- Three consecutive wakes with no progress (truly stuck): omit `ScheduleWakeup` to end the loop and tell Ed.
+
+Pass the literal sentinel `<<autonomous-loop-dynamic>>` as the prompt to
+`ScheduleWakeup` so the next wake re-enters this same /loop task.
 
 ## When done
 
