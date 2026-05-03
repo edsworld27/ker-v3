@@ -10,7 +10,7 @@
 //
 // Keyboard: ? toggles. Esc closes. Click-outside closes.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { getHelpDoc, type HelpDoc } from "@/lib/admin/helpDocs";
@@ -112,6 +112,10 @@ export default function HelpButton() {
 
               <hr className="border-white/8" />
 
+              <AskAqua currentRoute={pathname} />
+
+              <hr className="border-white/8" />
+
               <section className="space-y-2">
                 <h3 className="text-[11px] uppercase tracking-[0.22em] text-brand-cream/55">Need more?</h3>
                 <ul className="list-disc list-outside ml-5 space-y-1 text-[12px] text-brand-cream/65">
@@ -142,5 +146,139 @@ function FallbackHelp({ pathname }: { pathname: string | null }) {
         <p className="text-[10px] text-brand-cream/40 font-mono">{pathname}</p>
       )}
     </>
+  );
+}
+
+interface AskTurn {
+  question: string;
+  answer?: string;
+  error?: string;
+  loading: boolean;
+}
+
+function AskAqua({ currentRoute }: { currentRoute: string | null }) {
+  const [question, setQuestion] = useState("");
+  const [history, setHistory] = useState<AskTurn[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [keyMissing, setKeyMissing] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  async function ask(e: React.FormEvent) {
+    e.preventDefault();
+    const q = question.trim();
+    if (!q || busy) return;
+    setBusy(true);
+    const turnIdx = history.length;
+    setHistory(prev => [...prev, { question: q, loading: true }]);
+    setQuestion("");
+
+    try {
+      const res = await fetch("/api/portal/help/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: q, currentRoute }),
+      });
+      const data = await res.json() as { ok: boolean; answer?: string; error?: string; message?: string };
+      if (res.status === 503 && data.error === "anthropic-key-missing") {
+        setKeyMissing(true);
+        setHistory(prev => prev.filter((_, i) => i !== turnIdx));
+        return;
+      }
+      if (!data.ok) {
+        setHistory(prev => prev.map((t, i) => i === turnIdx
+          ? { ...t, loading: false, error: data.message ?? data.error ?? "Something went wrong." }
+          : t));
+        return;
+      }
+      setHistory(prev => prev.map((t, i) => i === turnIdx
+        ? { ...t, loading: false, answer: data.answer ?? "" }
+        : t));
+    } catch (e: unknown) {
+      setHistory(prev => prev.map((t, i) => i === turnIdx
+        ? { ...t, loading: false, error: e instanceof Error ? e.message : "Network error." }
+        : t));
+    } finally {
+      setBusy(false);
+      // Refocus the input so follow-ups feel snappy.
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-[11px] uppercase tracking-[0.22em] text-brand-amber">Ask Aqua</h3>
+        <span className="text-[9px] uppercase tracking-[0.18em] text-brand-cream/40">AI · grounded in these docs</span>
+      </div>
+
+      {keyMissing ? (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] text-amber-200/85 leading-relaxed">
+          <strong className="text-amber-200">Not connected.</strong>{" "}
+          Ask-Aqua needs an Anthropic API key. Paste one under{" "}
+          <Link href="/admin/portal-settings" className="underline">Portal settings → Integrations</Link>{" "}
+          and reload.
+        </div>
+      ) : (
+        <form onSubmit={ask} className="space-y-2">
+          <textarea
+            ref={inputRef}
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => {
+              // Cmd/Ctrl + Enter submits — feels like chat clients.
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void ask(e as unknown as React.FormEvent);
+              }
+            }}
+            placeholder='Try: "How do I add a custom domain?"'
+            rows={2}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-brand-cream placeholder:text-brand-cream/30 focus:outline-none focus:border-brand-amber/50 resize-none"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[9px] text-brand-cream/35">⌘+↵ to send</span>
+            <button
+              type="submit"
+              disabled={!question.trim() || busy}
+              className="text-[11px] uppercase tracking-[0.2em] text-brand-black bg-brand-amber hover:bg-brand-amber/90 rounded-lg px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? "Thinking…" : "Ask"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {history.length > 0 && (
+        <div className="space-y-3">
+          {history.map((turn, i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="text-[11px] text-brand-cream/55 italic">{turn.question}</div>
+              {turn.loading ? (
+                <div className="text-[12px] text-brand-cream/55">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-amber animate-pulse" />
+                    Thinking…
+                  </span>
+                </div>
+              ) : turn.error ? (
+                <div className="rounded-lg border border-red-500/25 bg-red-500/5 p-2 text-[11px] text-red-200/85">
+                  {turn.error}
+                </div>
+              ) : (
+                <div className="text-[12px] text-brand-cream/85 leading-relaxed whitespace-pre-wrap">
+                  {turn.answer}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {history.length === 0 && !keyMissing && (
+        <p className="text-[10px] text-brand-cream/40 leading-relaxed">
+          Ask anything you&rsquo;d normally Google about the admin. Aqua reads the help docs and answers grounded in them — no guessing.
+        </p>
+      )}
+    </section>
   );
 }
