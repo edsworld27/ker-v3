@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin · Milesy Media</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="index.html" class="brand">
+        <span class="mark">M</span>
+        <span class="brand-name">Milesy<span class="a">Media</span></span>
+      </a>
+      <nav class="side-nav">
+        <a href="#" class="active"><span class="ico">▤</span> Dashboard</a>
+        <a href="#"><span class="ico">◉</span> Clients</a>
+        <a href="#"><span class="ico">⚡</span> Campaigns</a>
+        <a href="#"><span class="ico">∿</span> Analytics</a>
+        <a href="#"><span class="ico">✉</span> Inbox</a>
+        <a href="#"><span class="ico">$</span> Billing</a>
+        <a href="#"><span class="ico">⚙</span> Settings</a>
+        <a href="login.html" style="margin-top:24px;border-top:1px solid var(--border);padding-top:14px;color:var(--text-mute)">
+          <span class="ico">⏻</span> Sign out
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Workspace -->
+    <main class="workspace">
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <div class="crumbs">Admin <span class="dim">/ Dashboard</span></div>
+        <div class="who">
+          <span class="dim">Signed in as</span>
+          <strong>admin@milesymedia.co</strong>
+          <div class="av">A</div>
+        </div>
+      </div>
+
+      <!-- Page header -->
+      <div class="work-head">
+        <div>
+          <span class="eyebrow">Tuesday · 4 May 2026</span>
+          <h1>Welcome back, Admin.</h1>
+          <p class="muted">Here's how Milesy looks today — top-level numbers across every client retainer.</p>
+        </div>
+        <div>
+          <a href="#" class="btn btn-secondary">Export report</a>
+          <a href="#" class="btn btn-primary">+ New campaign</a>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="lbl">Active clients</div>
+          <div class="num">28</div>
+          <div class="delta-up">+3 this month</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">Live campaigns</div>
+          <div class="num">114</div>
+          <div class="delta-up">+12 vs last week</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">Tracked spend</div>
+          <div class="num">$1.84M</div>
+          <div class="delta-up">+18% MoM</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">Blended ROAS</div>
+          <div class="num">3.41×</div>
+          <div class="delta-down">−0.12 vs last week</div>
+        </div>
+      </div>
+
+      <div class="panel-grid">
+        <!-- Recent activity -->
+        <div class="panel">
+          <h3>Recent activity</h3>
+          <div class="list-row">
+            <div>
+              <div class="pri">Northbeam Apparel · campaign live</div>
+              <div class="sec">Spring drop · Meta + TikTok · launched 2h ago</div>
+            </div>
+            <span class="badge badge-good">Live</span>
+          </div>
+          <div class="list-row">
+            <div>
+              <div class="pri">Heliogen Skincare · creative review</div>
+              <div class="sec">3 video assets pending strategist sign-off</div>
+            </div>
+            <span class="badge badge-warn">Review</span>
+          </div>
+          <div class="list-row">
+            <div>
+              <div class="pri">Lumen Coffee · pixel mismatch flagged</div>
+              <div class="sec">GA4 vs Meta delta &gt; 18% — investigating</div>
+            </div>
+            <span class="badge badge-bad">Action</span>
+          </div>
+          <div class="list-row">
+            <div>
+              <div class="pri">Atlas Fitness · onboarding complete</div>
+              <div class="sec">Welcome call scheduled for Friday</div>
+            </div>
+            <span class="badge badge-good">New</span>
+          </div>
+          <div class="list-row">
+            <div>
+              <div class="pri">Quill Books · weekly report sent</div>
+              <div class="sec">+24% revenue WoW · audit in CRM</div>
+            </div>
+            <span class="badge badge-good">Sent</span>
+          </div>
+        </div>
+
+        <!-- Top clients -->
+        <div class="panel">
+          <h3>Top clients · this week</h3>
+          <div class="list-row">
+            <div class="pri">Northbeam Apparel</div>
+            <div class="sec">$184k · 4.1× ROAS</div>
+          </div>
+          <div class="list-row">
+            <div class="pri">Heliogen Skincare</div>
+            <div class="sec">$112k · 3.6× ROAS</div>
+          </div>
+          <div class="list-row">
+            <div class="pri">Atlas Fitness</div>
+            <div class="sec">$96k · 3.2× ROAS</div>
+          </div>
+          <div class="list-row">
+            <div class="pri">Lumen Coffee</div>
+            <div class="sec">$82k · 2.9× ROAS</div>
+          </div>
+          <div class="list-row">
+            <div class="pri">Quill Books</div>
+            <div class="sec">$74k · 4.4× ROAS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tasks panel -->
+      <div class="panel">
+        <h3>Today's tasks</h3>
+        <div class="list-row">
+          <div class="pri">Approve new creative for Heliogen (3 assets)</div>
+          <span class="badge badge-warn">Due 5pm</span>
+        </div>
+        <div class="list-row">
+          <div class="pri">Investigate Lumen Coffee pixel mismatch</div>
+          <span class="badge badge-bad">Blocking report</span>
+        </div>
+        <div class="list-row">
+          <div class="pri">Send weekly report to Atlas Fitness</div>
+          <span class="badge badge-good">Drafted</span>
+        </div>
+        <div class="list-row">
+          <div class="pri">Review Northbeam Q2 strategy doc</div>
+          <span class="badge badge-warn">Tomorrow</span>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+</body>
+</html>

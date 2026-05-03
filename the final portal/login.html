@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign in · Milesy Media</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="nav">
+    <div class="container nav-row">
+      <a href="index.html" class="brand">
+        <span class="mark">M</span>
+        <span class="brand-name">Milesy<span class="a">Media</span></span>
+      </a>
+      <nav class="nav-links">
+        <a href="index.html#services">Services</a>
+        <a href="index.html#work">Work</a>
+        <a href="index.html#testimonials">Clients</a>
+        <a href="index.html#contact">Contact</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="index.html#contact" class="btn btn-secondary">Book a call</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Auth -->
+  <main class="auth-shell">
+    <div class="auth-card">
+      <a href="index.html" class="back-link">← Back to site</a>
+
+      <span class="eyebrow">Client portal</span>
+      <h1>Welcome back.</h1>
+      <p class="sub">Sign in to manage your campaigns, view reporting, and chat with your strategist.</p>
+
+      <form id="login-form" autocomplete="on">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="you@company.com" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8" />
+        </div>
+        <div id="error" class="error-box" style="display:none">Invalid email or password.</div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Sign in</button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <a href="admin.html" class="admin-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Admin access
+      </a>
+
+      <p class="dim" style="font-size:12px;text-align:center;margin-top:22px">
+        Trouble signing in? <a href="mailto:support@milesymedia.co" style="color:var(--accent)">support@milesymedia.co</a>
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container foot-row">
+      <span>© 2026 Milesy Media</span>
+      <span><a href="index.html">Home</a> · <a href="admin.html">Admin</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // Quick demo handler — accepts any non-empty creds and bounces to admin.
+    document.getElementById("login-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = document.getElementById("email").value.trim();
+      var pw    = document.getElementById("password").value;
+      var err   = document.getElementById("error");
+      if (!email || pw.length < 8) {
+        err.style.display = "block";
+        err.textContent = "Enter a valid email and a password (8+ chars).";
+        return;
+      }
+      err.style.display = "none";
+      // No backend yet — drop the operator into the placeholder admin UI.
+      window.location.href = "admin.html";
+    });
+  </script>
+</body>
+</html>
