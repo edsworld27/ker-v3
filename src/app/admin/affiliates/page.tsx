@@ -4,6 +4,7 @@
 // see per-affiliate performance.
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { getActiveOrgId } from "@/lib/admin/orgs";
@@ -72,12 +73,28 @@ function AffiliatesPageInner() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      <header>
-        <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Affiliates</p>
-        <h1 className="font-display text-3xl text-brand-cream">Affiliate program</h1>
-        <p className="text-[12px] text-brand-cream/55 mt-1">
-          {approved.length} approved · {pending.length} pending · {suspended.length} suspended
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] tracking-[0.32em] uppercase text-cyan-400 mb-1">Affiliates</p>
+          <h1 className="font-display text-3xl text-brand-cream">Affiliate program</h1>
+          <p className="text-[12px] text-brand-cream/55 mt-1">
+            {approved.length} approved · {pending.length} pending · {suspended.length} suspended
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/admin/affiliates/stats"
+            className="text-[11px] uppercase tracking-[0.2em] text-brand-cream/85 hover:text-brand-cream rounded-lg border border-white/15 hover:border-white/30 px-3 py-1.5 transition-colors"
+          >
+            Stats
+          </Link>
+          <Link
+            href="/admin/affiliates/payouts"
+            className="text-[11px] uppercase tracking-[0.2em] text-brand-cream/85 hover:text-brand-cream rounded-lg border border-white/15 hover:border-white/30 px-3 py-1.5 transition-colors"
+          >
+            Payouts
+          </Link>
+        </div>
       </header>
 
       {error && (
