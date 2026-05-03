@@ -260,7 +260,8 @@ Nine priorities cleared in `claude/continue-work-1FFJ6`:
 
 1. **Email plugin actually sending** — operator pastes Resend / Postmark key, hits "Test send", confirms inbox delivery. Plumbing is in place.
 2. **Stripe end-to-end** — full test purchase against Felicia's storefront with real Stripe keys. Validation, not fresh code.
-3. **S3 adapter for Backups** — `createBackup` throws a typed error today when `adapter:"s3"` is selected. Wire AWS Signature V4 PUT/GET/DELETE (or pull in the S3 SDK) inside the function body — everything else (UI, cron, retention, restore) is ready.
+
+(The S3 adapter for Backups now ships in-tree — `src/lib/s3/server.ts` + plugin-config-driven dispatch in `src/portal/server/backups.ts`. Operator pins `adapter:"s3"` + pastes bucket / region / access keys → "Backup now" hits real S3.)
 
 ## Future ideas (parking lot)
 

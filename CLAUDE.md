@@ -283,12 +283,11 @@ against real services.
    storefront with real Stripe keys. Order persists + email
    confirmation arrives + Analytics event is recorded. Validation,
    not fresh code.
-3. **S3 adapter for Backups** — `createBackup` in
-   `src/portal/server/backups.ts` throws a typed error today when an
-   operator pins `adapter:"s3"`. Wire AWS Signature V4
-   PUT/GET/DELETE (or pull in the S3 SDK) inside that function body
-   — the runtime, retention sweep, restore, UI, and cron API around
-   it are all ready.
+(S3 adapter for Backups now ships in-tree — `src/lib/s3/server.ts`
+implements AWS SigV4 against any S3-compatible endpoint, dispatched
+per-org from `src/portal/server/backups.ts` based on plugin config.
+Operators paste bucket / region / access keys and "Backup now" hits
+real S3 — no remaining code work, just configuration.)
 
 The following infra-grade items shipped in this session:
 - Real CRUD on memberships/tiers, memberships/members,
