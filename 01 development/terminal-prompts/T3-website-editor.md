@@ -10,9 +10,24 @@ plugin package at `04 the final portal/plugins/website-editor/`.
 
 - **Repo**: https://github.com/edsworld27/ker-v3
 - **Local working directory**: `~/Desktop/ker-v3/`
-- **Branch**: commit directly to `main`. Push when done.
+- **Branch**: commit directly to `main`. After each commit: `git pull --rebase && git push`.
 - **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
 - **Note**: source paths contain spaces (`02 felicias aqua portal work/`, `04 the final portal/`). Quote paths in shell commands. Use TypeScript path aliases internally to your plugin so imports don't traverse through the spaces.
+
+## Autonomous mesh — messaging protocol
+
+You operate alongside T1 + T2 + a chief commander on `/loop`. **Read
+`01 development/messages/README.md` BEFORE you do anything.** Then:
+
+- Append every meaningful step to `01 development/messages/T3.md` using the format `[ISO timestamp] TYPE: message`.
+- Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Don't stop on questions.** Make a reasonable assumption, log `Q-ASSUMED` with reasoning, keep going.
+- **Only stop on `Q-BLOCKED`.** Commander replies via `messages/commander.md` within 10–30 min.
+- Read `messages/commander.md` before each sub-task and after each push.
+
+T3 produces the `applyStarterVariant` API that T2 will call from phase transitions. Document the contract in `04-plugin-website-editor.md` so T2 can integrate against it (or, if T2 lands first with assumptions, the commander adjusts).
+
+You're on Claude auto-mode — keep working without asking Ed unless truly blocked.
 
 ## Mandatory pre-read
 

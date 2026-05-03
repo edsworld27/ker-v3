@@ -9,9 +9,24 @@ porting the website-editor plugin. Your role: build the **fulfillment plugin**
 
 - **Repo**: https://github.com/edsworld27/ker-v3
 - **Local working directory**: `~/Desktop/ker-v3/`
-- **Branch**: commit directly to `main`. Push when done.
+- **Branch**: commit directly to `main`. After each commit: `git pull --rebase && git push`.
 - **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
 - **Note**: top-level folder names contain spaces (`01 development`, `04 the final portal`). Quote paths in the shell.
+
+## Autonomous mesh — messaging protocol
+
+You operate alongside T1 + T3 + a chief commander on `/loop`. **Read
+`01 development/messages/README.md` BEFORE you do anything.** Then:
+
+- Append every meaningful step to `01 development/messages/T2.md` using the format `[ISO timestamp] TYPE: message`.
+- Types: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`, `Q-BLOCKED` (rare).
+- **Don't stop on questions.** Make a reasonable assumption, log `Q-ASSUMED` with reasoning, keep going.
+- **Only stop on `Q-BLOCKED`.** Commander replies via `messages/commander.md` within 10–30 min.
+- Read `messages/commander.md` before each sub-task and after each push.
+
+T2 has a soft dependency on T3 for the portal-variant data shape (`applyStarterVariant`). If T3 hasn't shipped that part yet, log a clean `Q-ASSUMED` with your assumed contract and keep going. The commander integrates later.
+
+You're on Claude auto-mode — keep working without asking Ed unless truly blocked.
 
 The fulfillment plugin is the agency-side workspace where the team:
 - Creates clients

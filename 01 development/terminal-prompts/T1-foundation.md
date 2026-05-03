@@ -9,9 +9,22 @@ plugin-runtime contract you produce.
 
 - **Repo**: https://github.com/edsworld27/ker-v3
 - **Local working directory**: `~/Desktop/ker-v3/`
-- **Branch**: commit directly to `main`. Push when done. (Reviewability comes from the chapter file you update, not from PRs.)
+- **Branch**: commit directly to `main`. After each commit: `git pull --rebase && git push`.
 - **If you don't have a clone yet**: `git clone https://github.com/edsworld27/ker-v3.git ~/Desktop/ker-v3 && cd ~/Desktop/ker-v3`
 - **Note**: top-level folder names contain spaces (`01 development`, `02 felicias aqua portal work`, `04 the final portal`). Quote paths in the shell. In TypeScript imports use `@/` aliases — never relative paths through the spaces.
+
+## Autonomous mesh — messaging protocol
+
+You operate alongside T2 + T3 + a chief commander on `/loop`. **Read
+`01 development/messages/README.md` BEFORE you do anything.** Then:
+
+- Append every meaningful step to `01 development/messages/T1.md` using the format `[ISO timestamp] TYPE: message`.
+- Types you'll use most: `STARTED`, `PROGRESS`, `Q-ASSUMED`, `COMMIT`, `DONE`.
+- **Don't stop on questions.** If a reasonable assumption exists, log `Q-ASSUMED` (state assumption + reasoning) and keep going.
+- **Only stop on `Q-BLOCKED`** when no reasonable assumption is possible. Then wait for the commander's `REPLY` in `messages/commander.md`. Commander wakes every 10–30 minutes.
+- Read `messages/commander.md` before starting a new sub-task and after every push (commander may have replied to you).
+
+You're on Claude auto-mode — keep working without asking Ed unless you hit a true `Q-BLOCKED`. The commander handles routing.
 
 ## Mandatory pre-read
 
