@@ -120,6 +120,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setBranding(getBranding());
       setCustomTabs(listCustomTabs());
     };
+    // Brand kit follows the active org: when the operator switches
+    // orgs (org switcher fires "lk-orgs-change"), re-read getBranding()
+    // so the admin chrome (logo, panel name, accent) updates without a
+    // navigation. The orgs cache is persisted to localStorage now, so
+    // readBrandPluginBranding picks up the new active tenant
+    // synchronously.
+    const onOrgsChange = () => {
+      setBranding(getBranding());
+      setCustomTabs(listCustomTabs());
+    };
+    window.addEventListener("lk-orgs-change", onOrgsChange);
     window.addEventListener(AUTH_EVENT, refresh);
     window.addEventListener("storage", refresh);
     const off0 = onAdminConfigChange(refreshAdminConfig);
@@ -139,6 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => {
       window.removeEventListener(AUTH_EVENT, refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("lk-orgs-change", onOrgsChange);
       off0(); off1(); off2(); off3(); off4(); off5();
     };
   }, [pathname]);

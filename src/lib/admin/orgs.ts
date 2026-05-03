@@ -11,6 +11,7 @@ import type { OrgRecord, OrgStatus } from "@/portal/server/types";
 export type { OrgRecord, OrgStatus };
 
 const ACTIVE_KEY = "lk_active_org_v1";
+const ORGS_CACHE_KEY = "lk_orgs_v1";
 const EVENT = "lk-orgs-change";
 const REFRESH_MS = 60_000;
 
@@ -24,6 +25,35 @@ function notify() {
   }
 }
 
+// Mirror the in-memory cache to localStorage so admin chrome modules
+// (e.g. adminConfig.readBrandPluginBranding) can read the active org's
+// plugin config synchronously without needing to import this client.
+// Best-effort — quota-exceeded or private-mode failures are swallowed.
+function persistCache(orgs: OrgRecord[]): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(ORGS_CACHE_KEY, JSON.stringify(orgs)); }
+  catch { /* ignore */ }
+}
+
+// Hydrate the in-memory cache from localStorage on first import so
+// callers like getBranding() return the right tenant chrome on page
+// load — before loadOrgs() finishes its network round-trip.
+function hydrateFromCache(): OrgRecord[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ORGS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as OrgRecord[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+if (cache === null) {
+  const fromDisk = hydrateFromCache();
+  if (fromDisk) cache = fromDisk;
+}
+
 export async function loadOrgs(force = false): Promise<OrgRecord[]> {
   if (!force && cache && Date.now() - lastFetched < REFRESH_MS) return cache;
   if (pending) return pending;
@@ -34,6 +64,7 @@ export async function loadOrgs(force = false): Promise<OrgRecord[]> {
       const data = await res.json() as { orgs: OrgRecord[] };
       cache = data.orgs;
       lastFetched = Date.now();
+      persistCache(cache);
       notify();
       return cache;
     } catch {
