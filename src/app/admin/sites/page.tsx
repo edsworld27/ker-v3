@@ -10,6 +10,7 @@ import {
 import { listVariants, type ThemeVariant } from "@/lib/admin/themeVariants";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { prompt } from "@/components/admin/PromptHost";
+import { notify } from "@/components/admin/Toaster";
 import {
   loadSettings as loadPortalSettings,
   getSettings as getPortalSettings,
@@ -573,6 +574,7 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
   onToggle: () => void;
 }) {
   const [domain, setDomain] = useState("");
+  const [vercelBusy, setVercelBusy] = useState(false);
   const domainInputRef = useRef<HTMLInputElement | null>(null);
   const conn = connectionState(heartbeat, now);
 
@@ -580,6 +582,56 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
     if (!domain.trim()) return;
     addDomain(site.id, domain);
     setDomain("");
+  }
+
+  // Best-effort Vercel auto-attach — only fires when VERCEL_TOKEN is
+  // configured server-side. Locally adds the domain too so the manual-
+  // DNS path still applies if Vercel doesn't have creds.
+  async function handleAttachViaVercel() {
+    const target = domain.trim();
+    if (!target) return;
+    addDomain(site.id, target);
+    setDomain("");
+    setVercelBusy(true);
+    try {
+      const res = await fetch("/api/portal/domains", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ domain: target }),
+      });
+      const data = await res.json() as {
+        ok: boolean; verified?: boolean; pending?: Array<{ type: string; name: string; value: string }>;
+        error?: string;
+      };
+      if (!data.ok) {
+        notify({
+          tone: "warn",
+          title: "Vercel attach didn't go through",
+          message: data.error ?? "Domain added locally — set DNS manually.",
+        });
+        return;
+      }
+      if (data.verified) {
+        notify({ tone: "ok", message: `${target} attached and verified on Vercel` });
+      } else {
+        const rec = data.pending?.[0];
+        notify({
+          tone: "info",
+          title: `${target} attached (DNS pending)`,
+          message: rec
+            ? `Add ${rec.type} record on ${rec.name} → ${rec.value}`
+            : "DNS configuration required at your registrar.",
+        });
+      }
+    } catch (e: unknown) {
+      notify({
+        tone: "warn",
+        title: "Vercel attach failed",
+        message: e instanceof Error ? e.message : "Domain added locally — set DNS manually.",
+      });
+    } finally {
+      setVercelBusy(false);
+    }
   }
 
   function focusDomainInput() {
@@ -830,21 +882,31 @@ function SiteRow({ site, isActive, isOpen, variants, heartbeat, now, portalOrigi
                   />
                 ))
               )}
-              <form onSubmit={e => { e.preventDefault(); handleAddDomain(); }} className="flex gap-2">
+              <form onSubmit={e => { e.preventDefault(); handleAddDomain(); }} className="flex gap-2 flex-wrap">
                 <input
                   ref={domainInputRef}
                   value={domain}
                   onChange={e => setDomain(e.target.value)}
                   placeholder="e.g. felicia.com"
-                  className={INPUT + " font-mono"}
+                  className={INPUT + " font-mono flex-1 min-w-[12rem]"}
                 />
                 <button type="submit" disabled={!domain.trim()} className="text-xs px-3 py-2 rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-40 shrink-0">
                   Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleAttachViaVercel()}
+                  disabled={!domain.trim() || vercelBusy}
+                  title="Adds the domain locally AND attaches it to your Vercel project (when VERCEL_TOKEN is configured)."
+                  className="text-xs px-3 py-2 rounded-lg border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-40 shrink-0"
+                >
+                  {vercelBusy ? "Attaching…" : "Add + attach to Vercel"}
                 </button>
               </form>
               <p className="text-[11px] text-brand-cream/30 leading-relaxed">
                 Point each domain&apos;s DNS A record to your hosting provider, then add it here.
                 Click <strong className="text-brand-cream/55">Check DNS</strong> on a row to verify resolution from Google&apos;s public DNS.
+                With <code className="font-mono text-brand-cream/55">VERCEL_TOKEN</code> configured, &ldquo;Add + attach to Vercel&rdquo; auto-registers the domain on your Vercel project.
               </p>
             </div>
           </div>
