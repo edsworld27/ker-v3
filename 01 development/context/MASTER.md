@@ -80,6 +80,12 @@ Synthesised from 6 parallel explore agents.
 | 17 | Concepts to port | [prior research/concepts-to-port.md](prior%20research/concepts-to-port.md) | Ranked list: from `02` (port directly), from `03` (recreate as plugins). Architecture target for `04`. |
 | 18 | Anti-patterns | [prior research/anti-patterns.md](prior%20research/anti-patterns.md) | 20 specific things from `02` and `03` we should NOT replicate in `04`. |
 
+### Architecture (LOCKED — read before any 04 work)
+
+| # | Title | File | Summary |
+|---|-------|------|---------|
+| 19 | `04` architecture | [prior research/04-architecture.md](prior%20research/04-architecture.md) | The locked design for `04 the final portal/`. Pool-model multi-tenancy (Agency → Client → End-customer), Aqua manifest plugins, server-rendered chrome, single-cookie auth, phase lifecycle, brand kit per client. Round 1 terminal split. Decisions log. |
+
 ---
 
 ## Discipline

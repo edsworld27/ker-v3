@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "echo 'static deploy — milesymedia website only, no build needed'",
+  "buildCommand": "echo 'static deploy — Milesy Media website only'",
   "installCommand": "echo 'no install needed'",
   "outputDirectory": "04 the final portal/milesymedia website",
   "ignoreCommand": "exit 0",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": []
 }

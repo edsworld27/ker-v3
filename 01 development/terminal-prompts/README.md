@@ -1,8 +1,8 @@
 # Terminal prompts — chief commander pattern
 
 Ed runs three additional Claude terminals (Opus 4.7 max effort, with subagent
-authority). This session acts as chief commander: writes self-contained prompts
-for each terminal, integrates their output back into the dev folder.
+authority). This session acts as chief commander: writes self-contained
+prompts for each terminal, integrates their output back into the dev folder.
 
 ## How to use
 
@@ -14,41 +14,41 @@ for each terminal, integrates their output back into the dev folder.
 4. When done, Ed reports back here ("T1 finished, see commit X"). The
    commander reads the diff + updated chapters, plans Round 2.
 
-## Coordination protocol (every terminal follows this)
+## Coordination protocol — every terminal must follow
 
-Before doing anything, every terminal MUST:
-1. Read `01 development/CLAUDE.md` (project directives).
-2. Read `01 development/context/MASTER.md` (table of contents).
-3. Read the chapters relevant to its task.
-4. Read `01 development/eds requirments.md` if non-empty.
+Before any work:
+1. Read `01 development/CLAUDE.md`.
+2. Read `01 development/context/MASTER.md`.
+3. Read `01 development/context/prior research/04-architecture.md` — **the locked design**.
+4. Read the chapters relevant to the task (each prompt lists them).
+5. Read `01 development/eds requirments.md` if non-empty.
 
-While working, every terminal MUST:
-- Update `01 development/tasks.md` (move its row to in-progress).
-- Add new tasks under "Up next" if it discovers them.
+While working:
+- Update `01 development/tasks.md` (move row to in-progress, add follow-ups).
 
-When done, every terminal MUST:
-- Add or update a chapter file in `01 development/context/prior research/`
-  documenting what it built (so future sessions can load it off-by-heart).
+When done:
+- Add or update a chapter in `01 development/context/prior research/`.
 - Add a row to `01 development/context/MASTER.md` for any new chapter.
-- Move its task in `tasks.md` to "Done".
-- Commit with `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
+- Move row in `tasks.md` to "Done".
+- Commit (`Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`).
 - Push to `main`.
 
 ## Round 1 (now)
 
-| Terminal | Prompt file | Goal |
-|----------|-------------|------|
-| T1 | [T1-foundation.md](T1-foundation.md) | Scaffold `04 the final portal/portal/` with the plugin runtime, auth, and shell lifted from `02`. Make `npm run dev` work. |
-| T2 | [T2-website-editor.md](T2-website-editor.md) | Port the website editor + 58 blocks from `02` into `04 the final portal/plugins/website-editor/` as a self-contained plugin. |
-| T3 | [T3-ecommerce.md](T3-ecommerce.md) | Port the ecommerce plugin (products / orders / cart / Stripe) from `02` into `04 the final portal/plugins/ecommerce/`. |
+| Terminal | Prompt | Goal |
+|----------|--------|------|
+| **T1** | [T1-foundation.md](T1-foundation.md) | Scaffold `04 the final portal/portal/`. Plugin runtime + multi-tenant auth (Agency → Client → End-customer) + role hierarchy + chrome that mounts plugins from manifests. |
+| **T2** | [T2-fulfillment.md](T2-fulfillment.md) | Build the **fulfillment plugin** at `04 the final portal/plugins/fulfillment/`. Phase engine (6 default phases as data), collaborative checklist (internal + client tasks), client CRUD, plugin marketplace UI. |
+| **T3** | [T3-website-editor.md](T3-website-editor.md) | Port the **website-editor plugin** from `02` → `04 the final portal/plugins/website-editor/`. Editor + 58 blocks + portal variants admin. |
 
-T2 + T3 do not depend on T1's output — they extract code from `02` into
-new plugin folders. T1's foundation needs to land before any plugin can be
-installed and tested end-to-end, but the porting work itself parallels
-fine.
+T2 and T3 don't depend on T1's runtime — they package code into new plugin
+folders. T1's foundation needs to land before any plugin can be installed +
+tested end-to-end. Once all three commits are on `main`, Round 2 wires
+everything together.
 
 ## Round 2 (next, after Round 1 lands)
 
-- Wire ported plugins into T1's shell (test install + uninstall + render)
-- Build the `fulfillment` plugin (briefs + deliverables + assignments — based on `03`'s schema)
-- Build client-creation flow (team picks phase preset → installs plugins per client)
+- Wire all three plugins into T1's shell (test install + uninstall + render).
+- Port the **ecommerce plugin** (products / orders / cart / Stripe) from `02`.
+- Build the first phase preset end-to-end (create client → pick Onboarding → fulfillment installs forms + brand + email → checklist appears → both sides tick → advance phase).
+- Wire the demo button on milesymedia.com to a sandboxed agency.

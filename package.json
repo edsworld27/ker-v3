@@ -1,0 +1,10 @@
+{
+  "name": "ker-v3-deploy-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root manifest for Vercel. The repo only deploys the static Milesy Media landing page; everything else is preserved in subfolders for development.",
+  "scripts": {
+    "build": "echo 'No build — Vercel serves static files from 04 the final portal/milesymedia website (see vercel.json outputDirectory).'",
+    "vercel-build": "echo 'No build — static deploy.'"
+  }
+}
