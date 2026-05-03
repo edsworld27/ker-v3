@@ -28,6 +28,7 @@ import fs from "fs/promises";
 import crypto from "crypto";
 import { serializeStateJson, restoreStateFromJson } from "./storage";
 import { getOrg } from "./orgs";
+import { s3Put, s3Get, s3Delete, s3List, type S3Config } from "@/lib/s3/server";
 
 export interface BackupRecord {
   id: string;
@@ -117,6 +118,77 @@ async function deleteFileBackup(id: string): Promise<boolean> {
   return deleted;
 }
 
+// ── S3 adapter ─────────────────────────────────────────────────────────────
+//
+// Mirrors the file adapter's <id>.json + <id>.meta.json layout, just
+// addressed via S3 keys under a "backups/" prefix. Works against any
+// S3-compatible endpoint (R2, Spaces, MinIO etc.) — set config.endpoint
+// to the provider's URL.
+
+const S3_PREFIX = "backups/";
+
+function s3ConfigOrThrow(config: BackupsConfig): S3Config {
+  const c = config.s3;
+  if (!c?.bucket || !c?.region || !c?.accessKeyId || !c?.secretAccessKey) {
+    throw new Error(
+      "Backups: S3 adapter selected but plugin config is incomplete. " +
+      "Set bucket / region / accessKeyId / secretAccessKey on the Backups plugin.",
+    );
+  }
+  return {
+    bucket: c.bucket,
+    region: c.region,
+    accessKeyId: c.accessKeyId,
+    secretAccessKey: c.secretAccessKey,
+    endpoint: c.endpoint,
+  };
+}
+
+async function writeS3Snapshot(s3: S3Config, id: string, json: string): Promise<{ location: string; sizeBytes: number }> {
+  const key = `${S3_PREFIX}${id}.json`;
+  await s3Put(s3, key, json, "application/json");
+  return {
+    location: `s3://${s3.bucket}/${key}`,
+    sizeBytes: Buffer.byteLength(json, "utf8"),
+  };
+}
+
+async function writeS3Meta(s3: S3Config, record: BackupRecord): Promise<void> {
+  const key = `${S3_PREFIX}${record.id}.meta.json`;
+  await s3Put(s3, key, JSON.stringify(record, null, 2), "application/json");
+}
+
+async function readS3Snapshot(s3: S3Config, id: string): Promise<string> {
+  return s3Get(s3, `${S3_PREFIX}${id}.json`);
+}
+
+async function listS3Backups(s3: S3Config): Promise<BackupRecord[]> {
+  const entries = await s3List(s3, S3_PREFIX);
+  const records: BackupRecord[] = [];
+  for (const e of entries) {
+    if (!e.key.endsWith(".meta.json")) continue;
+    try {
+      const raw = await s3Get(s3, e.key);
+      records.push(JSON.parse(raw) as BackupRecord);
+    } catch {
+      // Skip malformed sidecar — list view shouldn't break.
+    }
+  }
+  records.sort((a, b) => b.createdAt - a.createdAt);
+  return records;
+}
+
+async function deleteS3Backup(s3: S3Config, id: string): Promise<boolean> {
+  let deleted = false;
+  for (const ext of [".json", ".meta.json"]) {
+    try {
+      await s3Delete(s3, `${S3_PREFIX}${id}${ext}`);
+      deleted = true;
+    } catch { /* swallow — best-effort */ }
+  }
+  return deleted;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────
 
 export interface CreateBackupInput {
@@ -128,48 +200,70 @@ export interface CreateBackupInput {
 
 export async function createBackup(input: CreateBackupInput): Promise<BackupRecord> {
   const adapter = input.config?.adapter ?? "file";
-  if (adapter === "s3") {
-    throw new Error(
-      "Backups: S3 adapter not implemented in-tree. Either pin adapter to 'file' " +
-      "(set Backups plugin config) or wire your S3 client into createBackup. " +
-      "The file adapter writes to .data/backups/ — backed up by your platform's " +
-      "disk-snapshot policy, that's already SOC-2-grade.",
-    );
-  }
-
   const id = makeId();
   const json = serializeStateJson();
-  const { location, sizeBytes } = await writeFileSnapshot(id, json);
-  const record: BackupRecord = {
-    id,
-    orgId: input.orgId,
-    kind: input.kind ?? "manual",
-    adapter: "file",
-    location,
-    sizeBytes,
-    createdAt: Date.now(),
-    notes: input.notes,
-  };
-  await writeFileMeta(record);
 
-  // Retention sweep — drop oldest beyond the configured window.
-  const retention = input.config?.retention ?? DEFAULT_RETENTION;
-  const all = await listFileBackups();
-  if (all.length > retention) {
-    const stale = all.slice(retention);
-    for (const r of stale) {
-      await deleteFileBackup(r.id);
-    }
+  let location: string;
+  let sizeBytes: number;
+
+  if (adapter === "s3") {
+    const s3 = s3ConfigOrThrow(input.config ?? {});
+    ({ location, sizeBytes } = await writeS3Snapshot(s3, id, json));
+    const record: BackupRecord = {
+      id, orgId: input.orgId, kind: input.kind ?? "manual",
+      adapter: "s3", location, sizeBytes,
+      createdAt: Date.now(), notes: input.notes,
+    };
+    await writeS3Meta(s3, record);
+    await sweepRetention("s3", input.config);
+    return record;
   }
 
+  ({ location, sizeBytes } = await writeFileSnapshot(id, json));
+  const record: BackupRecord = {
+    id, orgId: input.orgId, kind: input.kind ?? "manual",
+    adapter: "file", location, sizeBytes,
+    createdAt: Date.now(), notes: input.notes,
+  };
+  await writeFileMeta(record);
+  await sweepRetention("file", input.config);
   return record;
 }
 
-export async function listBackups(): Promise<BackupRecord[]> {
+async function sweepRetention(adapter: "file" | "s3", config: BackupsConfig | undefined): Promise<void> {
+  const retention = config?.retention ?? DEFAULT_RETENTION;
+  const all = adapter === "s3"
+    ? await listS3Backups(s3ConfigOrThrow(config ?? {}))
+    : await listFileBackups();
+  if (all.length <= retention) return;
+  const stale = all.slice(retention);
+  for (const r of stale) {
+    if (adapter === "s3") {
+      await deleteS3Backup(s3ConfigOrThrow(config ?? {}), r.id);
+    } else {
+      await deleteFileBackup(r.id);
+    }
+  }
+}
+
+export async function listBackups(config?: BackupsConfig): Promise<BackupRecord[]> {
+  const adapter = config?.adapter ?? "file";
+  if (adapter === "s3") {
+    return listS3Backups(s3ConfigOrThrow(config ?? {}));
+  }
   return listFileBackups();
 }
 
-export async function getBackup(id: string): Promise<{ record: BackupRecord; json: string } | null> {
+export async function getBackup(id: string, config?: BackupsConfig): Promise<{ record: BackupRecord; json: string } | null> {
+  const adapter = config?.adapter ?? "file";
+  if (adapter === "s3") {
+    const s3 = s3ConfigOrThrow(config ?? {});
+    const records = await listS3Backups(s3);
+    const record = records.find(r => r.id === id);
+    if (!record) return null;
+    const json = await readS3Snapshot(s3, id);
+    return { record, json };
+  }
   const records = await listFileBackups();
   const record = records.find(r => r.id === id);
   if (!record) return null;
@@ -177,7 +271,11 @@ export async function getBackup(id: string): Promise<{ record: BackupRecord; jso
   return { record, json };
 }
 
-export async function deleteBackup(id: string): Promise<boolean> {
+export async function deleteBackup(id: string, config?: BackupsConfig): Promise<boolean> {
+  const adapter = config?.adapter ?? "file";
+  if (adapter === "s3") {
+    return deleteS3Backup(s3ConfigOrThrow(config ?? {}), id);
+  }
   return deleteFileBackup(id);
 }
 
@@ -185,8 +283,8 @@ export type RestoreResult =
   | { ok: true; restoredAt: number }
   | { ok: false; error: string };
 
-export async function restoreBackup(id: string): Promise<RestoreResult> {
-  const found = await getBackup(id);
+export async function restoreBackup(id: string, config?: BackupsConfig): Promise<RestoreResult> {
+  const found = await getBackup(id, config);
   if (!found) return { ok: false, error: "backup-not-found" };
   try {
     restoreStateFromJson(found.json);

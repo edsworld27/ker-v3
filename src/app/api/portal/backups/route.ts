@@ -8,7 +8,7 @@
 // requests stay "manual".
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
-import { createBackup, listBackups, getBackupsConfig } from "@/portal/server/backups";
+import { createBackup, listBackups, getBackupsConfig, type BackupRecord } from "@/portal/server/backups";
 import { requireAdmin } from "@/lib/server/auth";
 import { recordAdminAction } from "@/portal/server/activity";
 
@@ -20,11 +20,20 @@ export async function GET(req: NextRequest) {
   await ensureHydrated();
 
   const orgId = req.nextUrl.searchParams.get("orgId") ?? "agency";
-  const records = await listBackups();
+  const config = getBackupsConfig(orgId);
+  let records: BackupRecord[];
+  let listError: string | undefined;
+  try {
+    records = await listBackups(config);
+  } catch (e: unknown) {
+    records = [];
+    listError = e instanceof Error ? e.message : "list-failed";
+  }
   return NextResponse.json({
     ok: true,
     backups: records,
-    config: getBackupsConfig(orgId),
+    config,
+    ...(listError ? { listError } : {}),
   });
 }
 

@@ -6,20 +6,21 @@
 // for explicit confirmation; this route is a thin wrapper.
 import { NextRequest, NextResponse } from "next/server";
 import { ensureHydrated } from "@/portal/server/storage";
-import { restoreBackup } from "@/portal/server/backups";
+import { restoreBackup, getBackupsConfig } from "@/portal/server/backups";
 import { requireAdmin } from "@/lib/server/auth";
 import { recordAdminAction } from "@/portal/server/activity";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   let actor;
   try { actor = await requireAdmin(); }
   catch (r) { return r as Response; }
   await ensureHydrated();
   const { id } = await ctx.params;
+  const orgId = req.nextUrl.searchParams.get("orgId") ?? "agency";
 
-  const result = await restoreBackup(id);
+  const result = await restoreBackup(id, getBackupsConfig(orgId));
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
   }
