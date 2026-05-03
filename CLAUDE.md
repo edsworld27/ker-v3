@@ -271,35 +271,41 @@ src/app/api/portal/             ← plugin + tenant API
 
 ## Next priorities (in order)
 
-1. **Real CRUD on the most-used stub admin pages** — start with
-   memberships/tiers (Felicia's likely first non-trivial config),
-   donations/donors, affiliates/payouts. Each is a small feature
-   — server module + storage + API + UI.
-2. **Audit log capture** — hook every admin mutation through a single
-   wrapper that emits `admin.action`; AuditLog plugin's runtime
-   listens + persists with diffs. The page already exists at
-   `/admin/auditlog`; wiring the recorder is the gap.
-3. **Backups runtime** — S3-compatible client, cron trigger, restore
-   flow (compliance prerequisite). Page + scaffold ready.
-4. **Custom domain auto-attach** — Vercel API integration so adding a
+These are the items that need external service credentials (S3,
+Vercel API, Stripe live keys, Resend/Postmark) and so couldn't be
+finished in pure code in this session. They're sized as concrete
+follow-ups rather than research tasks.
+
+1. **Backups runtime** — S3-compatible client, cron trigger, restore
+   flow (compliance prerequisite). Plugin manifest + scaffold pages
+   ready; needs an S3 client + bucket creds wired through plugin
+   config (operator pastes access-key / secret / bucket / region).
+2. **Custom domain auto-attach** — Vercel API integration so adding a
    domain in `/admin/sites` actually wires it up rather than just
-   showing DNS instructions.
-5. **Subscriptions Stripe billing-portal handoff** — operator paste of
+   showing DNS instructions. Needs `VERCEL_TOKEN` + project id.
+3. **Subscriptions Stripe billing-portal handoff** — operator paste of
    Stripe key already works for one-off charges; surfacing the hosted
-   billing portal so customers can self-serve plan changes is the
-   missing piece.
-6. **Pro mode features** — exposing theme tokens, layout-overrides
-   drawer, page-level custom CSS as Pro-only surfaces (the flag /
-   conditional rendering in the editor is already in place, just
-   needs the surfaces).
-7. **Brand kit refresh on org switch** — `getBranding()` already reads
-   the active org's brand-plugin config, but the in-memory orgs cache
-   needs to persist / reload on the `lk-orgs-change` event so the
-   admin chrome updates without a navigation.
-8. **Plugin sandbox / hot-reload in dev** — drop a folder in
-   `src/plugins/`, restart, the marketplace picks it up
-   (this works today; what's missing is the validation step that
-   refuses malformed manifests).
+   billing portal (`stripe.billingPortal.sessions.create`) so
+   customers can self-serve plan changes is the missing piece.
+4. **Email plugin end-to-end verify** — operator pastes Resend / Postmark
+   key, hits "Test send", confirms inbox delivery. Plumbing is there;
+   verify against a real inbox.
+5. **Stripe end-to-end** — full test purchase on Felicia's site.
+   Confirm Order persists + email confirmation arrives + Analytics
+   events are recorded. Validation rather than fresh code.
+
+The following infra-grade items shipped in this session:
+- Real CRUD on memberships/tiers, memberships/members,
+  donations/donors, affiliates/payouts, affiliates/stats
+- Audit log capture (`recordAdminAction` + instrumented mutating
+  endpoints + `/admin/auditlog` rendering the activity feed)
+- Force-password-change flow (`mustChangePassword` flag + admin-shell
+  redirect + `/account/change-password` + `/api/auth/change-password`)
+- Brand kit refresh on org switch (`lk_orgs_v1` localStorage mirror
+  + admin layout subscription)
+- Plugin manifest validator (`_validate.ts`) wired into the registry
+- Pro-mode editor surfaces (theme override, layout overrides,
+  page-level custom CSS in Page Settings modal)
 
 ## Future ideas (parking)
 
