@@ -16,6 +16,7 @@ import SetupRequired from "@/components/admin/SetupRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { notify } from "@/components/admin/Toaster";
 import { confirm } from "@/components/admin/ConfirmHost";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrg, getActiveOrgId, loadOrgs, onOrgsChange } from "@/lib/admin/orgs";
 
 interface ResolvedTemplate {
@@ -124,7 +125,8 @@ function TemplatesPanel() {
       });
       const data = await res.json();
       if (!data.ok) {
-        notify({ tone: "error", title: "Couldn't save template", message: data.error ?? "Unknown error" });
+        const f = friendlyError(data.error, "Couldn't save template");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       notify({ tone: "success", title: "Template saved", message: editingId });

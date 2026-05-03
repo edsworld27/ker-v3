@@ -13,6 +13,7 @@ import { useSearchParams } from "next/navigation";
 import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyError } from "@/lib/admin/friendlyError";
 
 interface Backup {
   id: string;
@@ -75,7 +76,8 @@ function RestoreInner() {
       });
       const data = await res.json() as { ok: boolean; error?: string };
       if (!data.ok) {
-        notify({ tone: "error", title: "Restore failed", message: data.error ?? `HTTP ${res.status}` });
+        const f = friendlyError(data.error, "Restore failed");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       notify({ tone: "ok", title: "Restored", message: `Portal state replaced from ${target.id}` });

@@ -392,6 +392,247 @@ export const HELP_DOCS: Record<string, HelpDoc> = {
       },
     ],
   },
+
+  "/admin/inventory": {
+    title: "Inventory",
+    intro: "Stock levels across every product variant. Low-stock alerts on the dashboard come from here — set the reorder threshold per variant and you'll get a heads-up before anything sells out.",
+    sections: [
+      {
+        heading: "Adjusting stock",
+        body: "Edit the count inline on a row. The change persists immediately and the dashboard's Low-stock KPI re-counts within seconds.",
+      },
+      {
+        heading: "Reorder thresholds",
+        body: "Set a low-water-mark per variant. When stock drops below it, that variant counts towards Low stock and surfaces in alerts. Set to 0 to suppress alerts for a variant you're winding down.",
+      },
+      {
+        heading: "Where stock comes from",
+        body: "Stock counts are decremented on order completion (Stripe webhook). Manual adjustments from this page are the right way to record stocktakes, returns, or supplier deliveries.",
+      },
+    ],
+  },
+
+  "/admin/shipping": {
+    title: "Shipping",
+    intro: "Rates, regions, and packaging. Customers see your rates at checkout — get this right or you're either eating shipping cost or scaring off carts.",
+    sections: [
+      {
+        heading: "Rates",
+        body: "Define shipping zones (UK, EU, US, …) and a rate per zone. The cart picks the rate matching the delivery address. Free-over thresholds (\"free over £50\") are configurable per zone.",
+      },
+      {
+        heading: "Carriers + tracking",
+        body: "When you mark an order shipped, paste a tracking number — it goes into the customer's shipping confirmation email automatically. Carrier list is editable.",
+      },
+    ],
+  },
+
+  "/admin/seo": {
+    title: "SEO",
+    intro: "Site-wide SEO settings — site title pattern, default meta description, OG image, structured data, sitemap controls.",
+    sections: [
+      {
+        heading: "Title pattern",
+        body: "Pattern like '{page} | {site}' produces 'About | Felicia' in the browser tab. Per-page SEO overrides set under Page settings (Pro mode in the editor) take precedence.",
+      },
+      {
+        heading: "Sitemap",
+        body: "Auto-generated at /sitemap.xml from your published pages, blog posts, products. Pages flagged as `noindex` or `excludeFromSitemap` are skipped.",
+      },
+      {
+        heading: "Robots.txt",
+        body: "Auto-served at /robots.txt. Editable here when you need crawler-specific rules.",
+      },
+    ],
+  },
+
+  "/admin/analytics": {
+    title: "Analytics",
+    intro: "Pageviews, top pages, referrers, and conversion events for every site. First-party — no Google Analytics required (though you can wire that on top).",
+    sections: [
+      {
+        heading: "How it works",
+        body: "A tiny tracker auto-mounted on every site emits pageview + custom-event pings. They're aggregated server-side and rendered here. No third-party cookies, no consent banner triggered.",
+      },
+      {
+        heading: "Heatmaps",
+        body: "Click density and scroll depth per page when the Analytics plugin's Heatmaps feature is on. Useful for spotting dead zones on landing pages.",
+      },
+      {
+        heading: "Conversions",
+        body: "Define a conversion event (e.g. 'checkout-completed') and the dashboard shows funnel rates from view → conversion. Wired up in the storefront via the tracker's `track()` API.",
+      },
+    ],
+  },
+
+  "/admin/marketing": {
+    title: "Marketing",
+    intro: "Discount codes, marketing sources, attribution. Tie revenue back to specific campaigns, codes, and channels.",
+    sections: [
+      {
+        heading: "Discount codes",
+        body: "Create codes (e.g. WELCOME10) with percent or fixed discount, optional minimum order, optional expiry. Customers enter the code at checkout; usage tracked here.",
+      },
+      {
+        heading: "Sources",
+        body: "Marketing sources tag where an order came from (e.g. Instagram, Email blast). Order detail shows the source so you can attribute revenue to channels.",
+      },
+    ],
+  },
+
+  "/admin/orgs": {
+    title: "Organisations",
+    intro: "Multi-tenant management. Each org is a separate portal with its own data, plugins, settings, sites. Switch active org from the sidebar org-switcher.",
+    sections: [
+      {
+        heading: "Adding an org",
+        body: "Better to use /aqua → + New portal — that walks you through preset selection. This page is for managing existing orgs and editing their metadata.",
+      },
+      {
+        heading: "Per-org database",
+        body: "Each org can be pinned to its own storage backend (file / KV / Supabase). Useful for data residency / compliance — set under the org's settings.",
+      },
+    ],
+  },
+
+  "/admin/popup": {
+    title: "Discount popup",
+    intro: "The on-storefront popup that offers visitors a discount in exchange for their email. Configure when it triggers, what it offers, and how it looks.",
+    sections: [
+      {
+        heading: "Triggers",
+        body: "Time-on-page, scroll depth, exit intent, or first visit. Pick the trigger that matches the campaign — exit intent for cart abandoners, time-on-page for blog readers.",
+      },
+      {
+        heading: "Frequency cap",
+        body: "Don't show to the same visitor more than every N days (cookie-based). 30 is a safe default — annoying customers loses more than the discount earns.",
+      },
+    ],
+  },
+
+  "/admin/automation": {
+    title: "Automation",
+    intro: "If-this-then-that rules + drip campaigns. React to events (order placed, customer signed up) without writing code.",
+    sections: [
+      {
+        heading: "Rules",
+        body: "When event X happens, do action Y. e.g. 'When a customer places their 3rd order, add them to the VIP segment'. Built on the same event bus the Webhooks plugin uses.",
+      },
+      {
+        heading: "Drip campaigns",
+        body: "Multi-step email sequences triggered by signup or purchase. Each step has a delay (e.g. 'send 3 days after signup'). Performance lands under /admin/automation/runs.",
+      },
+    ],
+  },
+
+  "/admin/themes": {
+    title: "Themes",
+    intro: "Pre-built design themes for the storefront. Pick one as the base; customise per-site colours and fonts under /admin/customise → Branding.",
+    sections: [
+      {
+        heading: "Picking a theme",
+        body: "Each theme defines a default colour palette, typography, and component styling. Click Apply to switch — your content stays the same, the chrome flips.",
+      },
+      {
+        heading: "Custom themes",
+        body: "Pro-mode operators can override individual theme tokens per site or per page. The visual editor's Page Settings → Pro section exposes the override surface.",
+      },
+    ],
+  },
+
+  "/admin/webhooks": {
+    title: "Webhooks",
+    intro: "HMAC-signed outbound webhooks. Subscribe an external service (Zapier, your own backend, n8n) to portal events — order placed, page published, etc.",
+    sections: [
+      {
+        heading: "Adding a webhook",
+        body: "Pick the events you care about, paste the URL, optional shared secret. Every dispatch is signed with HMAC-SHA256 in the X-Aqua-Signature header so the receiver can verify it came from you.",
+      },
+      {
+        heading: "Retries",
+        body: "Failed deliveries (non-2xx response) auto-retry with exponential backoff up to 5 times. After that they're marked failed in the log.",
+      },
+      {
+        heading: "Debugging",
+        body: "/admin/webhooks/log shows every dispatch with status, response, and timing. Click a row to see the full request body.",
+      },
+    ],
+  },
+
+  "/admin/funnels": {
+    title: "Funnels",
+    intro: "Multi-step conversion flows — landing → upsell → checkout, etc. Built in the visual editor as a chain of pages with conditional next-steps.",
+    sections: [
+      {
+        heading: "Building a funnel",
+        body: "Open the editor's outliner → Funnels tab → + New funnel. Each step is a page; reorder by drag, set conditional branches in the step settings.",
+      },
+      {
+        heading: "Stats",
+        body: "Per-step view, drop-off, and conversion. Surfaces the exact step where visitors leak so you know where to optimise.",
+      },
+    ],
+  },
+
+  "/admin/notifications": {
+    title: "Notifications",
+    intro: "In-app notifications for operators (low stock, failed payment, support ticket). Configure who gets which notification on /admin/notifications/preferences.",
+    sections: [
+      {
+        heading: "Bell icon",
+        body: "The bell in the admin topbar shows unread notifications. Click any to jump to the related entity.",
+      },
+      {
+        heading: "Preferences",
+        body: "Per-team-member: which categories trigger a bell ping vs an email vs both. Set under /admin/notifications/preferences.",
+      },
+    ],
+  },
+
+  "/admin/subscriptions": {
+    title: "Subscriptions",
+    intro: "Recurring billing on top of E-commerce. Stripe-backed subscriptions with trials, plan changes, dunning emails.",
+    sections: [
+      {
+        heading: "Plans",
+        body: "Define plans with price + interval (monthly/yearly) on /admin/subscriptions/plans. Each plan corresponds to a Stripe product + price; create those in Stripe first, then paste the price IDs here.",
+      },
+      {
+        heading: "Customer portal",
+        body: "Hand customers a Stripe-hosted portal URL where they can change plans, swap card, cancel — without you rebuilding any of it. Use the 'Open portal' card on this page to send a portal link to any customer by email.",
+      },
+    ],
+  },
+
+  "/admin/reviews": {
+    title: "Reviews",
+    intro: "Customer reviews on products. Moderate, reply, and feature reviews on the storefront.",
+    sections: [
+      {
+        heading: "Moderation",
+        body: "Reviews land in Pending until you Approve or Reject. Approved reviews appear on the product page; rejected ones stay hidden but stay in the log.",
+      },
+      {
+        heading: "Featured reviews",
+        body: "Star-mark a review to feature it on the home page or in marketing emails. The block library has a 'Featured reviews' block that pulls these.",
+      },
+    ],
+  },
+
+  "/admin/i18n": {
+    title: "Translations",
+    intro: "Multi-language storefront. Define locales, translate strings, route visitors to their language.",
+    sections: [
+      {
+        heading: "Adding a locale",
+        body: "Add the locale code (e.g. 'fr', 'es') under /admin/i18n/locales. The storefront auto-includes a language switcher in the navbar.",
+      },
+      {
+        heading: "Translating",
+        body: "Every translatable string surfaces here. Edit inline; save commits the change. Untranslated strings fall back to the default locale.",
+      },
+    ],
+  },
 };
 
 // Look up a doc for the current pathname. Falls back through

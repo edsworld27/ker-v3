@@ -11,6 +11,7 @@ import Link from "next/link";
 import PluginPageScaffold from "@/components/admin/PluginPageScaffold";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyError } from "@/lib/admin/friendlyError";
 
 export default function AdminSubscriptionsPage() {
   return (
@@ -62,7 +63,8 @@ function BillingPortalCard() {
       });
       const data = await res.json() as { ok: boolean; url?: string; error?: string };
       if (!data.ok || !data.url) {
-        notify({ tone: "error", title: "Couldn't mint portal link", message: data.error ?? `HTTP ${res.status}` });
+        const f = friendlyError(data.error, "Couldn't mint portal link");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       window.open(data.url, "_blank", "noopener");
