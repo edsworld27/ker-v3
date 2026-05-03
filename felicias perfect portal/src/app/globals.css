@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-orange: #E8621A;
+  --color-brand-orange-light: #F5874A;
+  --color-brand-orange-dark: #C44E0E;
+  --color-brand-amber: #F2A23C;
+  --color-brand-black: #0A0A0A;
+  --color-brand-black-soft: #141414;
+  --color-brand-black-card: #1A1A1A;
+  --color-brand-purple: #6B2D8B;
+  --color-brand-purple-light: #8B4AAD;
+  --color-brand-purple-dark: #4A1D62;
+  --color-brand-purple-muted: #2D1A3E;
+  --color-brand-cream: #FAF5EE;
+  --color-brand-cream-dark: #F0E8DC;
+
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-body: var(--font-dm-sans), system-ui, sans-serif;
+
+  --animate-fade-up: fadeUp 0.7s ease-out forwards;
+  --animate-fade-in: fadeIn 1s ease-out forwards;
+  --animate-float: float 6s ease-in-out infinite;
+
+  /* Theme-controlled animation durations (overridden by ThemeInjector) */
+  --anim-fade-up-dur: 0.7s;
+  --anim-fade-in-dur: 1s;
+  --anim-float-dur: 6s;
+  --anim-marquee-dur: 60s;
+  --anim-marquee-up-dur: 40s;
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-12px); }
+  }
+}
+
+/*
+  Do NOT add a * { margin: 0; padding: 0 } reset here —
+  Tailwind's own Preflight handles that inside its CSS layer,
+  and an unlayered * reset would override utility classes like mx-auto.
+*/
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0A0A0A;
+  color: #FAF5EE;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #F2A23C 0%, #E8621A 50%, #8B4AAD 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.adinkra-line {
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6B2D8B, #E8621A, #F2A23C, transparent);
+}
+
+.hero-glow {
+  background: radial-gradient(ellipse at 60% 50%, rgba(232, 98, 26, 0.12) 0%, rgba(107, 45, 139, 0.08) 40%, transparent 70%);
+}
+
+.card-glow:hover {
+  box-shadow: 0 0 40px rgba(232, 98, 26, 0.15), 0 0 80px rgba(107, 45, 139, 0.08);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Marquee — seamless infinite scroll for testimonial rows */
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+.marquee-left  { animation: marquee-left  var(--anim-marquee-dur, 60s) linear infinite; }
+.marquee-right { animation: marquee-right var(--anim-marquee-dur, 60s) linear infinite; }
+.marquee-pause:hover .marquee-left,
+.marquee-pause:hover .marquee-right {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-left, .marquee-right, .marquee-up { animation: none; }
+}
+
+/* Vertical marquee — seamless upward scroll for side scroller */
+@keyframes marquee-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+.marquee-up { animation: marquee-up var(--anim-marquee-up-dur, 40s) linear infinite; }
+
+/* Text selection — overridden by ThemeInjector */
+::selection {
+  background-color: #E8621A;
+  color: #FAF5EE;
+}

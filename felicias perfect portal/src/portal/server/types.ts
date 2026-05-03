@@ -1,0 +1,1062 @@
+// Shared portal types — both the storage layer and the route handlers
+// import these. Kept as a tiny module so storage.ts stays cycle-free.
+
+export interface Heartbeat {
+  siteId: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  beats: number;
+  lastUrl?: string;
+  lastTitle?: string;
+  lastReferrer?: string;
+  lastUserAgent?: string;
+  lastEvent?: string;
+}
+
+export type TrackerProvider =
+  | "ga4"
+  | "gtm"
+  | "meta-pixel"
+  | "tiktok-pixel"
+  | "hotjar"
+  | "clarity"
+  | "plausible";
+
+export type ConsentCategory = "analytics" | "marketing" | "functional";
+
+export interface Tracker {
+  id: string;
+  provider: TrackerProvider;
+  enabled: boolean;
+  consentCategory: ConsentCategory;
+  // Provider-specific identifier — measurement ID, pixel ID, hotjar site id,
+  // clarity project id, plausible domain, etc. A single value field keeps
+  // the data model simple; if a provider grows extra options we add them
+  // alongside.
+  value: string;
+  label?: string;              // optional admin-only nickname
+}
+
+export interface SiteTrackingConfig {
+  siteId: string;
+  requireConsent: boolean;     // if true, marketing/analytics trackers wait for grant
+  trackers: Tracker[];
+  updatedAt: number;
+}
+
+export const DEFAULT_CONSENT_CATEGORY: Record<TrackerProvider, ConsentCategory> = {
+  "ga4":          "analytics",
+  "gtm":          "marketing",   // GTM is a container, conservative default
+  "meta-pixel":   "marketing",
+  "tiktok-pixel": "marketing",
+  "hotjar":       "analytics",
+  "clarity":      "analytics",
+  "plausible":    "analytics",   // privacy-friendly but still a measurement category
+};
+
+export const PROVIDER_LABELS: Record<TrackerProvider, string> = {
+  "ga4":          "Google Analytics 4",
+  "gtm":          "Google Tag Manager",
+  "meta-pixel":   "Meta Pixel (Facebook)",
+  "tiktok-pixel": "TikTok Pixel",
+  "hotjar":       "Hotjar",
+  "clarity":      "Microsoft Clarity",
+  "plausible":    "Plausible",
+};
+
+export const PROVIDER_VALUE_PLACEHOLDER: Record<TrackerProvider, string> = {
+  "ga4":          "G-XXXXXXXXXX",
+  "gtm":          "GTM-XXXXXX",
+  "meta-pixel":   "1234567890",
+  "tiktok-pixel": "C4XXXXXXXXXX",
+  "hotjar":       "1234567",
+  "clarity":      "abcdef1234",
+  "plausible":    "yourdomain.com",
+};
+
+// ─── Content overrides ─────────────────────────────────────────────────────
+//
+// Host sites mark editable nodes with `data-portal-edit="<key>"` (and
+// optionally `data-portal-type` to choose how the override is applied).
+// The tag scans the DOM, reports discovered keys to the portal, fetches
+// the override map and rewrites matching nodes. Auto-discovery means
+// admins see what's editable without configuring anything up front.
+
+export type OverrideType = "text" | "html" | "image-src" | "href";
+
+export interface ContentOverride {
+  value: string;
+  type: OverrideType;
+  updatedAt: number;
+}
+
+export interface DiscoveredKey {
+  firstSeen: number;
+  lastSeen: number;
+  seenOn: string[];      // pathnames where this key has been observed (capped)
+  type?: OverrideType;   // last reported type (host-declared)
+}
+
+// A point-in-time snapshot of the published overrides — kept for revert.
+// We write a snapshot every time the admin publishes; oldest entries are
+// dropped beyond PUBLISH_HISTORY_CAP.
+export interface PublishSnapshot {
+  id: string;                                 // stable id, e.g. "snap_<ts>_<rand>"
+  publishedAt: number;
+  publishedBy?: string;                       // admin email if available
+  message?: string;                           // optional commit-style message
+  overrides: Record<string, ContentOverride>; // exact overrides at publish time
+  // Diff against the *previous* published state at publish time, for the UI.
+  changedKeys: string[];
+}
+
+export interface SiteContentState {
+  siteId: string;
+  // Workflow split (D-2):
+  //  • draft     — admin's working copy. setOverrides writes here.
+  //  • published — what the host site sees. Created via publish().
+  //  • history   — past published snapshots, capped, used for revert.
+  draft: Record<string, ContentOverride>;
+  published: Record<string, ContentOverride>;
+  history: PublishSnapshot[];
+  discovered: Record<string, DiscoveredKey>;
+  updatedAt: number;
+  // Legacy single-bucket field (Phase C). Kept readable for one major
+  // version so callers that haven't migrated still work; new writes always
+  // hit draft/published.
+  overrides?: Record<string, ContentOverride>;
+}
+
+export const PUBLISH_HISTORY_CAP = 30;
+
+export const OVERRIDE_TYPE_LABEL: Record<OverrideType, string> = {
+  "text":      "Text",
+  "html":      "HTML",
+  "image-src": "Image src",
+  "href":      "Link href",
+};
+
+// Cap how many distinct paths we remember per discovered key. Keeps the
+// state file small even for sites with thousands of pages.
+export const DISCOVERED_PATH_CAP = 8;
+
+// ─── Manifest schema (D-1) ─────────────────────────────────────────────────
+//
+// Host sites declare every editable region in a single portal.config.ts
+// file at the repo root (see definePortal in @/portal/client). The schema
+// is uploaded to the portal so the admin editor can render a structured,
+// section-grouped UI instead of a flat key list.
+
+export interface ManifestField {
+  type: OverrideType;
+  default: string;
+  description?: string;          // tooltip in the admin editor
+  multiline?: boolean;           // hint to render a textarea
+}
+
+// Section-grouped: { hero: { headline: { ... }, subtitle: { ... } } }.
+// The admin reader flattens to dot keys (`hero.headline`) which match the
+// existing override store from Phase C.
+export interface ManifestSchema {
+  [section: string]: {
+    [key: string]: ManifestField;
+  };
+}
+
+export interface SiteManifestSchema {
+  siteId: string;
+  schema: ManifestSchema;
+  uploadedAt: number;
+  uploadedFrom?: string;         // e.g. CLI version or repo URL
+}
+
+// ─── Embeds (D-5) ───────────────────────────────────────────────────────────
+//
+// Per-site registry of embeddable widgets — chatbots, calendars, video,
+// custom HTML. Host sites render `<PortalEmbed id="support-chat" />` and
+// the loader picks the right provider snippet at runtime.
+
+export type EmbedProvider =
+  | "crisp"
+  | "intercom"
+  | "tidio"
+  | "calendly"
+  | "cal-com"
+  | "youtube"
+  | "vimeo"
+  | "custom-html";
+
+export type EmbedPosition =
+  | "popup-bottom-right"
+  | "popup-bottom-left"
+  | "inline"
+  | "bottom-bar";
+
+export interface Embed {
+  id: string;                    // human-readable, e.g. "support-chat"
+  provider: EmbedProvider;
+  enabled: boolean;
+  // Provider-specific primary identifier — Crisp website id, Intercom app
+  // id, Calendly URL, YouTube video id, raw HTML for custom-html, etc.
+  value: string;
+  position?: EmbedPosition;
+  consentCategory?: ConsentCategory;
+  settings?: Record<string, unknown>;   // provider-specific extras
+  label?: string;
+}
+
+// ─── Portal-wide settings (D-4 prep) ───────────────────────────────────────
+//
+// Admin-controlled connection details: GitHub repo + auth (used by D-3
+// PR promotion), database backend (D-4 storage swap), deployment URLs.
+// Lives in localStorage on the admin side; sensitive fields are not
+// persisted server-side until we have proper auth.
+
+export type DatabaseBackend = "file" | "kv" | "supabase" | "postgres";
+
+export interface PortalSettings {
+  github: {
+    repoUrl: string;
+    defaultBranch: string;
+    appId?: string;
+    installationId?: string;
+    pat?: string;                // fallback Personal Access Token
+  };
+  database: {
+    backend: DatabaseBackend;
+    kvUrl?: string;
+    supabaseUrl?: string;
+    supabaseServiceKey?: string;
+    // Supabase Personal Access Token (different from the service-role
+    // key) used by the one-time "Sync DB" migration via the Supabase
+    // Management API. Only needed once per project — not used at
+    // runtime, only when the schema needs initialising.
+    supabaseManagementToken?: string;
+    postgresUrl?: string;
+  };
+  deployment: {
+    previewBaseUrl?: string;
+  };
+  // E-2: 3rd-party integrations the portal uses to auto-detect things
+  // about a host site (currently only Vercel — token used to look up
+  // domain → project → repo so a new heartbeat can register a site
+  // with no manual setup).
+  integrations?: {
+    vercelToken?: string;
+    autoDiscover?: boolean;          // master switch, defaults to true when token present
+    // A-1 site audit external services. PageSpeed Insights is Google's
+    // free Lighthouse-as-a-service (no chrome on our server needed).
+    // Anthropic key drives the LLM-formatted no-BS report.
+    pagespeedKey?: string;
+    anthropicKey?: string;
+  };
+  compliance?: ComplianceSettings;
+}
+
+// Patch type: each top-level section may be supplied partially. Callers
+// can send { github: { repoUrl: "…" } } and keep defaultBranch untouched.
+export type PortalSettingsPatch = {
+  [K in keyof PortalSettings]?: Partial<PortalSettings[K]>;
+};
+
+// ─── Compliance (E-3) ──────────────────────────────────────────────────────
+//
+// Mode selects a baseline policy that gates which third-party providers
+// can be configured, how long the audit log is retained, and what admin
+// actions require extra confirmation. HIPAA is the strictest; "none" is
+// the development default with no restrictions.
+
+export type ComplianceMode = "none" | "gdpr" | "hipaa" | "soc2";
+
+export interface ComplianceSettings {
+  mode: ComplianceMode;
+  // Override the default audit retention for the current mode. 0 = use
+  // the mode's recommended default.
+  auditRetentionDaysOverride?: number;
+  // Admin-acknowledged warnings — used to suppress repeat banners on
+  // settings the admin has accepted as non-compliant in their context.
+  acknowledgedWarnings?: string[];
+}
+
+// Provider lists the modes restrict. Maintained here (rather than at
+// each enforcement site) so the rules are auditable in one place.
+//
+// "BAA" = the provider offers a Business Associate Agreement. Without
+// one, shipping any URL/identifier that could be PHI is a violation.
+// HIPAA blocks every tracker / embed lacking a BAA pathway.
+export const NON_BAA_TRACKER_PROVIDERS: ReadonlyArray<string> = [
+  "ga4",          // Google does not BAA the consumer GA4
+  "gtm",          // Container; can ship anything, blocked conservatively
+  "meta-pixel",
+  "tiktok-pixel",
+  "hotjar",
+  "clarity",
+];
+
+export const NON_BAA_EMBED_PROVIDERS: ReadonlyArray<string> = [
+  "crisp",
+  "intercom",
+  "tidio",
+  "calendly",
+  "cal-com",
+  "youtube",
+  "vimeo",
+];
+
+// Audit log retention (in days) per mode. The activity logger purges
+// entries older than this on each write. Override via
+// compliance.auditRetentionDaysOverride.
+export const RETENTION_DAYS: Record<ComplianceMode, number> = {
+  "none":  90,                  // sensible default, not legally driven
+  "gdpr":  6 * 30,              // 6 months
+  "soc2":  365,                 // 1 year (typical SOC 2 requirement)
+  "hipaa": 6 * 365,             // 6 years (45 CFR §164.530(j))
+};
+
+// ─── Embed theme (G-1) ─────────────────────────────────────────────────────
+//
+// Per-site customisation for the embed widget (chatbot-style sign-in
+// loaded from /portal/embed.js + /embed/login). Lets each tenant style
+// their own portal: brand colour, logo, copy, and a switchable admin-
+// access button that links the operator straight into /admin.
+//
+// All fields optional — the embed falls back to portal defaults
+// (brand orange, "Sign in" label, no logo) when nothing's configured.
+
+export interface EmbedTheme {
+  // Visual
+  brandColor?: string;           // hex, used for the button + accents
+  logoUrl?: string;
+  faviconUrl?: string;
+  // Copy
+  welcomeHeadline?: string;      // big heading inside the iframe
+  welcomeSubtitle?: string;      // smaller line under the heading
+  signInLabel?: string;          // floating button label
+  // Admin-access button (G-1's "two logins" entry point)
+  showAdminLink?: boolean;       // default false
+  adminLinkLabel?: string;       // e.g. "Admin sign-in →"
+  adminUrl?: string;             // override the default /admin URL
+}
+
+// ─── Chatbot per-site config (T1 #3) ───────────────────────────────────────
+//
+// Each tenant picks which chatbot drives the floating widget on their site.
+// "portal-builtin" is the local FAQ/order-status/discount bot in
+// src/components/ChatBot.tsx; "custom-gpt" is the same renderer with an
+// admin-supplied system prompt + welcome message; the third-party providers
+// (crisp/intercom/tidio) are configured through EmbedsBlock instead — we
+// only list them here so the admin sees the full menu and we can warn loudly
+// if both wires are crossed.
+//
+// All visual fields are optional — the bot falls back to its existing
+// brand-orange theme + bottom-right anchor when nothing is configured.
+export type ChatbotProvider =
+  | "portal-builtin"
+  | "crisp"
+  | "intercom"
+  | "tidio"
+  | "custom-gpt";
+
+export interface ChatbotConfig {
+  provider: ChatbotProvider;
+  enabled: boolean;
+  // For crisp/intercom/tidio: workspace/website/app id. Mirrors the
+  // matching Embed.value so admins who configure both see consistent
+  // identifiers.
+  value?: string;
+  // For portal-builtin / custom-gpt: configurable copy + LLM prompt.
+  welcomeMessage?: string;
+  systemPrompt?: string;
+  // Visual chrome shared by both built-in providers.
+  position?: "bottom-right" | "bottom-left";
+  accentColor?: string;          // hex, used for the launcher + user bubbles
+}
+
+export const CHATBOT_PROVIDER_LABELS: Record<ChatbotProvider, string> = {
+  "portal-builtin": "Portal built-in (Odo-style)",
+  "custom-gpt":     "Custom GPT-style",
+  "crisp":          "Crisp Chat",
+  "intercom":       "Intercom",
+  "tidio":          "Tidio",
+};
+
+// Providers that route through EmbedsBlock — listing them here keeps the
+// runtime ChatBot component honest about who owns the rendering path.
+export const CHATBOT_THIRD_PARTY_PROVIDERS: ReadonlyArray<ChatbotProvider> = [
+  "crisp", "intercom", "tidio",
+];
+
+// ─── Activity log (cloud-audit) ─────────────────────────────────────────────
+//
+// Mirror of the per-browser localStorage activity log. Server-side so
+// HIPAA / SOC 2 retention windows mean something — entries are purged
+// based on the active compliance mode rather than a fixed cap.
+
+export type ActivityCategory =
+  | "orders" | "products" | "customers" | "marketing" | "content"
+  | "theme"  | "settings" | "features"  | "shipping"  | "support" | "auth";
+
+export interface ActivityEntry {
+  id: string;
+  ts: number;
+  actorEmail: string;
+  actorName: string;
+  category: ActivityCategory;
+  action: string;
+  resourceId?: string;
+  resourceLink?: string;
+  diff?: Record<string, { from: unknown; to: unknown }>;
+}
+
+// Cap per-portal entries to keep the JSON blob bounded even when retention
+// is set to several years. Newest entries kept; oldest evicted on append.
+export const ACTIVITY_HARD_CAP = 50_000;
+
+// ─── Discovery (E-2) ───────────────────────────────────────────────────────
+//
+// Auto-detection records — when a heartbeat arrives from an unknown host
+// the portal queries Vercel (and optionally GitHub) to populate the rest
+// of a site's metadata. Each detection lands as a `Discovery` row the
+// admin can confirm (creates the actual Site) or dismiss (recorded so
+// we don't keep nagging).
+
+export type DiscoveryStatus = "pending" | "confirmed" | "dismissed";
+
+export interface Discovery {
+  host: string;                  // e.g. felicia-skincare.com
+  firstSeenAt: number;
+  lastSeenAt: number;
+  status: DiscoveryStatus;
+  // Detection results — populated when Vercel auth is configured.
+  vercelProjectId?: string;
+  vercelProjectName?: string;
+  repoUrl?: string;              // resolved from vercel.link.repo
+  defaultBranch?: string;
+  // Free-text reason if detection failed (shown in admin UI).
+  detectError?: string;
+}
+
+// ─── Embed provider metadata ───────────────────────────────────────────────
+//
+// Maps used by the admin UI and the runtime renderer. Kept colocated with
+// the EmbedProvider union so adding a new provider lights up everywhere.
+
+export const EMBED_PROVIDER_LABELS: Record<EmbedProvider, string> = {
+  "crisp":       "Crisp Chat",
+  "intercom":    "Intercom",
+  "tidio":       "Tidio",
+  "calendly":    "Calendly",
+  "cal-com":     "Cal.com",
+  "youtube":     "YouTube",
+  "vimeo":       "Vimeo",
+  "custom-html": "Custom HTML",
+};
+
+export const EMBED_PROVIDER_PLACEHOLDER: Record<EmbedProvider, string> = {
+  "crisp":       "1234abcd-...",                       // Crisp website ID
+  "intercom":    "abc1234",                             // Intercom app ID
+  "tidio":       "abc1234",                             // Tidio public key
+  "calendly":    "https://calendly.com/yourname/30min",
+  "cal-com":     "https://cal.com/yourname",
+  "youtube":     "dQw4w9WgXcQ",                        // YouTube video ID
+  "vimeo":       "12345678",                           // Vimeo video ID
+  "custom-html": "<script>...</script>",
+};
+
+export const EMBED_DEFAULT_CONSENT: Record<EmbedProvider, ConsentCategory> = {
+  "crisp":       "functional",   // chat is functional UX
+  "intercom":    "functional",
+  "tidio":       "functional",
+  "calendly":    "functional",
+  "cal-com":     "functional",
+  "youtube":     "marketing",    // YT cookies = marketing
+  "vimeo":       "marketing",
+  "custom-html": "marketing",    // conservative
+};
+
+export const EMBED_DEFAULT_POSITION: Partial<Record<EmbedProvider, EmbedPosition>> = {
+  "crisp":    "popup-bottom-right",
+  "intercom": "popup-bottom-right",
+  "tidio":    "popup-bottom-right",
+};
+
+// ─── Organisation / tenant model (G-2) ─────────────────────────────────────
+//
+// One agency owns N orgs (one per client). Each org owns N sites + has
+// its own settings, branding and billing. The agency owner's own
+// `isPrimary: true` org seeded at first load — keeps the data shape
+// uniform across "the agency itself" and every client tenant.
+
+export type OrgStatus = "active" | "suspended" | "trialing";
+
+export interface OrgRecord {
+  id: string;
+  name: string;
+  slug: string;
+  ownerEmail?: string;
+  brandColor?: string;
+  logoUrl?: string;
+  // Billing — filled in by G-3.
+  stripeCustomerId?: string;
+  status: OrgStatus;
+  isPrimary: boolean;
+  createdAt: number;
+  members?: OrgMembership[];   // G-5: per-org access control
+  subscription?: Subscription; // G-3 active plan + Stripe linkage
+  dashboard?: DashboardLayout; // G-4 per-tenant dashboard customisation
+  // Per-tenant database routing (W-1 / multi-DB). When set, the storage
+  // layer reads/writes this org's slice of state from a separate backend
+  // instead of the shared one. Useful when a client requires data
+  // sovereignty (HIPAA, GDPR data residency, separate Supabase project).
+  // Setup: paste creds in /admin/orgs/[id], the server's bootstrapped
+  // storage selector matches by orgId at request time. Empty → falls
+  // back to the global PORTAL_BACKEND.
+  database?: {
+    backend?: "kv" | "supabase" | "postgres";
+    kvUrl?: string;
+    kvToken?: string;
+    supabaseUrl?: string;
+    supabaseServiceKey?: string;
+    postgresUrl?: string;
+    label?: string;            // human-readable name for the admin UI
+  };
+  // Aqua plugin platform — installed plugins for this org. Each entry
+  // carries its own config + feature toggles. Sidebar nav, admin
+  // routes and storefront contributions are all derived from this
+  // list at request time. See src/plugins/_types.ts.
+  plugins?: OrgPluginInstall[];
+}
+
+// Per-org plugin install record. The full plugin manifest lives in
+// `src/plugins/<id>/index.ts`; this is just the per-tenant state
+// (config values, feature toggles, install timestamp).
+export interface OrgPluginInstall {
+  pluginId: string;
+  installedAt: number;
+  installedBy?: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  features: Record<string, boolean>;
+  setupAnswers?: Record<string, string>;
+  health?: { ok: boolean; message?: string; components?: Record<string, { ok: boolean; message?: string }> };
+  healthCheckedAt?: number;
+}
+
+// ─── Server-side users + sessions (G-5) ─────────────────────────────────────
+//
+// The localStorage user store in src/lib/auth.ts will be retired here.
+// Server-side users own the password hash + role, sessions are signed
+// HMAC cookies validated on every protected request.
+
+export type UserRole = "super-admin" | "admin" | "member";
+
+export interface ServerUser {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;        // sha256(password + email-salt)
+  role: UserRole;              // global role; per-org membership lives on OrgRecord.members
+  createdAt: number;
+  // Set when an operator creates the account with a temporary password
+  // (admin invite, password reset). Cleared on the user's first
+  // self-served password change. While set, the login response carries
+  // `mustChangePassword: true` and the client should redirect to
+  // /account/change-password before granting access.
+  mustChangePassword?: boolean;
+}
+
+export interface OrgMembership {
+  email: string;               // FK to ServerUser.email
+  role: "owner" | "admin" | "member";
+  joinedAt: number;
+}
+
+// ─── Plans + subscriptions (G-3) ───────────────────────────────────────────
+//
+// Plans gate admin features. Each org has at most one active subscription.
+// Stripe is the eventual source of truth — this scaffold mirrors the
+// minimum shape so the UI can be built before the Stripe integration lands.
+
+export type PlanId = "starter" | "pro" | "enterprise";
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  priceMonthly: number;        // pence
+  features: string[];          // feature flags this plan unlocks
+}
+
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled";
+
+export interface Subscription {
+  planId: PlanId;
+  status: SubscriptionStatus;
+  startedAt: number;
+  renewsAt?: number;
+  canceledAt?: number;
+  stripeSubId?: string;        // populated by the live Stripe webhook (later)
+  stripeCustomerId?: string;
+}
+
+// ─── Per-tenant dashboard layout (G-4) ─────────────────────────────────────
+//
+// Each org carries an optional dashboard layout. Default layout is used
+// when org.dashboard is undefined. Widgets reference well-known IDs so
+// the rendering side can map them to React components.
+
+export type WidgetType =
+  | "stat-orders"
+  | "stat-revenue"
+  | "stat-sites"
+  | "stat-customers"
+  | "list-recent-orders"
+  | "list-recent-activity"
+  | "list-low-stock"
+  | "chart-revenue-trend"
+  | "callout-onboarding";
+
+export interface DashboardWidget {
+  id: string;                  // unique within layout
+  type: WidgetType;
+  title?: string;
+  span: 1 | 2 | 3;             // grid columns out of 3
+  visible: boolean;
+}
+
+export interface DashboardLayout {
+  widgets: DashboardWidget[];
+  updatedAt: number;
+}
+
+// ─── Visual editor — block schema (V-A) ────────────────────────────────────
+//
+// The portal's visual page builder. Each tenant authors pages as trees of
+// typed blocks. Pages are stored per-site, keyed by slug. The host site
+// renders them via <PortalPageRenderer slug="…" /> — the same registry
+// of React components the editor uses, so what you see in the canvas is
+// what the visitor sees on the live page.
+//
+// Block tree mirrors HTML semantics loosely: sections / rows / columns /
+// grids are containers; everything else is a leaf. Children are recursive
+// to support arbitrary nesting (4–5 levels is the practical cap before
+// usability suffers, but we don't enforce it).
+
+export type BlockType =
+  // Layout primitives
+  | "container" | "section" | "row" | "column" | "grid" | "spacer" | "divider"
+  // Content primitives
+  | "heading" | "text" | "image" | "button" | "video" | "icon" | "html"
+  // Composite content blocks
+  | "hero" | "cta" | "testimonials" | "navbar" | "footer" | "form"
+  // E-commerce blocks
+  | "product-card" | "product-grid" | "collection-grid" | "cart-summary" | "checkout-summary" | "payment-button" | "order-success"
+  | "variant-picker" | "product-search"
+  // Auth blocks (A-2)
+  | "login-form" | "signup-form" | "theme-selector" | "social-auth"
+  // Marketing / content blocks (added with the plugin platform)
+  | "pricing-table" | "faq" | "contact-form" | "stats-bar" | "logo-grid"
+  | "feature-grid" | "newsletter-signup" | "countdown-timer" | "language-switcher"
+  | "gallery" | "quote" | "map" | "banner" | "author-bio" | "member-gate"
+  | "donation-button"
+  | "tabs" | "accordion" | "timeline" | "card-grid" | "before-after"
+  | "marquee" | "app-showcase" | "social-proof-bar"
+  | "booking-widget";
+
+// Per-block style overrides. Optional — empty object means inherit. The
+// renderer maps these to inline styles so the editor preview matches the
+// host site exactly without per-block CSS classes.
+export interface BlockStyles {
+  padding?: string;            // e.g. "24px" or "16px 32px"
+  margin?: string;
+  background?: string;         // hex / rgb / gradient
+  textColor?: string;
+  align?: "left" | "center" | "right";
+  width?: string;
+  maxWidth?: string;
+  minHeight?: string;
+  borderRadius?: string;
+  border?: string;
+  boxShadow?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  fontWeight?: string | number;
+  lineHeight?: string | number;
+  letterSpacing?: string;
+  display?: "block" | "flex" | "grid" | "inline-block";
+  flexDirection?: "row" | "column";
+  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
+  alignItems?: "flex-start" | "center" | "flex-end" | "stretch";
+  gap?: string;
+  gridTemplateColumns?: string; // for `grid` blocks
+  customCss?: string;          // raw CSS escape-hatch (advanced users)
+  // Responsive overrides — applied via media queries when set
+  mobile?: Partial<Omit<BlockStyles, "mobile" | "tablet" | "animate">>;
+  tablet?: Partial<Omit<BlockStyles, "mobile" | "tablet" | "animate">>;
+  // On-scroll entrance animation. Only applied at runtime — the editor
+  // canvas always renders the resting state so layout work is precise.
+  animate?: "fade-in" | "slide-up" | "slide-left" | "slide-right" | "zoom-in" | "rotate-in" | "blur-in";
+  // Animation tuning (X-1). All optional — skipping any falls back to
+  // the AnimateOnScroll defaults (600ms, 0ms delay, ease-out).
+  animateDuration?: string;     // e.g. "800ms"
+  animateDelay?: string;        // e.g. "120ms"
+  animateEasing?: string;       // any CSS timing function
+}
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  // Type-specific props. Untyped here for tree flexibility; each block
+  // component validates the keys it needs at render time.
+  props: Record<string, unknown>;
+  styles?: BlockStyles;
+  children?: Block[];          // present for container/section/row/column/grid blocks
+  a11y?: BlockA11y;            // SEO-A1: accessibility attributes
+  seo?: BlockSeo;              // SEO-A1: per-block schema fragment (json-ld piece)
+  // Per-theme style overrides (T-1). Only the deltas — `styles` is the
+  // base, themeStyles[id] is layered on top when that theme is active.
+  themeStyles?: Record<string, BlockStyles>;
+  // Split-test variants (X-2). When this block participates in a split
+  // test, store one variant entry per group id. The block's base
+  // props/styles is the control (variant "A"); each entry under
+  // variantsByGroup[groupId] is an alternative shown to a fraction of
+  // visitors per the SplitTestGroup config. The runtime resolver picks
+  // a variant per visitor using the group's traffic split + assignment
+  // hash, then renders that variant's props/styles overlaid on the
+  // base. Tracking is fired on render so the SplitTest dashboard can
+  // attribute conversions back to the chosen variant.
+  variantsByGroup?: Record<string, BlockVariant[]>;
+}
+
+export interface BlockVariant {
+  id: string;                  // unique within the group + block
+  name: string;                // human-readable, e.g. "B — green CTA"
+  props?: Record<string, unknown>;  // overrides base props
+  styles?: BlockStyles;             // overrides base styles
+  weight?: number;             // relative traffic share (default 1; sums normalised)
+}
+
+// Split-test group (X-2). One group can target many blocks across many
+// pages; each block lists its own variant set keyed by group id. The
+// group sets the global frequency/timing + a goal so multiple
+// independent tests can run simultaneously.
+
+export type SplitTestStatus = "draft" | "running" | "paused" | "completed";
+
+export interface SplitTestGroup {
+  id: string;
+  siteId: string;              // scoping
+  name: string;                // "Pricing-page CTA test"
+  description?: string;
+  status: SplitTestStatus;
+  startedAt?: number;
+  endsAt?: number;             // optional auto-stop
+  // Traffic share — what % of visitors enter the test. Outside the
+  // test, the control variant wins.
+  trafficPercent?: number;     // 0..100, default 100
+  // Sticky-by — how a visitor's variant assignment is hashed. Defaults
+  // to "visitor" (cookie-based stable id); "session" re-rolls per visit.
+  stickyBy?: "visitor" | "session";
+  // Conversion goal — admin-defined. Used by the dashboard to compute
+  // win rates. Free-form string so admins can match any tracker event.
+  goalEvent?: string;          // e.g. "purchase" | "signup" | "click:cta"
+  // Roll-up of all blocks participating in this group.
+  blockRefs?: Array<{ pageId: string; blockId: string }>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Recorded at runtime per (group, variant) pair — basic counters.
+// Real platforms (LaunchDarkly, GrowthBook) ship something fancier;
+// this is enough for a sortable results table.
+export interface SplitTestResult {
+  groupId: string;
+  variantId: string;
+  exposures: number;           // how many visitors saw it
+  conversions: number;         // how many fired the goal event
+  updatedAt: number;
+}
+
+// ─── Site audit (A-1) ──────────────────────────────────────────────────────
+//
+// One-button "test my website" — runs PageSpeed Insights, normalises the
+// findings, and (when an Anthropic key is configured) formats them via
+// Claude into a structured no-BS report. Quota: 5 free reports per org;
+// admins supply their own keys to lift the cap.
+
+export type AuditFindingCategory = "performance" | "seo" | "accessibility" | "best-practices";
+export type AuditFindingSeverity = "critical" | "warning" | "info" | "passed";
+
+export interface AuditFinding {
+  id: string;                  // Lighthouse audit id, e.g. "render-blocking-resources"
+  category: AuditFindingCategory;
+  severity: AuditFindingSeverity;
+  title: string;
+  description: string;
+  scoreDisplay?: string;       // "1.2 s", "12 kB" etc.
+  weight?: number;             // Lighthouse weight in the category (0..1 of category total)
+  numericValue?: number;
+}
+
+export interface AuditScores {
+  performance?: number;        // 0..100
+  seo?: number;
+  accessibility?: number;
+  bestPractices?: number;
+}
+
+export interface AuditMetrics {
+  fcp?: number;                // First Contentful Paint (ms)
+  lcp?: number;                // Largest Contentful Paint (ms)
+  cls?: number;                // Cumulative Layout Shift (unitless)
+  tbt?: number;                // Total Blocking Time (ms)
+  speedIndex?: number;
+  ttfb?: number;
+}
+
+export interface SiteAuditReport {
+  id: string;
+  orgId: string;
+  siteId: string;
+  url: string;
+  strategy: "mobile" | "desktop";
+  status: "queued" | "running" | "succeeded" | "failed";
+  scores: AuditScores;
+  metrics: AuditMetrics;
+  findings: AuditFinding[];
+  // De-duplicated category counts after normalisation.
+  summary: { critical: number; warnings: number; passed: number };
+  llmReportMarkdown?: string;  // populated when Anthropic key was configured
+  llmModel?: string;
+  llmTokensIn?: number;
+  llmTokensOut?: number;
+  error?: string;
+  createdAt: number;
+  finishedAt?: number;
+}
+
+export interface AuditQuota {
+  orgId: string;
+  freeUsed: number;            // total runs counted against the free tier
+  freeLimit: number;           // default 5
+  totalRuns: number;
+  lastRunAt?: number;
+}
+
+// Accessibility attributes applied to the block's outer DOM element.
+// Empty fields are ignored. Never overwritten by the block component
+// itself — admins always win over the default behaviour.
+export interface BlockA11y {
+  ariaLabel?: string;          // for icon-only buttons + decorative containers
+  ariaLabelledBy?: string;     // id of a heading/label that names this region
+  role?: string;               // ARIA role override (e.g. "complementary", "main")
+  ariaHidden?: boolean;        // hide from screen readers entirely
+  alt?: string;                // image-only — falls back to props.alt when set
+  tabIndex?: number;           // for custom focus order
+  htmlId?: string;             // anchor target id, eg. "#pricing"
+}
+
+// Per-block SEO microdata. Optional structured-data fragment that gets
+// rolled into the page-level JSON-LD on render.
+export interface BlockSeo {
+  schemaType?: string;         // e.g. "Product", "FAQPage", "Article"
+  schemaProps?: Record<string, unknown>;
+}
+
+// Customer-facing portals an EditorPage can stand in for. The operator
+// designs each portal in the visual editor as one or more variants,
+// then chooses which variant is active. Public routes resolve the
+// active variant via getActivePortalVariant.
+export type PortalRole = "login" | "affiliates" | "orders" | "account";
+
+export interface EditorPage {
+  id: string;
+  siteId: string;
+  slug: string;                // "/" or "/about" or "/products/[handle]"
+  title: string;
+  description?: string;        // for SEO meta
+  blocks: Block[];
+  status: "draft" | "published";
+  updatedAt: number;
+  publishedAt?: number;
+  // Last-published snapshot. Lets the runtime serve the published version
+  // even while the admin edits a draft, and lets the editor revert.
+  publishedBlocks?: Block[];
+  // Per-page custom code injected at the top + bottom of the rendered
+  // tree (P-3). Lets the admin wire one-off scripts/styles to a single
+  // page without polluting the global head.
+  customHead?: string;
+  customFoot?: string;
+  // Pro-mode page-level CSS. Rendered inside a <style> tag scoped to
+  // the page's data-portal-page attribute, so rules are sandboxed to
+  // this page's subtree and don't leak globally. Use for one-off layout
+  // tweaks the operator doesn't want to ship to the whole site.
+  customCss?: string;
+  // Theme this page renders in. Empty = inherit the site's default
+  // theme. Set to a theme id when the admin wants this page (or
+  // section of pages, e.g. /landing) to use Light or Dark explicitly.
+  themeId?: string;
+  // Per-page chrome overrides (X-1). The site has a default nav +
+  // footer block tree (defined elsewhere); a page can opt out by
+  // providing its own here, or hide them entirely.
+  layoutOverrides?: {
+    hideNav?: boolean;
+    hideFooter?: boolean;
+    nav?: Block[];               // when set, replaces the site nav for this page
+    footer?: Block[];            // when set, replaces the site footer
+  };
+  // Portal variant role. When set, this page is one of multiple
+  // candidate layouts for a customer-facing portal — the operator
+  // picks which variant is active per (siteId, role) and the
+  // matching public route renders it. Lets Felicia design the
+  // affiliates / orders / login portals in the visual editor and
+  // swap layouts without code changes.
+  portalRole?: PortalRole;
+  // Set on exactly one page per (siteId, portalRole). The runtime
+  // resolves the active variant via this flag. Mutating it through
+  // the dedicated server helper keeps it singleton per role.
+  isActivePortal?: boolean;
+  // Full SEO panel (SEO-A1). All optional — sensible defaults derived
+  // from `title`/`description`. Sitemap reads `excludeFromSitemap` +
+  // `priority` + `changefreq`; robots reads `noindex`/`nofollow`.
+  seo?: PageSeo;
+}
+
+export interface PageSeo {
+  title?: string;              // <title> override (defaults to page.title + site suffix)
+  metaDescription?: string;
+  keywords?: string[];
+  canonical?: string;          // canonical URL override
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;            // 1200x630 ideal
+  ogType?: "website" | "article" | "product";
+  twitterCard?: "summary" | "summary_large_image";
+  noindex?: boolean;
+  nofollow?: boolean;
+  // Sitemap fields
+  excludeFromSitemap?: boolean;
+  priority?: number;           // 0.0 - 1.0
+  changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+  // Raw JSON-LD blob for advanced users — embedded as <script
+  // type="application/ld+json"> at the top of the page.
+  jsonLd?: string;
+}
+
+// ─── Asset library (P-2) ───────────────────────────────────────────────────
+//
+// Per-portal media library. Images uploaded by the admin land here and
+// surface in any image-typed property field via the AssetPicker.
+// Storage is base64 data URIs in the cloud state — small footprint, works
+// on Vercel's read-only filesystem, swappable for a real CDN later.
+
+export interface PortalAsset {
+  id: string;
+  filename: string;
+  contentType: string;          // e.g. "image/jpeg"
+  size: number;                 // bytes
+  dataUrl: string;              // "data:<contentType>;base64,…"
+  uploadedAt: number;
+  uploadedBy?: string;          // admin email
+  width?: number;               // optional, set when client measures
+  height?: number;
+  alt?: string;
+}
+
+// ─── Themes (T-1) ──────────────────────────────────────────────────────────
+//
+// Per-site palette + typography + token tables. Pages reference a theme
+// by id; PortalPageRenderer injects the resolved tokens as CSS variables
+// at the page root, and `blockStylesToCss` falls back to those vars when
+// a block doesn't set a hard value. Switching themes never touches block
+// data — just the variable values — so a single page tree can render
+// in light, dark, or any custom palette without per-page edits.
+//
+// Block styles can still be overridden per-theme via `Block.themeStyles`
+// when the global tokens aren't enough (e.g. a hero needs a different
+// background image in dark mode). All optional; default behaviour is
+// theme-agnostic.
+
+export interface ThemeTokens {
+  // Palette
+  primary?: string;             // brand accent (CTA buttons, links)
+  surface?: string;             // page background
+  surfaceAlt?: string;          // section + card background
+  ink?: string;                 // body text
+  inkSoft?: string;             // muted text
+  border?: string;              // divider colour
+  shadow?: string;              // box-shadow value (full css)
+  // Typography
+  fontHeading?: string;         // CSS font-family
+  fontBody?: string;
+  fontMono?: string;
+  // Sizing
+  radius?: string;              // border-radius (e.g. "12px")
+  spacingUnit?: string;         // base spacing (e.g. "8px")
+  // Free-form CSS — applied in <style> verbatim. For animations,
+  // utility classes, or whatever the tokens above can't express.
+  customCss?: string;
+}
+
+export interface ThemeRecord {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  appearance?: "light" | "dark" | "auto";
+  tokens: ThemeTokens;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ─── Aqua Support hub (S-1) ────────────────────────────────────────────────
+//
+// In-portal support surface for clients of the agency. Feature requests,
+// meeting bookings, mock invoices (until Stripe webhook lands), resource
+// links. Lives under /aqua/support so the agency owner + their clients
+// share the same UI.
+
+export type SupportRequestStatus = "open" | "planned" | "in-progress" | "shipped" | "declined";
+export type SupportRequestPriority = "low" | "medium" | "high" | "urgent";
+
+export interface FeatureRequest {
+  id: string;
+  orgId: string;                  // which client filed it
+  title: string;
+  body: string;
+  status: SupportRequestStatus;
+  priority: SupportRequestPriority;
+  votes: number;                  // simple +1 counter
+  submittedBy?: string;           // email
+  createdAt: number;
+  updatedAt: number;
+  comments?: Array<{ id: string; author: string; body: string; createdAt: number; isAgency?: boolean }>;
+}
+
+export interface MeetingBooking {
+  id: string;
+  orgId: string;
+  topic: string;
+  preferredDates: string[];       // ISO date strings the client suggested
+  notes?: string;
+  status: "requested" | "confirmed" | "completed" | "cancelled";
+  confirmedAt?: number;
+  meetingUrl?: string;            // set by the agency (Zoom/Meet link)
+  createdAt: number;
+  contactEmail?: string;
+}
+
+export interface SupportInvoice {
+  id: string;                     // e.g. "in_2024_03_pro"
+  orgId: string;
+  number: string;                 // human-readable "INV-2024-001"
+  date: number;                   // issued
+  dueDate?: number;
+  status: "draft" | "open" | "paid" | "void" | "uncollectible";
+  amountTotal: number;            // pence
+  currency: string;               // "GBP"
+  description?: string;
+  hostedUrl?: string;             // Stripe-hosted invoice URL when present
+  pdfUrl?: string;
+  // Stub line items for the mock view — gets replaced when the Stripe
+  // webhook starts populating real invoices.
+  lines: Array<{ description: string; quantity: number; unitAmount: number }>;
+}

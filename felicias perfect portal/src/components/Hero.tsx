@@ -1,0 +1,129 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useContent, useContentImage } from "@/lib/useContent";
+
+export default function Hero() {
+  const eyebrow         = useContent("home.hero.eyebrow",         "Pure Ghanaian black soap · Handcrafted in Accra");
+  const headlinePrefix  = useContent("home.hero.headlinePrefix",  "All natural");
+  const headlineHighlight = useContent("home.hero.headlineHighlight", "African soap");
+  const tagline         = useContent("home.hero.tagline",         "A ritual born from the soil of Ghana. Pure, sacred, and alive with ancestral wisdom — crafted to restore what modern life has taken.");
+  const ctaPrimary      = useContent("home.hero.ctaPrimary",      "Explore our ranges");
+  const ctaSecondary    = useContent("home.hero.ctaSecondary",    "Our Story");
+  const heroImage       = useContentImage("home.hero.image",      "/images/hero/elephants.png");
+  const heroImageAlt    = useContent("home.hero.imageAlt",        "Elephants in the African landscape");
+  const stat1Value      = useContent("home.hero.stat1Value",      "100%");
+  const stat1Label      = useContent("home.hero.stat1Label",      "Natural ingredients");
+  const stat2Value      = useContent("home.hero.stat2Value",      "0");
+  const stat2Label      = useContent("home.hero.stat2Label",      "Sulphates or synthetics");
+  const stat3Value      = useContent("home.hero.stat3Value",      "3");
+  const stat3Label      = useContent("home.hero.stat3Label",      "Independent lab partners");
+
+  const stats = [
+    { value: stat1Value, label: stat1Label },
+    { value: stat2Value, label: stat2Label },
+    { value: stat3Value, label: stat3Label },
+  ];
+
+  // next/image can't load data: URLs through its loader, so fall back to a plain <img> for those.
+  const isDataUrl = heroImage.startsWith("data:");
+
+  return (
+    <section
+      id="story"
+      className="relative w-full min-h-screen flex items-center bg-brand-black overflow-hidden"
+      style={{ paddingTop: "var(--navbar-h, 5rem)" }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-brand-purple-muted/25 via-transparent to-transparent pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-16 sm:py-20 lg:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-center">
+
+          {/* Left column — text */}
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+
+            {/* Eyebrow */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="adinkra-line w-10" />
+              <span className="text-xs tracking-[0.28em] uppercase text-brand-amber">{eyebrow}</span>
+            </div>
+
+            {/* Headline */}
+            <h1 className="font-display font-bold text-brand-cream leading-[1.05] text-4xl sm:text-5xl xl:text-6xl 2xl:text-7xl mb-6">
+              {headlinePrefix} <span className="gradient-text">{headlineHighlight}</span>
+            </h1>
+
+            {/* Tagline */}
+            <p className="text-brand-cream/65 text-base sm:text-lg xl:text-xl leading-relaxed mb-5">
+              {tagline}
+            </p>
+
+            {/* CTAs */}
+            <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-3 mb-10">
+              <Link
+                href="/products"
+                className="inline-flex items-center justify-center gap-2.5
+                  px-8 py-4 rounded-full bg-brand-orange hover:bg-brand-orange-light
+                  transition-all duration-200 text-white font-semibold tracking-wide
+                  text-sm shadow-xl shadow-brand-orange/25 hover:-translate-y-0.5"
+              >
+                {ctaPrimary}
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </Link>
+              <a
+                href="#our-philosophy"
+                className="inline-flex items-center justify-center
+                  px-8 py-4 rounded-full border border-white/20 text-brand-cream/75
+                  hover:text-brand-cream hover:border-white/40
+                  transition-all duration-200 text-sm tracking-wide"
+              >
+                {ctaSecondary}
+              </a>
+            </div>
+
+            {/* Stats */}
+            <div className="flex flex-wrap justify-center lg:justify-start gap-10 xl:gap-14 pt-8 border-t border-white/10">
+              {stats.map(({ value, label }) => (
+                <div key={label} className="flex flex-col">
+                  <span className="font-display text-2xl sm:text-3xl xl:text-4xl font-bold text-brand-amber">
+                    {value}
+                  </span>
+                  <span className="text-[10px] sm:text-xs text-brand-cream/40 mt-1.5 leading-snug">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+
+          {/* Right column — image */}
+          <div className="relative aspect-[4/5] sm:aspect-[5/4] lg:aspect-square rounded-3xl overflow-hidden border border-white/5">
+            {isDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroImage}
+                alt={heroImageAlt}
+                className="absolute inset-0 w-full h-full object-cover scale-125 object-center"
+              />
+            ) : (
+              <Image
+                src={heroImage}
+                alt={heroImageAlt}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover scale-125 object-center"
+                priority
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-brand-black/40 via-transparent to-transparent" />
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -1,0 +1,154 @@
+"use client";
+
+// Recursive renderer used by both the editor canvas and the host-side
+// PortalPageRenderer. Looks up the block component in the registry and
+// passes a renderChildren helper down so containers don't have to
+// re-import the renderer.
+
+import { useEffect } from "react";
+import type { Block, SplitTestGroup } from "@/portal/server/types";
+import { getBlockDefinition } from "./blockRegistry";
+import AnimateOnScroll from "./AnimateOnScroll";
+import { overridesToCssText } from "./blockStyles";
+import { applyVariant, recordExposure, resolveVariant } from "./variantResolver";
+
+export interface BlockRendererProps {
+  blocks: Block[] | undefined;
+  editorMode?: boolean;
+  themeId?: string;
+  splitTestGroups?: SplitTestGroup[];   // running groups visible to this page
+}
+
+export default function BlockRenderer({ blocks, editorMode = false, themeId, splitTestGroups }: BlockRendererProps) {
+  if (!blocks || blocks.length === 0) return null;
+  return (
+    <>
+      {blocks.map(block => <BlockNode key={block.id} block={block} editorMode={editorMode} themeId={themeId} splitTestGroups={splitTestGroups} />)}
+    </>
+  );
+}
+
+function BlockNode({ block, editorMode, themeId, splitTestGroups }: { block: Block; editorMode: boolean; themeId?: string; splitTestGroups?: SplitTestGroup[] }) {
+  // Split-test resolution — only outside editor mode (the canvas always
+  // shows the control so layout work is precise). Walk the block's
+  // variant groups, find the first one that's running, and overlay the
+  // chosen variant. Exposures are reported once per mount.
+  let variantId: string | null = null;
+  let resolvedGroupId: string | null = null;
+  if (!editorMode && block.variantsByGroup && splitTestGroups) {
+    for (const groupId of Object.keys(block.variantsByGroup)) {
+      const group = splitTestGroups.find(g => g.id === groupId && g.status === "running");
+      if (!group) continue;
+      const result = resolveVariant({
+        block,
+        groupId: group.id,
+        trafficPercent: group.trafficPercent,
+        stickyBy: group.stickyBy,
+      });
+      block = applyVariant(block, result.variant);
+      variantId = result.variantId;
+      resolvedGroupId = group.id;
+      break;
+    }
+  }
+
+  // Layer themeStyles on top of base styles when a theme is active.
+  // Per-theme overrides win; everything else falls through.
+  const themeOverlay = themeId ? block.themeStyles?.[themeId] : undefined;
+  if (themeOverlay) {
+    block = { ...block, styles: { ...(block.styles ?? {}), ...themeOverlay } };
+  }
+  const def = getBlockDefinition(block.type);
+  if (!def) {
+    // Unknown block type — render a visible warning in editor mode so
+    // the operator notices, silent fallback (an empty fragment) on live.
+    if (editorMode) {
+      return (
+        <div style={{ padding: 8, border: "1px dashed #ef4444", color: "#ef4444", fontSize: 12, borderRadius: 6 }}>
+          Unknown block type: <code>{block.type}</code>
+        </div>
+      );
+    }
+    return null;
+  }
+  const Component = def.Component;
+  const componentNode = (
+    <Component
+      block={block}
+      editorMode={editorMode}
+      renderChildren={children => <BlockRenderer blocks={children} editorMode={editorMode} themeId={themeId} splitTestGroups={splitTestGroups} />}
+    />
+  );
+  // A11y wrapper — applies admin-set ARIA attributes to a transparent
+  // div around the component. Only emitted when the admin has set at
+  // least one attribute, so DOM stays clean by default.
+  const a = block.a11y;
+  const hasA11y = a && (a.ariaLabel || a.ariaLabelledBy || a.role || a.ariaHidden || a.htmlId || a.tabIndex !== undefined);
+  const node = hasA11y ? (
+    <div
+      id={a!.htmlId || undefined}
+      role={a!.role || undefined}
+      aria-label={a!.ariaLabel || undefined}
+      aria-labelledby={a!.ariaLabelledBy || undefined}
+      aria-hidden={a!.ariaHidden ? true : undefined}
+      tabIndex={a!.tabIndex}
+      style={{ display: "contents" }}
+    >
+      {componentNode}
+    </div>
+  ) : componentNode;
+
+  // Per-block responsive override style tag — only when overrides exist.
+  // Targets `[data-block-id="<id>"]` which we attach below.
+  const tabletCss = !editorMode ? overridesToCssText(block.styles?.tablet) : "";
+  const mobileCss = !editorMode ? overridesToCssText(block.styles?.mobile) : "";
+  const needsScopedCss = tabletCss || mobileCss;
+
+  let body: React.ReactNode = node;
+  if (needsScopedCss) {
+    const css = [
+      tabletCss && `@media (max-width: 1024px) { [data-block-id="${block.id}"] { ${tabletCss} } }`,
+      mobileCss && `@media (max-width: 640px) { [data-block-id="${block.id}"] { ${mobileCss} } }`,
+    ].filter(Boolean).join("\n");
+    body = (
+      <div data-block-id={block.id} style={{ display: "contents" }}>
+        <style dangerouslySetInnerHTML={{ __html: css }} />
+        {node}
+      </div>
+    );
+  }
+
+  // Scroll animations only apply outside editor mode — the canvas
+  // renders the resting state so layout is editable.
+  const animate = block.styles?.animate;
+  if (animate && !editorMode) {
+    body = (
+      <AnimateOnScroll
+        animate={animate}
+        duration={block.styles?.animateDuration}
+        delay={block.styles?.animateDelay}
+        easing={block.styles?.animateEasing}
+      >{body}</AnimateOnScroll>
+    );
+  }
+
+  // Record an exposure when this block participated in a running group
+  // — fire-and-forget, throttled per (visitor, group, variant) by the
+  // resolver hash. No-op in editor mode.
+  if (resolvedGroupId && variantId && !editorMode) {
+    body = (
+      <SplitTestExposure groupId={resolvedGroupId} variantId={variantId}>
+        {body}
+      </SplitTestExposure>
+    );
+  }
+
+  return <>{body}</>;
+}
+
+function SplitTestExposure({ groupId, variantId, children }: { groupId: string; variantId: string; children: React.ReactNode }) {
+  useEffect(() => {
+    recordExposure(groupId, variantId);
+  }, [groupId, variantId]);
+  return <>{children}</>;
+}
