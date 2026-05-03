@@ -90,27 +90,73 @@ const PLUGINS: AquaPlugin[] = [
   i18n,
 ];
 
+import { validatePlugin, validateRegistry } from "./_validate";
+
+// Re-export so the marketplace + authoring guide can run the same
+// validator against in-progress manifests.
+export { validatePlugin, validateRegistry } from "./_validate";
+export type { PluginValidationResult } from "./_validate";
+
+// Validate every shipped plugin once on module load. Authoring mistakes
+// (missing id, duplicate nav items, bad hrefs) surface as console
+// errors at boot rather than obscure runtime crashes when the layout
+// or marketplace tries to render. We don't throw — that would take the
+// whole app down on a single malformed manifest. Instead, malformed
+// plugins are filtered out of the registry so the rest of the app
+// keeps running.
+const PLUGIN_REGISTRY: AquaPlugin[] = (() => {
+  const accepted: AquaPlugin[] = [];
+  for (const p of PLUGINS) {
+    const result = validatePlugin(p);
+    if (result.warnings.length > 0) {
+      console.warn(`[plugins] "${p?.id ?? "?"}" warnings:\n  - ${result.warnings.join("\n  - ")}`);
+    }
+    if (!result.ok) {
+      console.error(`[plugins] "${p?.id ?? "?"}" REJECTED:\n  - ${result.errors.join("\n  - ")}`);
+      continue;
+    }
+    accepted.push(p);
+  }
+  const cross = validateRegistry(accepted);
+  if (cross.warnings.length > 0) {
+    console.warn(`[plugins] registry warnings:\n  - ${cross.warnings.join("\n  - ")}`);
+  }
+  if (!cross.ok) {
+    console.error(`[plugins] registry errors:\n  - ${cross.errors.join("\n  - ")}`);
+  }
+  return accepted;
+})();
+
 export function registerPlugin(plugin: AquaPlugin): void {
-  if (PLUGINS.some(p => p.id === plugin.id)) {
+  // Validate before mutating the registry — a malformed third-party or
+  // dev-time plugin must not pollute the in-memory list and break the
+  // marketplace for everyone else.
+  const result = validatePlugin(plugin);
+  if (!result.ok) {
+    throw new Error(
+      `Plugin "${plugin?.id ?? "?"}" is invalid:\n  - ${result.errors.join("\n  - ")}`,
+    );
+  }
+  if (PLUGIN_REGISTRY.some(p => p.id === plugin.id)) {
     throw new Error(`Plugin "${plugin.id}" is already registered.`);
   }
-  PLUGINS.push(plugin);
+  PLUGIN_REGISTRY.push(plugin);
 }
 
 export function listPlugins(): AquaPlugin[] {
-  return [...PLUGINS];
+  return [...PLUGIN_REGISTRY];
 }
 
 export function getPlugin(id: string): AquaPlugin | undefined {
-  return PLUGINS.find(p => p.id === id);
+  return PLUGIN_REGISTRY.find(p => p.id === id);
 }
 
 export function listCorePlugins(): AquaPlugin[] {
-  return PLUGINS.filter(p => p.core === true);
+  return PLUGIN_REGISTRY.filter(p => p.core === true);
 }
 
 export function listInstallablePlugins(): AquaPlugin[] {
-  return PLUGINS.filter(p => p.core !== true);
+  return PLUGIN_REGISTRY.filter(p => p.core !== true);
 }
 
 // Convenience: get a plugin's manifest or throw. Use when the caller
