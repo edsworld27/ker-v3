@@ -74,6 +74,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Force-password-change guard: when the server flags the current user
+  // with mustChangePassword (operator-created account, post-reset), bounce
+  // them to /account/change-password before any admin chrome renders.
+  // /api/auth/me returns the live ServerUser flag.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { user?: { mustChangePassword?: boolean } };
+        if (cancelled) return;
+        if (data.user?.mustChangePassword) {
+          const next = encodeURIComponent(pathname ?? "/admin");
+          router.replace(`/account/change-password?forced=1&next=${next}`);
+        }
+      } catch {
+        // Network blip — don't block admin entry on a fetch failure.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pathname, router]);
+
   useEffect(() => {
     setSession(getSession());
     setHydrated(true);

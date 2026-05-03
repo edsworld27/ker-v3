@@ -557,6 +557,12 @@ export interface ServerUser {
   passwordHash: string;        // sha256(password + email-salt)
   role: UserRole;              // global role; per-org membership lives on OrgRecord.members
   createdAt: number;
+  // Set when an operator creates the account with a temporary password
+  // (admin invite, password reset). Cleared on the user's first
+  // self-served password change. While set, the login response carries
+  // `mustChangePassword: true` and the client should redirect to
+  // /account/change-password before granting access.
+  mustChangePassword?: boolean;
 }
 
 export interface OrgMembership {

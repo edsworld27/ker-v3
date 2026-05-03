@@ -198,7 +198,9 @@ export function deleteUser(email: string): boolean {
 
 // Update a user's password — used by /admin/team password resets and the
 // "force change on first login" flow. Always writes a fresh scrypt hash.
-// Throws if the password fails validatePassword().
+// Clears mustChangePassword so the user-served flow auto-completes the
+// force-change requirement on success. Throws if the password fails
+// validatePassword().
 export function setUserPassword(email: string, password: string): boolean {
   const check = validatePassword(password);
   if (!check.ok) throw new Error(check.error ?? "Invalid password");
@@ -207,7 +209,25 @@ export function setUserPassword(email: string, password: string): boolean {
   mutate(state => {
     const existing = state.users[e];
     if (!existing) return;
-    state.users[e] = { ...existing, passwordHash: hashPasswordScrypt(password) };
+    state.users[e] = {
+      ...existing,
+      passwordHash: hashPasswordScrypt(password),
+      mustChangePassword: false,
+    };
+    ok = true;
+  });
+  return ok;
+}
+
+// Mark a user as needing to change their password before normal use —
+// e.g. after an operator-created account or a temporary-password reset.
+export function setUserMustChangePassword(email: string, must: boolean): boolean {
+  const e = email.trim().toLowerCase();
+  let ok = false;
+  mutate(state => {
+    const existing = state.users[e];
+    if (!existing) return;
+    state.users[e] = { ...existing, mustChangePassword: must };
     ok = true;
   });
   return ok;
