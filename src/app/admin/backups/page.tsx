@@ -14,6 +14,7 @@ import PluginRequired from "@/components/admin/PluginRequired";
 import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Backup {
@@ -78,7 +79,8 @@ function BackupsPageInner() {
       });
       const data = await res.json() as { ok: boolean; backup?: Backup; error?: string };
       if (!data.ok) {
-        notify({ tone: "error", title: "Backup failed", message: data.error ?? `HTTP ${res.status}` });
+        const f = friendlyError(data.error, "Backup failed");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       notify({ tone: "ok", message: `Backup created (${fmtSize(data.backup?.sizeBytes ?? 0)})` });

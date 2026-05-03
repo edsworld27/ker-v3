@@ -284,6 +284,114 @@ export const HELP_DOCS: Record<string, HelpDoc> = {
       },
     ],
   },
+
+  "/admin/customise": {
+    title: "Customise",
+    intro: "The look + feel of your admin panel and your storefront's brand chrome. Logo, colours, panel name, login page, sidebar customisations.",
+    sections: [
+      {
+        heading: "Branding",
+        body: "Upload a logo, set the panel name (shown in the sidebar header), pick an accent colour. These flow through to the admin chrome and the storefront brand-kit blocks.",
+      },
+      {
+        heading: "Sidebar customisations",
+        body: "Reorder + group the navigation under the Sidebar tab. Plugin-contributed items (declared in the plugin manifest) auto-appear; you can drag them into different panels.",
+      },
+      {
+        heading: "Login customisation",
+        body: "The Login tab affects the customer-facing /login page. For the new block-tree variant editor (lets you design /login as a full page in the visual editor), use /admin/portals → Login → New variant instead.",
+        link: { label: "Open portal designer →", href: "/admin/portals" },
+      },
+    ],
+  },
+
+  "/admin/portal-settings": {
+    title: "Portal settings",
+    intro: "Cross-cutting platform config: GitHub integration, database backend, deployment options, third-party integration keys (Vercel, PageSpeed, Anthropic).",
+    sections: [
+      {
+        heading: "GitHub",
+        body: "Set the repo URL + paste a Personal Access Token. The Publish button in the editor uses these to open PRs against your repo. Without GitHub, edits are saved to the portal but never make it to your codebase.",
+      },
+      {
+        heading: "Database backend",
+        body: "Pick where portal state lives — file (dev), KV (Upstash Redis, recommended for production), Supabase, or Postgres. The active backend's key fields appear when you pick it.",
+      },
+      {
+        heading: "Integrations",
+        body: "Vercel token (for custom-domain auto-attach), PageSpeed key (for /admin/site-test audits), Anthropic key (for AI-formatted audit reports). Each is optional; the plugin shows what's configured.",
+      },
+    ],
+  },
+
+  "/admin/plugin-health": {
+    title: "Plugin health",
+    intro: "Per-plugin status check. For plugins that declare a healthcheck (most do), this page surfaces 'connected' / 'misconfigured' / 'down' so you can tell at a glance whether anything needs attention.",
+    sections: [
+      {
+        heading: "What 'green' means",
+        body: "The plugin's healthcheck function returned ok. For Stripe: keys present and the API responded. For Email: SMTP / API credentials accepted by the provider. For GitHub: repo URL + PAT accepted.",
+      },
+      {
+        heading: "What 'red' means",
+        body: "Healthcheck returned an error. The error message is shown verbatim — usually 'API key invalid', 'rate-limited', 'timeout'. Click into the plugin's config to fix.",
+      },
+      {
+        heading: "Refresh all",
+        body: "Top-right button re-runs every plugin's healthcheck. Useful after pasting a new key — shouldn't need to wait for the periodic refresh.",
+      },
+    ],
+  },
+
+  "/aqua": {
+    title: "Agency dashboard",
+    intro: "Cross-client overview when you run multiple portals (your own clients, white-label setups). Lists every org you own, their plan, status, recent activity.",
+    sections: [
+      {
+        heading: "+ New portal",
+        body: "Spin up a new client portal in seconds. Pick a preset (Empty / Website / E-commerce / Blog / SaaS / Membership / Charity / …) and the new org boots with the right plugins pre-installed.",
+        link: { label: "+ New portal →", href: "/aqua/new" },
+      },
+      {
+        heading: "Switching into a client",
+        body: "Click 'Open portal' on any row to drop into /admin scoped to that org. The org switcher in the sidebar always brings you back.",
+      },
+      {
+        heading: "Cross-client analytics",
+        body: "Portfolio-level stats: total revenue, active orgs, plugins-installed-most. Useful for invoicing or quarterly reviews.",
+      },
+    ],
+  },
+
+  "/admin/customers/[email]": {
+    title: "Customer profile",
+    intro: "Everything we know about one customer — order history, addresses, notes, membership status, total spent.",
+    sections: [
+      {
+        heading: "Quick actions",
+        body: "Send a password-reset link, send the Stripe billing portal link (subscriptions plugin), trigger a manual order-status email. All actions are recorded in the audit log.",
+      },
+      {
+        heading: "Notes",
+        body: "Internal notes — preferences, conversations, special instructions. Never shown to the customer. Plain text; mentions/links don't render.",
+      },
+    ],
+  },
+
+  "/admin/email/log": {
+    title: "Email log",
+    intro: "Every email your portal has sent (transactional + marketing + manual compose). Each row shows recipient, subject, provider, status, and the provider's response.",
+    sections: [
+      {
+        heading: "Failed sends",
+        body: "If you suspect emails are being silently dropped, this is the first place to check. Look for status='failed' rows — the provider response usually points at the specific issue (bounced address, rate limit, invalid API key).",
+      },
+      {
+        heading: "Resending",
+        body: "Open a failed row → Resend. Useful for transient failures (provider downtime). For persistent failures (bad address) you'll need to fix the data first.",
+      },
+    ],
+  },
 };
 
 // Look up a doc for the current pathname. Falls back through

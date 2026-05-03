@@ -13,6 +13,7 @@ import PageSpinner from "@/components/admin/Spinner";
 import { confirm } from "@/components/admin/ConfirmHost";
 import { notify } from "@/components/admin/Toaster";
 import Tip from "@/components/admin/Tip";
+import { friendlyError } from "@/lib/admin/friendlyError";
 import { getActiveOrgId } from "@/lib/admin/orgs";
 
 interface Tier {
@@ -142,7 +143,8 @@ function MembershipTiersPageInner() {
       });
       const data = await res.json() as { ok: boolean; error?: string };
       if (!data.ok) {
-        notify({ tone: "error", title: "Save failed", message: data.error ?? "Server rejected the change." });
+        const f = friendlyError(data.error, "Save failed");
+        notify({ tone: "error", title: f.title, message: f.hint ? `${f.message} ${f.hint}` : f.message });
         return;
       }
       setSaved(draft.map(t => ({ ...t, benefits: [...t.benefits] })));
