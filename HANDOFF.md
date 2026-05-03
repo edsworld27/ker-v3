@@ -256,6 +256,15 @@ Nine priorities cleared in `claude/continue-work-1FFJ6`:
 8. **Backups runtime** — `src/portal/server/backups.ts` with file adapter (default; writes to `.data/backups/`), retention sweep, full restore flow. `POST /api/portal/backups` doubles as the cron-trigger endpoint (UA-sniffed `kind`). `/admin/backups` lists snapshots with download / restore / delete; `/admin/backups/restore` demands a typed-id confirmation. S3 adapter declared and stubbed with a typed error so the gap is visible.
 9. **Custom domain auto-attach via Vercel API** — `src/lib/vercel/server.ts` (no SDK dep) wraps `/v10/projects/{id}/domains`. `POST /api/portal/domains` attaches; verification records pass through verbatim. `/admin/sites` grows an "Add + attach to Vercel" button next to the existing local-add button — toast surfaces verified / DNS-pending / Vercel-not-configured states.
 
+## Felicia-mode pass (operator-friendliness)
+
+Subsequent commits on the same branch made the admin tractable for a non-technical operator:
+
+- **Setup checklist on `/admin`** (`src/components/admin/SetupChecklist.tsx` + `/api/portal/setup-status`) — live progress bar showing which of 8 high-leverage things are configured (brand, site, product, published page, Stripe, email, GitHub, backups). Per-row "Set up →" CTA links. Auto-hides when allDone, dismiss persists per-org.
+- **Floating `?` help drawer** (`src/components/admin/HelpButton.tsx` + `src/lib/admin/helpDocs.ts`) — bottom-right amber `?` on every admin page. Opens a slide-out drawer with the per-route help doc. 15 routes documented (dashboard, products, orders, customers, blog, email, sites, editor, memberships, affiliates, donations, backups, auditlog, team, marketplace). Falls back gracefully for routes without docs. `?` keyboard shortcut to toggle.
+- **Tooltip pass** on the admin pages shipped this session — the `Field` helpers in `/admin/memberships/tiers` and `/admin/affiliates/payouts` grow optional `tip` props rendering `<Tip>` next to the label with deeper explanation than the brief one-line hints.
+- **Friendly error helper** (`src/lib/admin/friendlyError.ts`) — catalog of ~15 known API error codes mapped to operator-readable strings with optional fix hints. Applied to the affiliates payouts modal and `/account/change-password`. Unknown codes pass through with a "mention this to your admin" hint so the gap is visible rather than swallowed.
+
 ## Truly remaining (verification-only — no code left to write)
 
 1. **Email plugin actually sending** — operator pastes Resend / Postmark key, hits "Test send", confirms inbox delivery. Plumbing is in place.

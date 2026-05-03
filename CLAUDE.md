@@ -313,6 +313,19 @@ The following infra-grade items shipped in this session:
   (`src/lib/vercel/server.ts` + `/api/portal/domains` +
   `/admin/sites` "Add + attach to Vercel" button surfacing
   verification records)
+- Felicia-mode operator-friendliness pass:
+  - Live setup checklist on `/admin` reading
+    `/api/portal/setup-status` — 8 leverage points (brand, site,
+    product, published page, Stripe, email, GitHub, backups) with
+    progress bar + per-row CTAs
+  - Floating `?` help button + slide-out drawer (per-route docs in
+    `src/lib/admin/helpDocs.ts`, 15 surfaces covered, fallback for
+    the rest, `?` keyboard shortcut)
+  - Tooltip pass on tiers + payouts forms (Field helpers grow
+    optional `tip` props rendering `<Tip>` next to the label)
+  - `friendlyError(code, fallback)` helper translating API error
+    codes to operator-readable strings with optional fix hints,
+    applied to the payouts modal and `/account/change-password`
 
 ## Future ideas (parking)
 
