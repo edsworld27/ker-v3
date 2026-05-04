@@ -101,6 +101,12 @@ Synthesised from 6 parallel explore agents.
 |---|-------|------|---------|
 | 24 | Ecommerce plugin (T2) | [prior research/04-plugin-ecommerce.md](prior%20research/04-plugin-ecommerce.md) | T2's Round-2 deliverable. `@aqua/plugin-ecommerce` (`scopePolicy: "client"`, `requires: ["website-editor"]`). Server domain: OrderService (Stripe-webhook-idempotent upserts), ProductService (per-install CRUD, override + inventory-snapshot merge), GiftCardService, ReferralCodeService, DiscountService (gift card → referral → static promo → custom code). Per-install Stripe (no env vars) — keys read from `install.config`. 23 API routes including `/stripe/{checkout,webhook,billing-portal}`. 13 admin pages (Products + Variants + Collections + Orders + Receipt + Customers + Inventory + Shipping + Discounts). Storefront cart context + 7 client components. 8 block ids contributed (rendering delegated to T3). Foundation adapter pattern: `registerEcommerceFoundation` + `containerFor(storage)` per request. Vestigial `billing.ts` flagged. tsc-clean standalone. |
 
+### Round 3 implementation chapters
+
+| # | Title | File | Summary |
+|---|-------|------|---------|
+| 25 | Foundation Round 3 (T1) | [prior research/04-foundation-round3.md](prior%20research/04-foundation-round3.md) | T1's Round-3 three-plugins-live. Workspace deps for ecommerce + website-editor + fulfillment. `_routeResolver.ts` extended to handle two manifest path conventions (relative for T2/ecommerce, full-URL for T3) with both `:name` and `[name]` placeholders. Real `portalVariantAdapter` wraps T3's `applyStarterVariant` with the website-editor plugin's storage. `ecommerceFoundation.ts` side-effect-import registers `EcommerceFoundation` at boot via the adapter pattern. Cross-team patch: re-exported `registerEcommerceFoundation` from T2's `src/server/index.ts` so `exports`-map permits it. `ActivityCategory` extended with `"ecommerce"`. Demo seed installs both client-scoped plugins on Felicia. Smoke green: 14 page URLs all 200, fulfillment+ecommerce+website-editor APIs all dispatch correctly. |
+
 ---
 
 ## Discipline

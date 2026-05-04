@@ -4,6 +4,22 @@
 // foundation calls it per request (or once at boot) with concrete port
 // implementations and gets back the bundle of services that pages + API
 // handlers consume.
+//
+// Integration patch (T1 R3 cross-team): re-export
+// `registerEcommerceFoundation` and friends from `./foundationAdapter`
+// so foundation can register the boot-time adapter without piercing the
+// package's `exports` map. Authored by T1 per the round-2-prompt's
+// cross-team-patch authorisation; matched by a TASK note in
+// `terminal-2/from-orchestrator.md`.
+
+export {
+  registerEcommerceFoundation,
+  clearEcommerceFoundation,
+  isFoundationRegistered,
+  requireFoundation,
+  containerFor,
+} from "./foundationAdapter";
+export type { EcommerceFoundation } from "./foundationAdapter";
 
 export { OrderService } from "./orders";
 export type { ServerOrder, ServerOrderItem, OrderStatus } from "./orders";

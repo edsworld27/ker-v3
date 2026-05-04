@@ -55,15 +55,32 @@ _(T1 R2 done — see `Done — Round 2` below)_
       Foundation pending: `registerEcommerceFoundation` call site + T3
       block-renderer registration.
 
-## Up next (Round 2 follow-ups)
-- [ ] T3 R2: lift website-editor block UIs + admin UIs from `02`.
-- [ ] T1 R3: replace `portalVariantAdapter` stub with real T3 wrapper
-      once website-editor lands as a workspace dep.
+## Done — Round 3
+- [x] **T1 R3 — three plugins live** — shipped. `@aqua/plugin-ecommerce`
+      and `@aqua/plugin-website-editor` mounted as workspace deps
+      alongside fulfillment. `_routeResolver.ts` handles two manifest
+      path conventions side-by-side (relative `:name` and full-URL
+      `[name]`). API path leading-slash normalised. Real
+      `portalVariantAdapter` calls T3's `applyStarterVariant` bound to
+      the website-editor install's plugin storage.
+      `ecommerceFoundation.ts` side-effect-import registers
+      `EcommerceFoundation` at boot. Cross-team patch added re-exports
+      to `plugins/ecommerce/src/server/index.ts`. `ActivityCategory`
+      extended with `"ecommerce"`. Demo seed installs both client-scoped
+      plugins on Felicia. Smoke green: 14 pages 200 + multi-plugin API
+      dispatch. See `context/prior research/04-foundation-round3.md`.
+
+## Up next (after Round 3)
+- [ ] T3 R2: lift website-editor block UIs + admin UIs from `02` (the
+      pages render but most are placeholder shells).
+- [ ] T2 follow-up: real Stripe webhook smoke (foundation already routes
+      `/api/portal/ecommerce/stripe/webhook` correctly).
 - [ ] Build the first phase-preset end-to-end (create client → pick
       Onboarding → fulfillment installs starter plugins → checklist appears
-      → both sides tick → advance phase).
-- [ ] Demo button on milesymedia.com — sandboxed agency with header toggle
-      between agency POV and client POV.
+      → both sides tick → advance phase). Foundation runs the preset
+      machinery; T2 owns preset definitions.
+- [ ] Demo button on milesymedia.com — wraps `/api/dev/seed-demo` with a
+      POV toggle.
 
 ## Done
 - [x] Phase 0 — Prior research. 18 chapters in

@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aqua/plugin-ecommerce": "file:../plugins/ecommerce",
     "@aqua/plugin-fulfillment": "file:../plugins/fulfillment",
+    "@aqua/plugin-website-editor": "file:../plugins/website-editor",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"

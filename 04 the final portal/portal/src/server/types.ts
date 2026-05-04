@@ -177,6 +177,7 @@ export type ActivityCategory =
   | "plugin"
   | "phase"
   | "fulfillment"
+  | "ecommerce"     // T2 ecommerce plugin
   | "settings"
   | "system";
 

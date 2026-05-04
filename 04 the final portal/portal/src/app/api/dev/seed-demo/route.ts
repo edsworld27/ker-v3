@@ -18,7 +18,8 @@ import { createUser, getUser } from "@/server/users";
 import { listPhasesForAgency } from "@/server/phases";
 import { logActivity } from "@/server/activity";
 import { makePluginStorage } from "@/lib/server/pluginStorage";
-import { getInstall } from "@/server/pluginInstalls";
+import { getInstall, listInstalledFor } from "@/server/pluginInstalls";
+import { installPlugin as runtimeInstallPlugin } from "@/plugins/_runtime";
 import type { Agency, Client, PhaseDefinition } from "@/server/types";
 
 const DEMO_AGENCY_SLUG = "demo-agency";
@@ -128,6 +129,34 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Install client-scoped plugins for the Felicia mirror so the
+  // per-client surfaces (editor, products, orders) are reachable in the
+  // smoke flow. website-editor must install before ecommerce because
+  // ecommerce declares `requires: ["website-editor"]`.
+  const installedClientPlugins: string[] = [];
+  for (const pluginId of ["website-editor", "ecommerce"]) {
+    if (!getInstall({ agencyId: agency.id, clientId: client.id }, pluginId)) {
+      const result = await runtimeInstallPlugin(pluginId, {
+        scope: { agencyId: agency.id, clientId: client.id },
+        installedBy: actor ?? "demo-seed",
+      });
+      if (result.ok) {
+        installedClientPlugins.push(pluginId);
+      } else {
+        // Don't crash the seed — log and continue; smoke output reports it.
+        logActivity({
+          agencyId: agency.id,
+          clientId: client.id,
+          actorUserId: actor,
+          category: "plugin",
+          action: "demo.install.failed",
+          message: `Demo seed: failed to install '${pluginId}' for client: ${result.error}`,
+          metadata: { pluginId, error: result.error },
+        });
+      }
+    }
+  }
+
   // Seed half-ticked checklist progress for the client's current phase.
   // Fulfillment is installed agency-wide (core: true), so the per-install
   // namespace lives at the agency-scoped install id.
@@ -166,7 +195,7 @@ export async function POST(req: NextRequest) {
     category: "system",
     action: "demo.seeded",
     message: `Demo agency + Felicia mirror ready (${createdAgency ? "new" : "existing"} agency, ${createdClient ? "new" : "existing"} client).`,
-    metadata: { seededChecklist, idempotent: !createdAgency && !createdClient },
+    metadata: { seededChecklist, idempotent: !createdAgency && !createdClient, installedClientPlugins },
   });
 
   return NextResponse.json({
@@ -178,6 +207,8 @@ export async function POST(req: NextRequest) {
       client: { email: DEMO_CLIENT_EMAIL, password: DEMO_CLIENT_PASSWORD, role: "client-owner" },
     },
     seededChecklist,
+    installedClientPlugins,
+    installedScope: listInstalledFor({ agencyId: agency.id, clientId: client.id }).map(p => ({ pluginId: p.pluginId, enabled: p.enabled })),
     bootstrapped: { agency: createdAgency, client: createdClient },
     correlationId: crypto.randomBytes(4).toString("hex"),
   });

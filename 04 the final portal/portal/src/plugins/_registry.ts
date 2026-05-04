@@ -16,6 +16,13 @@ import type { AquaPlugin } from "./_types";
 import { validatePlugin, validateRegistry } from "./_validate";
 
 import fulfillmentManifest from "@aqua/plugin-fulfillment";
+import websiteEditorManifest from "@aqua/plugin-website-editor";
+import ecommerceManifest from "@aqua/plugin-ecommerce";
+
+// Side-effect import: registers the ecommerce plugin's foundation
+// adapter via `registerEcommerceFoundation` at module load. Must run
+// before any ecommerce route handler executes.
+import "./foundation-adapters/ecommerceFoundation";
 
 export { validatePlugin, validateRegistry } from "./_validate";
 export type { PluginValidationResult } from "./_validate";
@@ -23,17 +30,16 @@ export type { PluginValidationResult } from "./_validate";
 // ─── First-party plugins ──────────────────────────────────────────────────
 //
 // Each entry is a manifest imported from its plugin folder under
-// `04 the final portal/plugins/<id>/`. T2 + T3 land their imports here
-// during their respective rounds.
-//
-// T2's `@aqua/plugin-fulfillment` types its manifest against its own
-// vendored `aquaPluginTypes.ts`. The shapes are structurally aligned with
-// T1's `./_types` (Round 2 alignment), but TypeScript treats the two
-// `AquaPlugin` interfaces as nominally distinct because they live in
-// different files. We cast through `unknown` here — the validator runs
-// the real shape check at module load.
+// `04 the final portal/plugins/<id>/`. Each plugin types its manifest
+// against its own vendored `aquaPluginTypes.ts` (kept tsc-clean
+// standalone) — structurally aligned with foundation's `_types.ts` after
+// the Round-2 alignment, but TypeScript sees them as nominally distinct
+// because they live in different files. The `unknown` cast satisfies
+// TypeScript; the validator runs the real shape check at module load.
 const PLUGINS: AquaPlugin[] = [
   fulfillmentManifest as unknown as AquaPlugin,
+  websiteEditorManifest as unknown as AquaPlugin,
+  ecommerceManifest as unknown as AquaPlugin,
 ];
 
 // Validate every shipped plugin once on module load. Authoring mistakes

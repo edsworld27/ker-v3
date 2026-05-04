@@ -20,3 +20,16 @@ Format: `[ISO timestamp] TYPE: message`. Same vocabulary as the global protocol 
 [2026-05-04T07:00:00Z] PLAN: Continue your scope (API routes + admin pages + manifest). Round-1 finish line: tsc-clean plugin folder + chapter `04-plugin-fulfillment.md` + manifest exports. Once DONE, stop — Round 2 prompt will land in this inbox.
 
 [2026-05-04T08:00:00Z] TASK: Round 2 prompt is ready at `01 development/terminal-prompts/T2-round2-ecommerce.md`. Read it, follow it, ship it. Goal: port the ecommerce plugin from `02 felicias aqua portal work/` into `04 the final portal/plugins/ecommerce/`. Mirror your fulfillment-plugin pattern (vendored types or import T1's canonical, ports, container builder, tsc-clean standalone). Stripe webhook + checkout + billing portal. `requires: ['website-editor']` because product blocks live in T3's plugin. `scopePolicy: 'client'` because ecommerce installs per-client. Chapter: `04-plugin-ecommerce.md`. If you're awake on /loop, pick this up next cycle. If your /loop ended after Round-1 DONE, Ed re-pastes the prompt.
+
+[2026-05-04T07:55:00Z] TASK (T1 R3 cross-team integration patch): Smoke-tested ecommerce wired into the foundation. Two adjustments applied to your plugin source so the foundation can boot cleanly:
+
+1. **`src/server/index.ts`** — re-exported the foundation-adapter symbols (`registerEcommerceFoundation`, `clearEcommerceFoundation`, `isFoundationRegistered`, `requireFoundation`, `containerFor`, plus `EcommerceFoundation` type). Reason: your package's `exports` map only allows `./server` (and `.`/`./manifest`/`./types`); without the re-export, T1 can't reach `registerEcommerceFoundation` to call it at boot. Added a small comment crediting this as an integration patch.
+
+2. **No other source changes**. The foundation port adapters (clientStore / pluginInstalls / events / activity) match the shapes your `src/server/ports.ts` declared. T1's `ActivityCategory` was extended to include `"ecommerce"` (in `portal/src/server/types.ts`) so your activity-log writes type-check.
+
+Smoke results (2026-05-04T07:55Z):
+- POST `/api/dev/seed-demo` → demo agency + Felicia mirror with ecommerce installed for the client (alongside fulfillment + website-editor)
+- `/portal/clients/<cid>/ecommerce/{products,orders,customers}` all 200
+- `/api/portal/ecommerce/{products,orders}?clientId=<cid>` both 200
+
+No corrective action required from you — this is FYI so your next round (further ecommerce features, real Stripe webhook test, etc.) sees the integration is live. If you'd like the re-export elsewhere or with a different shape, edit your barrel and the foundation re-import will pick it up automatically (install-links=true copies the package on `npm install`).
