@@ -1,13 +1,13 @@
 // `@aqua/plugin-website-editor` — entry point.
 //
-// Default-exports the `AquaPlugin` manifest. The foundation reads this at
-// boot, registers nav items / pages / API routes, and wires plugin storage.
-//
-// **WIP** — manifest is stubbed for round 1 step 1. Subsequent steps fill
-// `pages`, `api`, `storefront.blocks`, etc. See plan in
-// `~/.claude/plans/you-are-terminal-3-modular-pearl.md`.
+// Default-exports the `AquaPlugin` manifest. The foundation reads this
+// at boot, registers nav items / pages / API routes, merges the 58
+// blocks into the editor's storefront block registry, and wires plugin
+// storage.
 
 import type { AquaPlugin } from "./src/lib/aquaPluginTypes";
+import { apiRoutes } from "./src/api/routes";
+import { BLOCK_DESCRIPTORS } from "./src/components/blockRegistry";
 
 const websiteEditorPlugin: AquaPlugin = {
   id: "website-editor",
@@ -21,6 +21,8 @@ const websiteEditorPlugin: AquaPlugin = {
 
   requires: [],
 
+  navGroup: { id: "content", label: "Content", order: 10 },
+
   navItems: [
     { id: "editor", label: "Editor", href: "/portal/clients/[clientId]/editor", panelId: "content" },
     { id: "pages", label: "Pages", href: "/portal/clients/[clientId]/pages", panelId: "content" },
@@ -32,12 +34,68 @@ const websiteEditorPlugin: AquaPlugin = {
     { id: "popups", label: "Popups", href: "/portal/clients/[clientId]/popups", panelId: "content" },
   ],
 
-  pages: [],
+  pages: [
+    {
+      path: "/portal/clients/[clientId]/editor",
+      title: "Editor",
+      component: () => import("./src/pages/EditorPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/pages",
+      title: "Pages",
+      component: () => import("./src/pages/PagesPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/pages/[pageId]",
+      title: "Page detail",
+      component: () => import("./src/pages/PageDetailPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/portals",
+      title: "Portals",
+      component: () => import("./src/pages/PortalsPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/customise",
+      title: "Customise",
+      component: () => import("./src/pages/CustomisePage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/sites",
+      title: "Sites",
+      component: () => import("./src/pages/SitesPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/themes",
+      title: "Themes",
+      component: () => import("./src/pages/ThemesPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/themes/[themeId]",
+      title: "Theme detail",
+      component: () => import("./src/pages/ThemeDetailPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/sections",
+      title: "Sections",
+      component: () => import("./src/pages/SectionsPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/assets",
+      title: "Assets",
+      component: () => import("./src/pages/AssetsPage"),
+    },
+    {
+      path: "/portal/clients/[clientId]/popups",
+      title: "Popups",
+      component: () => import("./src/pages/PopupsPage"),
+    },
+  ],
 
-  api: [],
+  api: apiRoutes,
 
   storefront: {
-    blocks: [],
+    blocks: BLOCK_DESCRIPTORS,
   },
 
   settings: {
