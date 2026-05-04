@@ -32,11 +32,22 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Pin the Turbopack root so a parent-folder lockfile (e.g. /Users/eds)
-  // doesn't get auto-detected. Without this, dev + build emit a warning.
+  // Pin the Turbopack root so a parent-folder lockfile doesn't get
+  // auto-detected. Workspace plugins (`@aqua/plugin-fulfillment`,
+  // `@aqua/plugin-website-editor`) install through `npm install
+  // --install-links` (configured in `.npmrc`) so they materialise as
+  // real copies inside `node_modules` rather than symlinks — Turbopack
+  // resolves those happily.
   turbopack: {
     root: import.meta.dirname,
   },
+  // Local workspace plugin packages ship TypeScript source (no build
+  // step). transpilePackages tells Next/Turbopack to compile them rather
+  // than treat them as pre-built node_modules.
+  transpilePackages: [
+    "@aqua/plugin-fulfillment",
+    "@aqua/plugin-website-editor",
+  ],
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

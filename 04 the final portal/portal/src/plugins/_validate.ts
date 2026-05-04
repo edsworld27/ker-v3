@@ -1,7 +1,8 @@
-// Plugin manifest validator. Lifted from `02/.../_validate.ts` with two
+// Plugin manifest validator. Lifted from `02/.../_validate.ts` with three
 // adaptations:
 //   1. New `category` value `"fulfillment"` accepted (T2's plugin).
-//   2. Required `scopePolicy` field validated.
+//   2. Optional `scopePolicy` field validated when present (defaults to "either").
+//   3. Round 2: `panelId` is `string` (not enum) — wider set, validator just warns.
 //
 // Runs at registration (registerPlugin) and once over the in-tree
 // PLUGINS array on import. Rejects manifests malformed enough that the
@@ -60,8 +61,8 @@ export function validatePlugin(plugin: AquaPlugin): PluginValidationResult {
   if (!VALID_CATEGORIES.has(plugin.category)) {
     errors.push(`plugin.category "${plugin.category}" is unsupported.`);
   }
-  if (!VALID_SCOPE_POLICIES.has(plugin.scopePolicy)) {
-    errors.push(`plugin.scopePolicy "${plugin.scopePolicy}" must be one of client / agency / either.`);
+  if (plugin.scopePolicy !== undefined && !VALID_SCOPE_POLICIES.has(plugin.scopePolicy)) {
+    errors.push(`plugin.scopePolicy "${plugin.scopePolicy}" must be one of client / agency / either when present.`);
   }
 
   if (plugin.plans !== undefined) {

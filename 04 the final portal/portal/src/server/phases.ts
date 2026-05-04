@@ -1,15 +1,16 @@
 import "server-only";
-// Phases — lifecycle stages (Discovery → Live → Churned). T2 owns the
-// full implementation: phase definitions, transitions, checklist UI.
-// Foundation just exposes the read API so the chrome can label the
-// current stage and the architecture's contract type is satisfied.
+// Phases — lifecycle stages (Discovery → Live → Churned).
+//
+// T2's fulfillment plugin owns phase semantics (transitions, checklist
+// algorithm, six default presets). Foundation owns the storage shape so
+// the chrome can label the current stage without booting fulfillment.
+//
+// Round 2: added `upsertPhase` / `deletePhase` so the fulfillment plugin
+// can seed defaults and edit phases via its `PhaseStorePort` adapter.
 
-import { getState } from "./storage";
+import { getState, mutate } from "./storage";
 import type { ClientStage, PhaseDefinition } from "./types";
 
-// Six default stages from `04-architecture.md §7`. Surfaced as label
-// strings here so the chrome can render `<span>{phaseLabel(stage)}</span>`
-// without depending on T2's full module.
 const DEFAULT_PHASE_LABELS: Record<ClientStage, string> = {
   lead: "Lead",
   discovery: "Discovery",
@@ -32,4 +33,24 @@ export function listPhasesForAgency(agencyId: string): PhaseDefinition[] {
 
 export function getPhase(id: string): PhaseDefinition | null {
   return getState().phases[id] ?? null;
+}
+
+export function upsertPhase(phase: PhaseDefinition): PhaseDefinition {
+  let saved!: PhaseDefinition;
+  mutate(state => {
+    saved = { ...phase };
+    state.phases[phase.id] = saved;
+  });
+  return saved;
+}
+
+export function deletePhase(id: string): boolean {
+  let removed = false;
+  mutate(state => {
+    if (state.phases[id]) {
+      delete state.phases[id];
+      removed = true;
+    }
+  });
+  return removed;
 }

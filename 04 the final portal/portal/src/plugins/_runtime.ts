@@ -22,6 +22,7 @@ import { getPlugin, listCorePlugins } from "./_registry";
 import type {
   AquaPlugin, AquaPreset, PluginCtx, PluginStorage,
 } from "./_types";
+import { FOUNDATION_SERVICES } from "./foundation-adapters";
 import type { PluginInstall } from "@/server/types";
 
 // ─── Plugin storage namespacing ───────────────────────────────────────────
@@ -56,12 +57,17 @@ function makeStorage(installId: string): PluginStorage {
   };
 }
 
-function makeCtx(install: PluginInstall): PluginCtx {
+// Build a `PluginCtx` for lifecycle hooks. The `actor` defaults to the
+// install's `installedBy` (or empty string for system installs); page +
+// API routes pass the live session userId via the catch-all wrappers.
+export function makeCtx(install: PluginInstall, actor?: string): PluginCtx {
   return {
     agencyId: install.agencyId,
     clientId: install.clientId,
     install,
     storage: makeStorage(install.id),
+    services: FOUNDATION_SERVICES,
+    actor: actor ?? install.installedBy ?? "",
   };
 }
 
@@ -104,12 +110,14 @@ export async function installPlugin(
   const plugin = getPlugin(pluginId);
   if (!plugin) return { ok: false, error: `Plugin "${pluginId}" not found.` };
 
-  // Scope-policy enforcement.
+  // Scope-policy enforcement (optional field; defaults to "either" so
+  // pre-Round-2 manifests without an explicit policy install anywhere).
   const isClientScoped = options.scope.clientId !== undefined;
-  if (plugin.scopePolicy === "client" && !isClientScoped) {
+  const policy = plugin.scopePolicy ?? "either";
+  if (policy === "client" && !isClientScoped) {
     return { ok: false, error: `Plugin "${pluginId}" must be installed under a client scope.` };
   }
-  if (plugin.scopePolicy === "agency" && isClientScoped) {
+  if (policy === "agency" && isClientScoped) {
     return { ok: false, error: `Plugin "${pluginId}" must be installed at the agency scope.` };
   }
 
@@ -301,9 +309,10 @@ export type { PluginInstallScope } from "@/server/pluginInstalls";
 export async function installCorePluginsForScope(scope: PluginInstallScope, installedBy?: string): Promise<void> {
   for (const plugin of listCorePlugins()) {
     if (getInstall(scope, plugin.id)) continue;
-    // Respect scope policy when auto-installing.
-    if (plugin.scopePolicy === "client" && scope.clientId === undefined) continue;
-    if (plugin.scopePolicy === "agency" && scope.clientId !== undefined) continue;
+    // Respect scope policy when auto-installing. Missing policy = "either".
+    const policy = plugin.scopePolicy ?? "either";
+    if (policy === "client" && scope.clientId === undefined) continue;
+    if (policy === "agency" && scope.clientId !== undefined) continue;
     await installPlugin(plugin.id, { scope, installedBy: installedBy ?? "system" });
   }
 }

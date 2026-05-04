@@ -15,6 +15,8 @@
 import type { AquaPlugin } from "./_types";
 import { validatePlugin, validateRegistry } from "./_validate";
 
+import fulfillmentManifest from "@aqua/plugin-fulfillment";
+
 export { validatePlugin, validateRegistry } from "./_validate";
 export type { PluginValidationResult } from "./_validate";
 
@@ -23,9 +25,15 @@ export type { PluginValidationResult } from "./_validate";
 // Each entry is a manifest imported from its plugin folder under
 // `04 the final portal/plugins/<id>/`. T2 + T3 land their imports here
 // during their respective rounds.
+//
+// T2's `@aqua/plugin-fulfillment` types its manifest against its own
+// vendored `aquaPluginTypes.ts`. The shapes are structurally aligned with
+// T1's `./_types` (Round 2 alignment), but TypeScript treats the two
+// `AquaPlugin` interfaces as nominally distinct because they live in
+// different files. We cast through `unknown` here — the validator runs
+// the real shape check at module load.
 const PLUGINS: AquaPlugin[] = [
-  // T2 → import fulfillment from "@plugins/fulfillment";
-  // T3 → import websiteEditor from "@plugins/website-editor";
+  fulfillmentManifest as unknown as AquaPlugin,
 ];
 
 // Validate every shipped plugin once on module load. Authoring mistakes

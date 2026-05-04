@@ -15,12 +15,9 @@ import "server-only";
 // Routes / pages read via `listInstalledFor()` to assemble the chrome.
 
 import { getState, mutate } from "./storage";
-import type { PluginInstall } from "./types";
+import type { PluginInstall, PluginInstallScope } from "./types";
 
-export interface PluginInstallScope {
-  agencyId: string;
-  clientId?: string;
-}
+export type { PluginInstallScope };
 
 const AGENCY_SCOPE_TOKEN = "_agency";
 

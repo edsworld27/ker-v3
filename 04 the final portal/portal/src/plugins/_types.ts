@@ -2,6 +2,10 @@
 //
 // Lifted from `02 felicias aqua portal work/src/plugins/_types.ts` and
 // adapted for the three-level tenancy model in `04-architecture.md`.
+// Aligned in Round 2 with T2's local `aquaPluginTypes.ts` so the
+// fulfillment plugin (and future first-party plugins) compile against
+// one source of truth.
+//
 // Every feature in the portal (Fulfillment, Website editor, E-commerce,
 // Memberships, …) is an `AquaPlugin`. The registry collects them; the
 // runtime installs them into a tenant scope (agency-wide or client-
@@ -12,16 +16,11 @@
 //   2. Author manifest exporting `default: AquaPlugin`
 //   3. Register it in src/plugins/_registry.ts
 //   4. Done. Sidebar nav, API routes and pages mount from the manifest.
-//
-// Anything that is NOT a plugin is "platform infrastructure" — auth,
-// tenants, plugin-installs, the chrome itself, the marketplace UI shell.
 
-import type { ReactNode } from "react";
-import type { PluginInstall } from "@/server/types";
+import type { ComponentType, ReactNode } from "react";
+import type { PluginInstall, PluginInstallScope, Role, ServerUser } from "@/server/types";
 
-// Re-export the canonical install shape so plugins, runtime, and chrome
-// share one type. Source of truth lives in `src/server/types.ts`.
-export type { PluginInstall } from "@/server/types";
+export type { PluginInstall, PluginInstallScope } from "@/server/types";
 
 // ─── Plugin identity ──────────────────────────────────────────────────────
 
@@ -32,19 +31,213 @@ export type PluginCategory =
   | "marketing"
   | "support"
   | "ops"
-  | "fulfillment";   // T2's category — not in 02
+  | "fulfillment";
 
 export type PluginStatus = "stable" | "beta" | "alpha";
 
 export type PlanId = "free" | "starter" | "pro" | "enterprise";
 
+// ─── Foundation port shapes ──────────────────────────────────────────────
+//
+// The same interfaces T2 declared at `plugins/fulfillment/src/server/ports.ts`,
+// re-published here so plugins land in the registry against one canonical
+// surface. Implementations live in `src/plugins/foundation-adapters/`.
+
+export interface CreateClientInput {
+  name: string;
+  slug?: string;
+  ownerEmail?: string;
+  websiteUrl?: string;
+  stage?: import("@/server/types").ClientStage;
+  brand?: Partial<import("@/server/types").BrandKit>;
+}
+
+export interface UpdateClientPatch {
+  name?: string;
+  ownerEmail?: string;
+  websiteUrl?: string;
+  brand?: Partial<import("@/server/types").BrandKit>;
+  status?: import("@/server/types").AgencyStatus;
+  stage?: import("@/server/types").ClientStage;
+}
+
+export interface ClientStorePort {
+  createClient(agencyId: string, input: CreateClientInput): import("@/server/types").Client | Promise<import("@/server/types").Client>;
+  getClient(id: string): import("@/server/types").Client | null | Promise<import("@/server/types").Client | null>;
+  getClientForAgency(agencyId: string, clientId: string): import("@/server/types").Client | null | Promise<import("@/server/types").Client | null>;
+  listClients(agencyId: string): import("@/server/types").Client[] | Promise<import("@/server/types").Client[]>;
+  updateClient(agencyId: string, clientId: string, patch: UpdateClientPatch): import("@/server/types").Client | null | Promise<import("@/server/types").Client | null>;
+}
+
+export interface UpsertPluginInstallInput {
+  pluginId: string;
+  scope: PluginInstallScope;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  features: Record<string, boolean>;
+  setupAnswers?: Record<string, string>;
+  installedBy?: string;
+}
+
+export interface PluginInstallPatch {
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+  features?: Record<string, boolean>;
+  setupAnswers?: Record<string, string>;
+}
+
+export interface PluginInstallStorePort {
+  getInstall(scope: PluginInstallScope, pluginId: string): PluginInstall | null | Promise<PluginInstall | null>;
+  listInstalledFor(scope: PluginInstallScope): PluginInstall[] | Promise<PluginInstall[]>;
+  listInstalledForClientOnly(scope: PluginInstallScope): PluginInstall[] | Promise<PluginInstall[]>;
+  upsertInstall(input: UpsertPluginInstallInput): PluginInstall | Promise<PluginInstall>;
+  patchInstall(scope: PluginInstallScope, pluginId: string, patch: PluginInstallPatch): PluginInstall | null | Promise<PluginInstall | null>;
+  deleteInstall(scope: PluginInstallScope, pluginId: string): boolean | Promise<boolean>;
+}
+
+export interface PluginRuntimePort {
+  installPlugin(args: {
+    pluginId: string;
+    scope: PluginInstallScope;
+    installedBy?: string;
+    setupAnswers?: Record<string, string>;
+    featureOverrides?: Record<string, boolean>;
+    configOverrides?: Record<string, unknown>;
+  }): Promise<{ ok: true; install: PluginInstall } | { ok: false; error: string }>;
+
+  setEnabled(args: {
+    pluginId: string;
+    scope: PluginInstallScope;
+    enabled: boolean;
+    actor?: string;
+  }): Promise<{ ok: true; install: PluginInstall } | { ok: false; error: string }>;
+
+  uninstallPlugin(args: {
+    pluginId: string;
+    scope: PluginInstallScope;
+    actor?: string;
+  }): Promise<{ ok: true } | { ok: false; error: string }>;
+}
+
+export interface PluginRegistryEntry {
+  id: string;
+  name: string;
+  version: string;
+  status: PluginStatus;
+  category: PluginCategory;
+  tagline: string;
+  description: string;
+  core?: boolean;
+  requires?: string[];
+  conflicts?: string[];
+}
+
+export interface PluginRegistryPort {
+  listPlugins(): PluginRegistryEntry[];
+  listInstallablePlugins(): PluginRegistryEntry[];
+  getPlugin(id: string): PluginRegistryEntry | null;
+}
+
+export interface LogActivityInput {
+  agencyId: string;
+  clientId?: string;
+  actorUserId?: string;
+  actorEmail?: string;
+  category: import("@/server/types").ActivityCategory;
+  action: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ListActivityFilter {
+  agencyId: string;
+  clientId?: string;
+  limit?: number;
+}
+
+export interface ActivityLogPort {
+  logActivity(input: LogActivityInput): import("@/server/types").ActivityEntry | Promise<import("@/server/types").ActivityEntry>;
+  listActivity(filter: ListActivityFilter): import("@/server/types").ActivityEntry[] | Promise<import("@/server/types").ActivityEntry[]>;
+}
+
+export type EventName =
+  | "agency.created"
+  | "client.created"
+  | "client.updated"
+  | "client.archived"
+  | "client.stage_changed"
+  | "user.signed_up"
+  | "user.signed_in"
+  | "user.password_reset"
+  | "plugin.installed"
+  | "plugin.uninstalled"
+  | "plugin.enabled"
+  | "plugin.disabled"
+  | "plugin.configured"
+  | "phase.advanced"
+  | "phase.checklist_item_completed"
+  | "brief.created"
+  | "deliverable.submitted"
+  | "deliverable.approved"
+  | "page.published";
+
+export interface EventBusPort {
+  emit<T = unknown>(
+    scope: { agencyId: string; clientId?: string },
+    name: EventName,
+    payload: T,
+  ): void;
+}
+
+// `PortalRole` is the variant surface — which client-portal page a
+// variant belongs to. Distinct from user `Role`. T3 owns canonical at
+// `@aqua/plugin-website-editor/types`; mirrored here for now.
+export type PortalRole = "login" | "affiliates" | "orders" | "account";
+
+export interface PortalVariantPort {
+  applyStarterVariant(args: {
+    clientId: string;
+    agencyId: string;
+    role: PortalRole;
+    variantId: string;
+    actor?: string;
+  }): Promise<
+    | { ok: true; variantId: string; pageId?: string; siteId?: string }
+    | { ok: false; error: string }
+  >;
+}
+
+export interface PhaseStorePort {
+  listPhasesForAgency(agencyId: string): import("@/server/types").PhaseDefinition[] | Promise<import("@/server/types").PhaseDefinition[]>;
+  getPhase(id: string): import("@/server/types").PhaseDefinition | null | Promise<import("@/server/types").PhaseDefinition | null>;
+  upsertPhase(phase: import("@/server/types").PhaseDefinition): import("@/server/types").PhaseDefinition | Promise<import("@/server/types").PhaseDefinition>;
+  deletePhase(id: string): boolean | Promise<boolean>;
+}
+
+// ─── PluginServices — the foundation toolbox handed to plugins ────────────
+
+export interface PluginServices {
+  clients: ClientStorePort;
+  pluginInstalls: PluginInstallStorePort;
+  pluginRuntime: PluginRuntimePort;
+  registry: PluginRegistryPort;
+  phases: PhaseStorePort;
+  activity: ActivityLogPort;
+  events: EventBusPort;
+  variants: PortalVariantPort;
+}
+
 // ─── Runtime context handed to plugin lifecycle hooks ─────────────────────
 
 export interface PluginCtx {
   agencyId: string;
-  clientId?: string;             // undefined when the install is agency-wide
+  clientId?: string;
   install: PluginInstall;
   storage: PluginStorage;
+  services: PluginServices;
+  // The user id of whoever triggered the call. Empty string when called
+  // by system bootstrap (auto-install of core plugins on agency creation).
+  actor: string;
 }
 
 export interface PluginStorage {
@@ -83,15 +276,12 @@ export interface NavGroup {
   order?: number;
 }
 
-// Where a nav item should appear in the side panel. Foundation knows
-// these panel ids and renders empty panels even before any plugin
-// contributes — this lets the chrome stay stable as plugins land.
 export type PanelId =
-  | "main"           // generic top-of-list
-  | "fulfillment"    // T2's panel
-  | "store"          // commerce plugins
-  | "content"        // editor + blog + wiki
-  | "marketing"      // SEO, funnels, analytics
+  | "main"
+  | "fulfillment"
+  | "store"
+  | "content"
+  | "marketing"
   | "settings"
   | "ops"
   | "tools";
@@ -104,12 +294,15 @@ export interface NavItem {
   badge?: string | number;
   requiresFeature?: string;
   order?: number;
-  panelId?: PanelId;
+  panelId?: string;
   groupId?: string;
-  // Roles allowed to see this nav item. Default: everyone in the tenant
-  // who can see the panel. T2/T3 should set this when an item is
-  // agency-only or client-only.
-  roles?: import("@/server/types").Role[];
+  // Hierarchical nav: when set, this item nests under the parent (id) in
+  // the same panel. T2's fulfillment uses this for "Clients" → "Briefs".
+  parent?: string;
+  // Roles allowed to see this nav item. Aliases: `roles` (T1 R1) is
+  // accepted as a synonym for back-compat.
+  visibleToRoles?: Role[];
+  roles?: Role[];
 }
 
 // ─── Admin pages ──────────────────────────────────────────────────────────
@@ -118,19 +311,27 @@ export interface PluginPage {
   // Rendered at /portal/clients/[clientId]/<plugin-id>/<path> for client-
   // scoped installs, or /portal/agency/<plugin-id>/<path> for agency-
   // scoped installs. "" = the plugin's index.
+  // Path supports parameter segments like ":clientId" — when present, the
+  // captured value is exposed via `segments[0]`/etc.
   path: string;
-  component: () => Promise<{ default: React.ComponentType<PluginPageProps> }>;
+  component: () => Promise<{ default: ComponentType<PluginPageProps> }>;
   requiresFeature?: string;
   title?: string;
-  // Roles allowed to render the page. Server-rendered enforcement.
-  roles?: import("@/server/types").Role[];
+  visibleToRoles?: Role[];
+  roles?: Role[];
 }
 
 export interface PluginPageProps {
   agencyId: string;
   clientId?: string;
   install: PluginInstall;
+  // Path captures + remainder beyond the plugin's mount point.
   segments: string[];
+  // Search params from Next.js page props (already awaited).
+  searchParams: Record<string, string | string[] | undefined>;
+  actor: string;
+  services: PluginServices;
+  storage: PluginStorage;
 }
 
 // ─── API routes ───────────────────────────────────────────────────────────
@@ -140,23 +341,24 @@ export interface PluginApiRoute {
   methods: ("GET" | "POST" | "PATCH" | "PUT" | "DELETE")[];
   handler: (req: Request, ctx: PluginCtx) => Promise<Response>;
   requiresFeature?: string;
-  roles?: import("@/server/types").Role[];
+  visibleToRoles?: Role[];
+  roles?: Role[];
 }
 
-// ─── Storefront contributions (T3-territory but the contract is here) ────
+// ─── Storefront contributions (T3-territory; contract lives here) ────────
 
 export interface BlockDescriptor {
   type: string;
   name: string;
   category: "layout" | "content" | "commerce" | "form" | "media" | "marketing";
   defaultProps: Record<string, unknown>;
-  render: () => Promise<{ default: React.ComponentType<{ block: unknown }> }>;
+  render: () => Promise<{ default: ComponentType<{ block: unknown }> }>;
   requiresFeature?: string;
 }
 
 export interface StorefrontRoute {
   path: string;
-  component: () => Promise<{ default: React.ComponentType<{ params: Record<string, string> }> }>;
+  component: () => Promise<{ default: ComponentType<{ params: Record<string, string> }> }>;
   requiresFeature?: string;
 }
 
@@ -211,15 +413,7 @@ export interface HealthStatus {
   components?: Record<string, { ok: boolean; message?: string }>;
 }
 
-// ─── Install scope policy ─────────────────────────────────────────────────
-//
-// Each plugin declares what scopes are valid for installs:
-//   "client"  — only client-scoped (most plugins; commerce, editor, …)
-//   "agency"  — only agency-scoped (e.g. agency-wide HR)
-//   "either"  — both supported (e.g. fulfillment can be agency-wide and
-//                              also have per-client overrides)
-//
-// The runtime enforces the policy at install time.
+// ─── Install scope policy (optional, defaults to "either") ────────────────
 
 export type PluginScopePolicy = "client" | "agency" | "either";
 
@@ -235,17 +429,16 @@ export interface AquaPlugin {
   description: string;
   icon?: ReactNode;
 
-  // Some plugins are core — auto-installed for every new tenant.
   core?: boolean;
 
-  // Where this plugin is allowed to be installed.
-  scopePolicy: PluginScopePolicy;
+  // Optional in Round 2; defaults to "either" when absent. T2's manifest
+  // doesn't set it, so the runtime falls back to permissive.
+  scopePolicy?: PluginScopePolicy;
 
   plans?: PlanId[];
   requires?: string[];
   conflicts?: string[];
 
-  // Lifecycle hooks.
   onInstall?: (ctx: PluginCtx, setupAnswers: Record<string, string>) => Promise<void>;
   onUninstall?: (ctx: PluginCtx) => Promise<void>;
   onEnable?: (ctx: PluginCtx) => Promise<void>;
@@ -278,8 +471,6 @@ export interface AquaPreset {
   tagline: string;
   description: string;
   icon?: ReactNode;
-  // Plugins to install when this preset is applied. The runtime executes
-  // them in order (deps first), with optional feature/config overrides.
   plugins: PresetPluginEntry[];
   brandHints?: { palette?: string[]; fontPair?: [string, string] };
 }
@@ -289,3 +480,16 @@ export interface PresetPluginEntry {
   features?: Record<string, boolean>;
   config?: Record<string, unknown>;
 }
+
+// Helper: resolve allowed roles from either field for a manifest-author-
+// agnostic role gate.
+export function navItemAllowedRoles(item: NavItem): Role[] | undefined {
+  return item.visibleToRoles ?? item.roles;
+}
+
+export function pluginPageAllowedRoles(page: PluginPage): Role[] | undefined {
+  return page.visibleToRoles ?? page.roles;
+}
+
+// `ServerUser` re-exported for convenience.
+export type { ServerUser };

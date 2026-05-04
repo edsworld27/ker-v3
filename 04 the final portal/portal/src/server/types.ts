@@ -162,6 +162,13 @@ export interface PluginInstall {
   healthCheckedAt?: number;
 }
 
+// Composite scope used for plugin installs. `clientId === undefined`
+// means agency-wide; otherwise client-scoped under the agency.
+export interface PluginInstallScope {
+  agencyId: string;
+  clientId?: string;
+}
+
 // ─── Activity log ─────────────────────────────────────────────────────────
 
 export type ActivityCategory =

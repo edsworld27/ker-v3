@@ -1,7 +1,7 @@
 # Tasks
 
 ## In progress
-_(none — Round 1 complete)_
+_(T1 R2 done — see `Done — Round 2` below)_
 
 ## Done — Round 1
 - [x] **T1 — Foundation** — shipped. `04 the final portal/portal/` scaffolded
@@ -29,9 +29,25 @@ _(none — Round 1 complete)_
 ## Deferred
 - [ ] NotebookLM setup — skipped for now. Revisit when we need outside research.
 
-## Up next (Round 2, after Round 1 lands)
-- [ ] Wire all three plugins into T1's shell — test install / uninstall / render.
-- [ ] Port the **ecommerce plugin** from `02` → `04/plugins/ecommerce/`.
+## Done — Round 2
+- [x] **T1 R2 — wire fulfillment + demo seed** — shipped.
+      `@aqua/plugin-fulfillment` mounted as `file:..` workspace dep
+      (Turbopack + `install-links=true` + `transpilePackages`). Foundation
+      port adapters bridge T2's ports → T1 server modules. Catch-all
+      routes resolve `/portal/agency/[...rest]`,
+      `/portal/clients/[clientId]/[...rest]`,
+      `/api/portal/[plugin]/[...rest]` to plugin pages + handlers.
+      Agency creation auto-installs core plugins (fulfillment seeds 6
+      phase defaults via `onInstall`). `/api/dev/seed-demo` provisions
+      Demo · Aqua + Felicia mirror at onboarding stage with half-ticked
+      checklist. Smoke pass end-to-end. See
+      `context/prior research/04-foundation-round2.md`.
+
+## Up next (Round 2 follow-ups)
+- [ ] T2 R2: port the **ecommerce plugin** from `02` → `04/plugins/ecommerce/`.
+- [ ] T3 R2: lift website-editor block UIs + admin UIs from `02`.
+- [ ] T1 R3: replace `portalVariantAdapter` stub with real T3 wrapper
+      once website-editor lands as a workspace dep.
 - [ ] Build the first phase-preset end-to-end (create client → pick
       Onboarding → fulfillment installs starter plugins → checklist appears
       → both sides tick → advance phase).

@@ -15,6 +15,7 @@ import "server-only";
 
 import { listPlugins } from "@/plugins/_registry";
 import type { NavItem, PanelId } from "@/plugins/_types";
+import { navItemAllowedRoles } from "@/plugins/_types";
 import type { Client, PluginInstall, Role } from "@/server/types";
 import { isAgencyRole, isClientRole } from "@/server/types";
 
@@ -80,18 +81,30 @@ export function buildSidebar(input: BuildSidebarInput): NavPanel[] {
   for (const plugin of listPlugins()) {
     if (!enabledIds.has(plugin.id)) continue;
     for (const navItem of plugin.navItems) {
-      // Role gate (when the plugin author specifies one).
-      if (navItem.roles && !navItem.roles.includes(input.role)) continue;
+      // Role gate — accepts either `visibleToRoles` (T2 convention) or
+      // `roles` (T1 R1 alias).
+      const allowedRoles = navItemAllowedRoles(navItem);
+      if (allowedRoles && !allowedRoles.includes(input.role)) continue;
+      // Scope gate — items targeting agency paths only render in agency
+      // scope; items targeting `/portal/clients/[clientId]` only render
+      // in client scope.
+      const isAgencyHref = navItem.href.startsWith("/portal/agency");
+      const isClientHref = navItem.href.includes(":clientId") || navItem.href.startsWith("/portal/clients/");
+      if (input.scope === "agency" && !isAgencyHref) continue;
+      if (input.scope === "client" && !isClientHref) continue;
       // Feature gate.
       if (navItem.requiresFeature) {
         const install = input.installedPlugins.find(i => i.pluginId === plugin.id);
         if (!install?.features[navItem.requiresFeature]) continue;
       }
-      // Rewrite client-scoped item hrefs to embed the current clientId
-      // (plugins author with a `:clientId` placeholder by convention).
-      const href = navItem.href.includes(":clientId") && input.currentClient
-        ? navItem.href.replaceAll(":clientId", input.currentClient.id)
-        : navItem.href;
+      // Rewrite `:clientId` placeholder hrefs to embed the current clientId.
+      // Also support `[clientId]` next-style placeholder (some plugin
+      // authors use that shape).
+      let href = navItem.href;
+      if (input.currentClient) {
+        href = href.replaceAll(":clientId", input.currentClient.id);
+        href = href.replaceAll("[clientId]", input.currentClient.id);
+      }
       appendIntoPanel(itemsByPanel, { ...navItem, href });
     }
   }

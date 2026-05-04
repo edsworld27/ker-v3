@@ -11,7 +11,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ensureHydrated } from "@/server/storage";
 import { issueSession, sessionCookie } from "@/lib/server/auth";
 import { clientIpFromHeaders, rateLimit } from "@/lib/server/rateLimit";
-import { listAgencies, createAgency, getAgency } from "@/server/tenants";
+import { listAgencies, getAgency } from "@/server/tenants";
+import { bootstrapAgency } from "@/server/agencyBootstrap";
 import { createUser, listUsersForAgency, verifyPassword } from "@/server/users";
 import { logActivity } from "@/server/activity";
 
@@ -52,7 +53,13 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const agency = createAgency({ name: "Milesy Media", slug: "milesy-media", ownerEmail: email });
+    // Provisional user id so bootstrapAgency's logActivity can record an
+    // actor. The actual user record lands a moment later.
+    const provisional = `usr_pending_${Date.now()}`;
+    const { agency } = await bootstrapAgency(
+      { name: "Milesy Media", slug: "milesy-media", ownerEmail: email },
+      provisional,
+    );
     const user = createUser({
       email,
       password,
