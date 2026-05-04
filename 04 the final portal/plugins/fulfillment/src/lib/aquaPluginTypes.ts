@@ -52,7 +52,9 @@ export interface PluginStorage {
 export interface PluginServices {
   clients: ClientStorePort;
   pluginInstalls: PluginInstallStorePort;
+  pluginRuntime: PluginRuntimePort;
   registry: PluginRegistryPort;
+  phases: PhaseStorePort;
   activity: ActivityLogPort;
   events: EventBusPort;
   variants: PortalVariantPort;
@@ -67,8 +69,10 @@ import type {
   ActivityLogPort,
   ClientStorePort,
   EventBusPort,
+  PhaseStorePort,
   PluginInstallStorePort,
   PluginRegistryPort,
+  PluginRuntimePort,
   PortalVariantPort,
 } from "../server/ports";
 
@@ -140,6 +144,12 @@ export interface PluginPageProps {
   segments: string[];
   searchParams: Record<string, string | string[] | undefined>;
   actor: UserId;
+  // Server-rendered plugin pages receive the foundation surface via props
+  // rather than importing T1's modules directly. Keeps every plugin
+  // tsc-checkable in isolation and makes pages trivially testable.
+  services: PluginServices;
+  // Per-install scoped storage. Same namespacing rules as `PluginCtx.storage`.
+  storage: PluginStorage;
 }
 
 // ─── API routes ────────────────────────────────────────────────────────────
