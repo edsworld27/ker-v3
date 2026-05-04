@@ -1,0 +1,33 @@
+{
+  "name": "@aqua/plugin-ecommerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aqua portal ecommerce plugin — products, variants, cart, Stripe checkout, orders, customers, inventory, shipping. Per-client install (scopePolicy: 'client'). Block ids contributed; T3's website-editor plugin owns the rendering.",
+  "type": "module",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./manifest": "./index.ts",
+    "./server": "./src/server/index.ts",
+    "./types": "./src/lib/aquaPluginTypes.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet — covered by foundation integration suite\""
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "next": "^16.0.0"
+  },
+  "peerDependenciesMeta": {
+    "stripe": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -42,9 +42,20 @@ _(T1 R2 done — see `Done — Round 2` below)_
       Demo · Aqua + Felicia mirror at onboarding stage with half-ticked
       checklist. Smoke pass end-to-end. See
       `context/prior research/04-foundation-round2.md`.
+- [x] **T2 R2 — ecommerce plugin** — shipped.
+      `@aqua/plugin-ecommerce` at `04 the final portal/plugins/ecommerce/`.
+      `scopePolicy: "client"`, `requires: ["website-editor"]`. Server
+      domain (orders, products, gift cards, referrals, discounts, billing
+      vestigial) backed by per-install storage. 23 API routes including
+      Stripe webhook (idempotent) + checkout + billing-portal — keys read
+      from per-install config, NOT env. 13 admin pages, 7 storefront UI
+      components, CartContext with API-driven inventory reservations.
+      8 block ids contributed (rendering delegated to T3). tsc-clean
+      standalone. See `context/prior research/04-plugin-ecommerce.md`.
+      Foundation pending: `registerEcommerceFoundation` call site + T3
+      block-renderer registration.
 
 ## Up next (Round 2 follow-ups)
-- [ ] T2 R2: port the **ecommerce plugin** from `02` → `04/plugins/ecommerce/`.
 - [ ] T3 R2: lift website-editor block UIs + admin UIs from `02`.
 - [ ] T1 R3: replace `portalVariantAdapter` stub with real T3 wrapper
       once website-editor lands as a workspace dep.
