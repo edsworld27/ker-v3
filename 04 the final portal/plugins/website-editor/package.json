@@ -1,0 +1,31 @@
+{
+  "name": "@aqua/plugin-website-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aqua portal website editor plugin — Live/Block/Code visual editor, 58-block library, portal-variant admin (login/affiliates/orders/account). Auto-installed for every client.",
+  "type": "module",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./manifest": "./index.ts",
+    "./server": "./src/server/index.ts",
+    "./types": "./src/lib/aquaPluginTypes.ts",
+    "./components": "./src/components/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx src/__smoke__/blocks.test.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "next": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
