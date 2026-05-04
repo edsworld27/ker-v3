@@ -91,6 +91,7 @@ Synthesised from 6 parallel explore agents.
 | # | Title | File | Summary |
 |---|-------|------|---------|
 | 20 | Fulfillment plugin | [prior research/04-plugin-fulfillment.md](prior%20research/04-plugin-fulfillment.md) | T2's deliverable. Manifest contract, six seeded phase defaults, `advancePhase` 7-step transition algorithm, collaborative checklist (template + per-client progress), per-client marketplace UX, foundation port surface (T1 + T3 integration TODOs), API surface. Standalone tsc-clean. |
+| 21 | Foundation (T1) | [prior research/04-foundation.md](prior%20research/04-foundation.md) | T1's deliverable. Folder tree of `04 the final portal/portal/`, plugin contract (AquaPlugin manifest + new `scopePolicy` field + `:clientId` href rewriting), auth API (issueSession/requireRole/requireRoleForClient/AuthError), chrome contract (buildSidebar + ThemeInjector + Sidebar/Topbar), server module surface (tenants/users/pluginInstalls — composite install id `${agencyId}\|${clientId??_agency}\|${pluginId}`), bootstrap flow, six deviations from architecture. |
 
 ---
 

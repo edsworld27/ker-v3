@@ -32,6 +32,11 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Pin the Turbopack root so a parent-folder lockfile (e.g. /Users/eds)
+  // doesn't get auto-detected. Without this, dev + build emit a warning.
+  turbopack: {
+    root: import.meta.dirname,
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
