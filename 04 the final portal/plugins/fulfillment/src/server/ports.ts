@@ -24,7 +24,7 @@ import type {
   PluginInstall,
   PluginInstallScope,
   UserId,
-  Role,
+  PortalRole,
   BrandKit,
   EntityStatus,
 } from "../lib/tenancy";
@@ -197,18 +197,25 @@ export interface EventBusPort {
 
 // ─── Portal variants (T3's website-editor plugin) ─────────────────────────
 //
-// **TODO** — once T3 ships the website-editor port, replace this port
-// with the concrete service exported from `@aqua/plugin-website-editor/server`.
-// Until then the implementation is a no-op stub (`starterVariant.ts`).
+// Aligned with T3's `applyStarterVariant` (commit landing alongside this
+// one). The success shape includes `pageId` + `siteId` so the foundation
+// can hyperlink directly to the editor page that was applied.
+//
+// **TODO** — swap `PortalRole` import once the chief commander integrates
+// the plugins; currently mirrored at `lib/tenancy.ts` to keep tsc-clean
+// standalone.
 
 export interface PortalVariantPort {
   applyStarterVariant(args: {
     clientId: ClientId;
     agencyId: AgencyId;
-    role: Role;
+    role: PortalRole;
     variantId: string;
     actor?: UserId;
-  }): Promise<{ ok: true; variantId: string } | { ok: false; error: string }>;
+  }): Promise<
+    | { ok: true; variantId: string; pageId?: string; siteId?: string }
+    | { ok: false; error: string }
+  >;
 }
 
 // ─── Phase store (T2 ships, foundation references) ───────────────────────

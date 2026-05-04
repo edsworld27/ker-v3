@@ -26,6 +26,22 @@ export type Role =
   | "freelancer"
   | "end-customer";
 
+// `PortalRole` is the **variant surface** — which client-portal page a
+// variant belongs to. Distinct from user `Role`. T3 owns the canonical
+// definition at `@aqua/plugin-website-editor/lib/portalRole.ts`; this
+// local mirror keeps the plugin tsc-clean standalone.
+//
+// **TODO** — replace with `import type { PortalRole } from "@aqua/plugin-website-editor/types"`
+// once the chief commander wires the integration.
+export type PortalRole = "login" | "affiliates" | "orders" | "account";
+
+export const PORTAL_ROLES: readonly PortalRole[] = [
+  "login",
+  "affiliates",
+  "orders",
+  "account",
+] as const;
+
 export interface BrandKit {
   logoUrl?: string;
   primaryColor: string;

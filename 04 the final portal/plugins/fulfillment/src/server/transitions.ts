@@ -43,7 +43,10 @@ export interface AdvancePhaseResult {
   client: Client;
   disabled: string[];
   enabled: string[];
-  variant: { ok: true; variantId: string } | { ok: false; error: string } | { skipped: true };
+  variant:
+    | { ok: true; variantId: string; pageId?: string; siteId?: string }
+    | { ok: false; error: string }
+    | { skipped: true };
 }
 
 export interface AdvancePhaseFailure {
@@ -144,7 +147,7 @@ export class TransitionService {
         agencyId: args.agencyId,
         clientId: args.clientId,
         variantId: args.toPhase.portalVariantId,
-        role: "client-owner",
+        role: "login",
         actor: args.actor,
       });
       if (!variant.ok) {

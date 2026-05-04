@@ -11,22 +11,32 @@
 // starter variant copies the named template into the active client variant
 // for the given role (typically `client-owner`).
 
-import type { ClientId, AgencyId, Role, UserId } from "../lib/tenancy";
+import type { ClientId, AgencyId, PortalRole, UserId } from "../lib/tenancy";
 import type { PortalVariantPort } from "./ports";
 
 export interface ApplyVariantArgs {
   agencyId: AgencyId;
   clientId: ClientId;
   variantId: string;
-  role?: Role;
+  // Portal surface to apply the starter variant to. Defaults to "login"
+  // since that's the first surface a client sees on phase entry. Phase
+  // editor lets agency owners customise per-phase.
+  role?: PortalRole;
   actor?: UserId;
+}
+
+export interface ApplyVariantResult {
+  ok: true;
+  variantId: string;
+  pageId?: string;
+  siteId?: string;
 }
 
 export class StarterVariantService {
   constructor(private port: PortalVariantPort) {}
 
-  async apply(args: ApplyVariantArgs): Promise<{ ok: true; variantId: string } | { ok: false; error: string }> {
-    const role: Role = args.role ?? "client-owner";
+  async apply(args: ApplyVariantArgs): Promise<ApplyVariantResult | { ok: false; error: string }> {
+    const role: PortalRole = args.role ?? "login";
     return this.port.applyStarterVariant({
       agencyId: args.agencyId,
       clientId: args.clientId,

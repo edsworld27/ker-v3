@@ -86,6 +86,12 @@ Synthesised from 6 parallel explore agents.
 |---|-------|------|---------|
 | 19 | `04` architecture | [prior research/04-architecture.md](prior%20research/04-architecture.md) | The locked design for `04 the final portal/`. Pool-model multi-tenancy (Agency → Client → End-customer), Aqua manifest plugins, server-rendered chrome, single-cookie auth, phase lifecycle, brand kit per client. Round 1 terminal split. Decisions log. |
 
+### Round 1 implementation chapters
+
+| # | Title | File | Summary |
+|---|-------|------|---------|
+| 20 | Fulfillment plugin | [prior research/04-plugin-fulfillment.md](prior%20research/04-plugin-fulfillment.md) | T2's deliverable. Manifest contract, six seeded phase defaults, `advancePhase` 7-step transition algorithm, collaborative checklist (template + per-client progress), per-client marketplace UX, foundation port surface (T1 + T3 integration TODOs), API surface. Standalone tsc-clean. |
+
 ---
 
 ## Discipline

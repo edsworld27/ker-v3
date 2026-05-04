@@ -2,7 +2,7 @@
 
 ## In progress
 - [ ] **T1 — Foundation** (waiting to launch). See `terminal-prompts/T1-foundation.md`.
-- [ ] **T2 — Fulfillment plugin** (waiting to launch). See `terminal-prompts/T2-fulfillment.md`.
+- [x] **T2 — Fulfillment plugin** — shipped. See `context/prior research/04-plugin-fulfillment.md`. tsc-clean standalone. Pending: foundation wires `PluginRuntimePort` + `PluginRegistryPort` (T1) and brokers `applyStarterVariant` adapter (T3 stubbed body, signature locked).
 - [ ] **T3 — Website-editor port** (waiting to launch). See `terminal-prompts/T3-website-editor.md`.
 
 ## Deferred

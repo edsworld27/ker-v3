@@ -47,7 +47,10 @@ export interface CreateClientWithPhaseResult {
   client: Client;
   phase: PhaseDefinition;
   installs: { pluginId: string; ok: boolean; error?: string }[];
-  variant: { ok: true; variantId: string } | { ok: false; error: string } | { skipped: true };
+  variant:
+    | { ok: true; variantId: string; pageId?: string; siteId?: string }
+    | { ok: false; error: string }
+    | { skipped: true };
 }
 
 export class ClientLifecycleService {
@@ -103,7 +106,7 @@ export class ClientLifecycleService {
         agencyId: input.agencyId,
         clientId: client.id,
         variantId: phase.portalVariantId,
-        role: "client-owner",
+        role: "login",
         actor: input.actor,
       });
     }
